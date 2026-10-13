@@ -1,0 +1,16 @@
+/* 原始风格阅读。衬线与版心走令牌，段首缩进。 */
+
+.kb-reading .kb-md p {
+  text-indent: 2em;
+}
+
+.kb-reading .kb-md h1,
+.kb-reading .kb-md h2,
+.kb-reading .kb-md h3 {
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+.kb-reading .kb-md a {
+  text-underline-offset: 2px;
+}

@@ -1,0 +1,4 @@
+/* 方向 A 占位：标签与小标题更安静 */
+.kb-section-title { letter-spacing: .12em; font-weight: 500; }
+.kb-dock .dv-tab { font-style: normal; }
+.kb-statusbar { border-top-color: transparent; }

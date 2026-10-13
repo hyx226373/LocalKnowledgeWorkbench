@@ -1,0 +1,40 @@
+{
+  "name": "@kb/agent-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "本机知识工作台的 HTTP JSON-RPC 与 stdio MCP 入口",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/fix-dts.mjs",
+    "test": "vitest run",
+    "demo": "node scripts/demo.mjs",
+    "start": "node src/cli.ts",
+    "mcp": "node src/mcp.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@kb/fileops": "file:../fileops",
+    "@kb/identity-watch": "file:../identity-watch",
+    "@kb/indexer": "file:../indexer",
+    "@kb/plan": "file:../plan",
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "better-sqlite3": "^12.4.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

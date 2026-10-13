@@ -1,0 +1,42 @@
+import type { DragItem, DragPayload } from './types';
+
+/** 多选只存在于这次拖拽。Ctrl/⌘ 点选，拖其中一项时合成一个载荷。 */
+const selected = new Set<string>();
+const known = new Map<string, DragItem>();
+const listeners = new Set<() => void>();
+
+function emit() {
+  listeners.forEach((l) => l());
+}
+
+export function selectedIds(): string[] {
+  return [...selected];
+}
+
+export function isSelected(id: string): boolean {
+  return selected.has(id);
+}
+
+export function subscribeSelection(cb: () => void) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+export function toggleSelected(id: string) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  emit();
+}
+
+export function rememberDragItem(item: DragItem) {
+  known.set(item.resourceId, item);
+}
+
+/** 拖到的那一项在多选里时，带上同一种条目；否则只拖这一项。 */
+export function payloadFor(item: DragItem): DragPayload {
+  if (!selected.has(item.resourceId)) return { v: 1, items: [item] };
+  const items = selectedIds()
+    .map((id) => known.get(id))
+    .filter((x): x is DragItem => !!x && (x.entry ?? '') === (item.entry ?? ''));
+  return { v: 1, items: items.length ? items : [item] };
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@kb/fileops",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "资料根内的文件创建、覆盖、移动、改名、删除、备份与恢复",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "better-sqlite3": "^12.4.1"
+  },
+  "devDependencies": {
+    "@kb/identity-watch": "file:../identity-watch",
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

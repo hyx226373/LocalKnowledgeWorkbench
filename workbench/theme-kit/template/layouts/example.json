@@ -1,0 +1,29 @@
+{
+  "id": "example.reading-desk",
+  "label": "阅读桌（左宽右窄，右侧上下）",
+  "description": "布局预设只决定分栏排列：现有分组按顺序放入 slot 1、2、3…；多出的分组并入最后一个 slot；空 slot 自动去掉。不会改变打开的文件与阅读进度。",
+  "sidebarWidth": 260,
+  "grid": {
+    "split": "row",
+    "children": [
+      {
+        "slot": 1,
+        "size": 3
+      },
+      {
+        "split": "column",
+        "size": 2,
+        "children": [
+          {
+            "slot": 2,
+            "size": 1
+          },
+          {
+            "slot": 3,
+            "size": 1
+          }
+        ]
+      }
+    ]
+  }
+}

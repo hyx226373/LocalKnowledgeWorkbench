@@ -1,0 +1,4 @@
+/* 阅读区样式的受限 CSS（可留空）。只能选择阅读区钩子：.kb-reading / .kb-md / .kb-pdf-page / .kb-table … */
+
+.kb-md h1 { letter-spacing: .02em; }
+.kb-md blockquote { font-style: normal; }

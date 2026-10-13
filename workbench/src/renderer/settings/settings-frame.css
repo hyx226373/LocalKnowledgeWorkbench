@@ -1,0 +1,167 @@
+/* 设置页框架：对齐预览 settings.tsx 的 set-page / set-row / seg / set-link 组织。
+ * 颜色一律主题令牌；不写死预览浅色 hex。假「云同步」不进产品。 */
+
+.kb-set-page {
+  width: min(640px, 100%);
+  margin: 8px auto 32px;
+}
+
+.kb-set-page > h1,
+.kb-set-page > .kb-set-title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--kb-color-text);
+}
+
+.kb-set-lead,
+.kb-set-copy {
+  margin: 0 0 18px;
+  color: var(--kb-color-text-muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.kb-set-block {
+  margin-bottom: 8px;
+}
+
+.kb-set-label {
+  margin: 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-set-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--kb-color-border);
+}
+
+.kb-set-row > div:first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.kb-set-row b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--kb-color-text);
+}
+
+.kb-set-row p {
+  margin: 3px 0 0;
+  color: var(--kb-color-text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.kb-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--kb-color-surface-2, var(--kb-color-hover));
+  box-shadow: inset 0 0 0 1px var(--kb-color-border);
+}
+
+.kb-seg-btn {
+  flex: 1;
+  height: 34px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--kb-color-text-muted);
+  font-size: 13px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.kb-seg-btn[aria-checked='true'],
+.kb-seg-btn.on {
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.kb-seg-btn:focus-visible {
+  outline: 2px solid var(--kb-color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* 左 nav 观感靠拢预览 set-link（仍用既有 .kb-settings-nav 结构） */
+.kb-settings-nav {
+  width: 220px;
+  /* preview settings aside ov-nav: padding 16/14/20, gap 8 */
+  padding: 16px 14px 20px;
+  gap: 8px;
+}
+
+.kb-settings-nav button {
+  height: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.kb-settings-nav button[aria-current='page'] {
+  font-weight: 600;
+}
+
+.kb-settings.kb-settings--page .kb-dialog-title {
+  display: none;
+}
+
+.kb-settings-pane .kb-set-page .menu-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.kb-settings-pane .kb-set-page .menu-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kb-color-text-muted);
+}
+
+
+.kb-set-row > .kb-select {
+  flex: none;
+  max-width: 220px;
+  margin-left: auto;
+}
+
+.kb-set-block + .kb-set-row {
+  border-top: 1px solid var(--kb-color-border);
+}
+
+/* r41 四项小修：右侧各分类内容水平居中（含未包 kb-set-page 的嵌入页） */
+.kb-settings-pane > .kb-set-page,
+.kb-settings-pane > .kb-settings-embed,
+.kb-settings-pane > .kb-plugin-manager,
+.kb-settings-pane > .kb-keybindings,
+.kb-settings-pane > [data-testid="web-site-grants-body"],
+.kb-settings-pane > [data-testid="update-body"] {
+  width: min(640px, 100%);
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.kb-settings-pane > .kb-plugin-manager,
+.kb-settings-pane > .kb-keybindings {
+  width: min(720px, 100%);
+}
+
+.kb-settings-pane > .kb-settings-embed > .kb-plugin-manager,
+.kb-settings-pane > .kb-settings-embed > .kb-keybindings {
+  width: 100%;
+  max-width: 100%;
+}

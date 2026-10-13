@@ -1,0 +1,1803 @@
+{
+ "$comment": "由 scripts/gen-theme-contract.py 生成。主题接口版本见 version；令牌名在 CSS 中写作 --kb-<name>。",
+ "version": "2.0.0",
+ "compat": {
+  "acceptsContract": "^1.0.0 || ^2.0.0",
+  "renamedTokens": {
+   "color-disabled-fg": "color-text-disabled",
+   "read-pdf-filter": "read-pdf-dark-filter"
+  },
+  "renamedStates": {
+   "focus": "focus-visible"
+  }
+ },
+ "states": [
+  "default",
+  "hover",
+  "active",
+  "focus-visible",
+  "disabled",
+  "selected",
+  "dragging",
+  "drag-over"
+ ],
+ "stateDescriptions": {
+  "default": "默认外观",
+  "hover": "鼠标悬停（:hover）",
+  "active": "按下（:active）或“当前激活”（例如激活分组）",
+  "focus-visible": "键盘焦点（:focus-visible；v1 名为 focus）",
+  "disabled": "不可用（:disabled / [aria-disabled=\"true\"]）",
+  "selected": "选中/当前项（[aria-selected=\"true\"]、当前标签、勾选）",
+  "dragging": "自身正被拖动（v2 新增：[data-dragging=\"true\"]）",
+  "drag-over": "作为拖放目标、有东西拖到上方"
+ },
+ "tokens": [
+  {
+   "name": "font-ui",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "界面字体（菜单、树、按钮、标签）",
+   "default": {
+    "light": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+    "dark": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif"
+   }
+  },
+  {
+   "name": "font-mono",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "界面等宽字体（快捷键、路径）",
+   "default": {
+    "light": "\"Cascadia Mono\", Consolas, \"JetBrains Mono\", \"Noto Sans Mono CJK SC\", monospace",
+    "dark": "\"Cascadia Mono\", Consolas, \"JetBrains Mono\", \"Noto Sans Mono CJK SC\", monospace"
+   }
+  },
+  {
+   "name": "font-ui-accent",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "强调字体（标签标题、状态栏、页码；可设为等宽或衬线）",
+   "default": {
+    "light": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+    "dark": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif"
+   }
+  },
+  {
+   "name": "fs-xs",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "最小字号（徽标、区块小标题）",
+   "default": {
+    "light": "11px",
+    "dark": "11px"
+   }
+  },
+  {
+   "name": "fs-sm",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "小字号（按钮、标签、次要信息）",
+   "default": {
+    "light": "12px",
+    "dark": "12px"
+   }
+  },
+  {
+   "name": "fs-md",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "界面正文字号",
+   "default": {
+    "light": "13px",
+    "dark": "13px"
+   }
+  },
+  {
+   "name": "fs-lg",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "较大字号（对话框标题）",
+   "default": {
+    "light": "15px",
+    "dark": "15px"
+   }
+  },
+  {
+   "name": "fs-xl",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "最大字号（空状态标题）",
+   "default": {
+    "light": "20px",
+    "dark": "20px"
+   }
+  },
+  {
+   "name": "fw-strong",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "强调字重",
+   "default": {
+    "light": "600",
+    "dark": "600"
+   }
+  },
+  {
+   "name": "ls-caps",
+   "axis": "chrome",
+   "group": "typography",
+   "description": "区块小标题字距",
+   "default": {
+    "light": ".08em",
+    "dark": ".08em"
+   }
+  },
+  {
+   "name": "space-1",
+   "axis": "chrome",
+   "group": "spacing",
+   "description": "间距阶梯第 1 级",
+   "default": {
+    "light": "2px",
+    "dark": "2px"
+   }
+  },
+  {
+   "name": "space-2",
+   "axis": "chrome",
+   "group": "spacing",
+   "description": "间距阶梯第 2 级",
+   "default": {
+    "light": "4px",
+    "dark": "4px"
+   }
+  },
+  {
+   "name": "space-3",
+   "axis": "chrome",
+   "group": "spacing",
+   "description": "间距阶梯第 3 级",
+   "default": {
+    "light": "8px",
+    "dark": "8px"
+   }
+  },
+  {
+   "name": "space-4",
+   "axis": "chrome",
+   "group": "spacing",
+   "description": "间距阶梯第 4 级",
+   "default": {
+    "light": "12px",
+    "dark": "12px"
+   }
+  },
+  {
+   "name": "space-5",
+   "axis": "chrome",
+   "group": "spacing",
+   "description": "间距阶梯第 5 级",
+   "default": {
+    "light": "16px",
+    "dark": "16px"
+   }
+  },
+  {
+   "name": "space-6",
+   "axis": "chrome",
+   "group": "spacing",
+   "description": "间距阶梯第 6 级",
+   "default": {
+    "light": "24px",
+    "dark": "24px"
+   }
+  },
+  {
+   "name": "size-row",
+   "axis": "chrome",
+   "group": "size",
+   "description": "树行/菜单项/搜索结果行高",
+   "default": {
+    "light": "24px",
+    "dark": "24px"
+   }
+  },
+  {
+   "name": "size-control",
+   "axis": "chrome",
+   "group": "size",
+   "description": "按钮、输入框高度",
+   "default": {
+    "light": "26px",
+    "dark": "26px"
+   }
+  },
+  {
+   "name": "size-topbar",
+   "axis": "chrome",
+   "group": "size",
+   "description": "顶栏高度",
+   "default": {
+    "light": "40px",
+    "dark": "40px"
+   }
+  },
+  {
+   "name": "size-statusbar",
+   "axis": "chrome",
+   "group": "size",
+   "description": "状态栏高度",
+   "default": {
+    "light": "22px",
+    "dark": "22px"
+   }
+  },
+  {
+   "name": "size-tab",
+   "axis": "chrome",
+   "group": "size",
+   "description": "标签栏高度",
+   "default": {
+    "light": "35px",
+    "dark": "35px"
+   }
+  },
+  {
+   "name": "size-sash",
+   "axis": "chrome",
+   "group": "size",
+   "description": "侧栏分隔条可见宽度",
+   "default": {
+    "light": "4px",
+    "dark": "4px"
+   }
+  },
+  {
+   "name": "row-inset",
+   "axis": "chrome",
+   "group": "size",
+   "description": "行（树/菜单）左右内缩，配合圆角做“胶囊”行",
+   "default": {
+    "light": "0px",
+    "dark": "0px"
+   }
+  },
+  {
+   "name": "dock-gap",
+   "axis": "chrome",
+   "group": "size",
+   "description": "分栏卡片之间的视觉间隙（纯视觉，不改变保存的分栏尺寸）",
+   "default": {
+    "light": "0px",
+    "dark": "0px"
+   }
+  },
+  {
+   "name": "shell-inset",
+   "axis": "chrome",
+   "group": "size",
+   "description": "外框四周留白（侧栏/分栏区与窗口边缘的距离）",
+   "default": {
+    "light": "0px",
+    "dark": "0px"
+   }
+  },
+  {
+   "name": "radius-sm",
+   "axis": "chrome",
+   "group": "radius",
+   "description": "小圆角（行、徽标、代码）",
+   "default": {
+    "light": "3px",
+    "dark": "3px"
+   }
+  },
+  {
+   "name": "radius-md",
+   "axis": "chrome",
+   "group": "radius",
+   "description": "中圆角（按钮、输入框、弹层）",
+   "default": {
+    "light": "4px",
+    "dark": "4px"
+   }
+  },
+  {
+   "name": "radius-lg",
+   "axis": "chrome",
+   "group": "radius",
+   "description": "大圆角（卡片、对话框、分组）",
+   "default": {
+    "light": "6px",
+    "dark": "6px"
+   }
+  },
+  {
+   "name": "radius-pill",
+   "axis": "chrome",
+   "group": "radius",
+   "description": "胶囊圆角",
+   "default": {
+    "light": "999px",
+    "dark": "999px"
+   }
+  },
+  {
+   "name": "shadow-1",
+   "axis": "chrome",
+   "group": "elevation",
+   "description": "一级阴影（卡片、分组）",
+   "default": {
+    "light": "none",
+    "dark": "none"
+   }
+  },
+  {
+   "name": "shadow-2",
+   "axis": "chrome",
+   "group": "elevation",
+   "description": "二级阴影（弹层、搜索结果）",
+   "default": {
+    "light": "0 4px 16px rgba(16,24,40,.18)",
+    "dark": "0 4px 16px rgba(0,0,0,.5)"
+   }
+  },
+  {
+   "name": "shadow-3",
+   "axis": "chrome",
+   "group": "elevation",
+   "description": "三级阴影（对话框）",
+   "default": {
+    "light": "0 16px 48px rgba(16,24,40,.24)",
+    "dark": "0 16px 48px rgba(0,0,0,.6)"
+   }
+  },
+  {
+   "name": "motion-fast",
+   "axis": "chrome",
+   "group": "motion",
+   "description": "快速过渡时长（悬停）",
+   "default": {
+    "light": "80ms",
+    "dark": "80ms"
+   }
+  },
+  {
+   "name": "motion-normal",
+   "axis": "chrome",
+   "group": "motion",
+   "description": "常规过渡时长（展开、弹层）",
+   "default": {
+    "light": "160ms",
+    "dark": "160ms"
+   }
+  },
+  {
+   "name": "motion-ease",
+   "axis": "chrome",
+   "group": "motion",
+   "description": "缓动曲线",
+   "default": {
+    "light": "cubic-bezier(.2,0,0,1)",
+    "dark": "cubic-bezier(.2,0,0,1)"
+   }
+  },
+  {
+   "name": "opacity-dragging",
+   "axis": "chrome",
+   "group": "state",
+   "description": "被拖动元素（标签、分隔条）的不透明度",
+   "default": {
+    "light": ".6",
+    "dark": ".6"
+   },
+   "role": "state.dragging-opacity",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "应用底色（窗口最底层）",
+   "default": {
+    "light": "#f3f3f3",
+    "dark": "#181818"
+   },
+   "role": "surface.base"
+  },
+  {
+   "name": "color-chrome",
+   "axis": "chrome",
+   "group": "color",
+   "description": "外框底色（顶栏、侧栏）",
+   "default": {
+    "light": "#f8f8f8",
+    "dark": "#1f1f1f"
+   },
+   "role": "surface.chrome"
+  },
+  {
+   "name": "color-chrome-alt",
+   "axis": "chrome",
+   "group": "color",
+   "description": "次级外框色（区块头、次级按钮）",
+   "default": {
+    "light": "#ececec",
+    "dark": "#252526"
+   },
+   "role": "surface.chrome-alt"
+  },
+  {
+   "name": "color-surface",
+   "axis": "chrome",
+   "group": "color",
+   "description": "分组/面板底色",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#1e1e1e"
+   },
+   "role": "surface.panel"
+  },
+  {
+   "name": "color-surface-raised",
+   "axis": "chrome",
+   "group": "color",
+   "description": "浮层底色（弹层、对话框、工具栏、提示条）",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#252526"
+   },
+   "role": "surface.raised"
+  },
+  {
+   "name": "color-surface-sunken",
+   "axis": "chrome",
+   "group": "color",
+   "description": "凹陷底色（编辑器装订线、对比视图、资料列表、代码框外框）",
+   "default": {
+    "light": "#f0f0f0",
+    "dark": "#161616"
+   },
+   "role": "surface.sunken",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-border",
+   "axis": "chrome",
+   "group": "color",
+   "description": "常规边框/分隔线",
+   "default": {
+    "light": "#e5e5e5",
+    "dark": "#2b2b2b"
+   },
+   "role": "border.default"
+  },
+  {
+   "name": "color-border-strong",
+   "axis": "chrome",
+   "group": "color",
+   "description": "强调边框（输入框悬停、对话框）",
+   "default": {
+    "light": "#c8c8c8",
+    "dark": "#454545"
+   },
+   "role": "border.strong"
+  },
+  {
+   "name": "color-text",
+   "axis": "chrome",
+   "group": "color",
+   "description": "主文字",
+   "default": {
+    "light": "#1f1f1f",
+    "dark": "#cccccc"
+   },
+   "role": "text.primary"
+  },
+  {
+   "name": "color-text-muted",
+   "axis": "chrome",
+   "group": "color",
+   "description": "次要文字",
+   "default": {
+    "light": "#616161",
+    "dark": "#9d9d9d"
+   },
+   "role": "text.muted"
+  },
+  {
+   "name": "color-text-faint",
+   "axis": "chrome",
+   "group": "color",
+   "description": "弱文字（占位、空状态）",
+   "default": {
+    "light": "#9e9e9e",
+    "dark": "#6b6b6b"
+   },
+   "role": "text.faint"
+  },
+  {
+   "name": "color-text-disabled",
+   "axis": "chrome",
+   "group": "color",
+   "description": "禁用文字（v1 的 color-disabled-fg 改名）",
+   "default": {
+    "light": "#a6a6a6",
+    "dark": "#5a5a5a"
+   },
+   "role": "text.disabled",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-accent",
+   "axis": "chrome",
+   "group": "color",
+   "description": "强调色（主按钮、焦点、激活指示）",
+   "default": {
+    "light": "#005fb8",
+    "dark": "#0078d4"
+   },
+   "role": "accent.default"
+  },
+  {
+   "name": "color-accent-fg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "强调色上的文字",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#ffffff"
+   },
+   "role": "accent.on"
+  },
+  {
+   "name": "color-accent-soft",
+   "axis": "chrome",
+   "group": "color",
+   "description": "强调色浅底（标签、提示）",
+   "default": {
+    "light": "#e6f0fa",
+    "dark": "#0f2e4a"
+   },
+   "role": "accent.soft"
+  },
+  {
+   "name": "color-hover",
+   "axis": "chrome",
+   "group": "color",
+   "description": "悬停底色",
+   "default": {
+    "light": "rgba(0,0,0,.05)",
+    "dark": "rgba(255,255,255,.06)"
+   },
+   "role": "state.hover"
+  },
+  {
+   "name": "color-active",
+   "axis": "chrome",
+   "group": "color",
+   "description": "按下底色",
+   "default": {
+    "light": "rgba(0,0,0,.09)",
+    "dark": "rgba(255,255,255,.1)"
+   },
+   "role": "state.active"
+  },
+  {
+   "name": "color-selected",
+   "axis": "chrome",
+   "group": "color",
+   "description": "选中底色（当前文件、选中结果）",
+   "default": {
+    "light": "#dbe8f7",
+    "dark": "#04395e"
+   },
+   "role": "state.selected"
+  },
+  {
+   "name": "color-selected-fg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "选中文字",
+   "default": {
+    "light": "#1f1f1f",
+    "dark": "#ffffff"
+   },
+   "role": "state.selected-fg"
+  },
+  {
+   "name": "color-focus-ring",
+   "axis": "chrome",
+   "group": "color",
+   "description": "键盘焦点环（focus-visible）",
+   "default": {
+    "light": "#005fb8",
+    "dark": "#2f8fe0"
+   },
+   "role": "state.focus-ring"
+  },
+  {
+   "name": "color-disabled-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "禁用底色",
+   "default": {
+    "light": "#f0f0f0",
+    "dark": "#2a2a2a"
+   },
+   "role": "state.disabled-bg"
+  },
+  {
+   "name": "color-drag-over",
+   "axis": "chrome",
+   "group": "color",
+   "description": "拖放目标高亮",
+   "default": {
+    "light": "rgba(0,95,184,.16)",
+    "dark": "rgba(0,120,212,.22)"
+   },
+   "role": "state.drag-over"
+  },
+  {
+   "name": "color-overlay",
+   "axis": "chrome",
+   "group": "color",
+   "description": "对话框/命令面板遮罩",
+   "default": {
+    "light": "rgba(0,0,0,.25)",
+    "dark": "rgba(0,0,0,.45)"
+   },
+   "role": "surface.overlay"
+  },
+  {
+   "name": "color-fav",
+   "axis": "chrome",
+   "group": "color",
+   "description": "收藏星标",
+   "default": {
+    "light": "#c48a1a",
+    "dark": "#e2c08d"
+   },
+   "role": "icon.favorite"
+  },
+  {
+   "name": "color-danger",
+   "axis": "chrome",
+   "group": "color",
+   "description": "危险/错误",
+   "default": {
+    "light": "#c4314b",
+    "dark": "#f48771"
+   },
+   "role": "feedback.danger"
+  },
+  {
+   "name": "color-success",
+   "axis": "chrome",
+   "group": "color",
+   "description": "成功/启用",
+   "default": {
+    "light": "#2d8a4e",
+    "dark": "#4ec27a"
+   },
+   "role": "feedback.success"
+  },
+  {
+   "name": "color-warning",
+   "axis": "chrome",
+   "group": "color",
+   "description": "警告/扫描中/冲突",
+   "default": {
+    "light": "#b97a00",
+    "dark": "#f5a524"
+   },
+   "role": "feedback.warning"
+  },
+  {
+   "name": "color-status-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "状态栏底色",
+   "default": {
+    "light": "#007acc",
+    "dark": "#007acc"
+   },
+   "role": "statusbar.bg"
+  },
+  {
+   "name": "color-status-fg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "状态栏文字",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#ffffff"
+   },
+   "role": "statusbar.fg"
+  },
+  {
+   "name": "color-tab-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "标签栏/未激活标签底色",
+   "default": {
+    "light": "#f3f3f3",
+    "dark": "#1f1f1f"
+   },
+   "role": "tab.bg"
+  },
+  {
+   "name": "color-tab-fg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "未激活标签文字",
+   "default": {
+    "light": "#6f6f6f",
+    "dark": "#8b8b8b"
+   },
+   "role": "tab.fg"
+  },
+  {
+   "name": "color-tab-active-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "激活标签底色",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#1e1e1e"
+   },
+   "role": "tab.selected-bg"
+  },
+  {
+   "name": "color-tab-active-fg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "激活标签文字",
+   "default": {
+    "light": "#1f1f1f",
+    "dark": "#ffffff"
+   },
+   "role": "tab.selected-fg"
+  },
+  {
+   "name": "color-tab-indicator",
+   "axis": "chrome",
+   "group": "color",
+   "description": "激活标签指示条（transparent 表示不显示）",
+   "default": {
+    "light": "transparent",
+    "dark": "transparent"
+   },
+   "role": "tab.indicator"
+  },
+  {
+   "name": "color-sash",
+   "axis": "chrome",
+   "group": "color",
+   "description": "分隔条颜色",
+   "default": {
+    "light": "#e5e5e5",
+    "dark": "#2b2b2b"
+   },
+   "role": "splitter.default"
+  },
+  {
+   "name": "color-sash-hover",
+   "axis": "chrome",
+   "group": "color",
+   "description": "分隔条悬停颜色",
+   "default": {
+    "light": "#005fb8",
+    "dark": "#0078d4"
+   },
+   "role": "splitter.hover"
+  },
+  {
+   "name": "color-sash-dragging",
+   "axis": "chrome",
+   "group": "color",
+   "description": "分隔条拖动中颜色",
+   "default": {
+    "light": "#004c93",
+    "dark": "#3794ff"
+   },
+   "role": "splitter.dragging",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-input-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "输入框底色",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#313131"
+   },
+   "role": "input.bg"
+  },
+  {
+   "name": "color-input-border",
+   "axis": "chrome",
+   "group": "color",
+   "description": "输入框边框",
+   "default": {
+    "light": "#cecece",
+    "dark": "#3c3c3c"
+   },
+   "role": "input.border"
+  },
+  {
+   "name": "color-scrollbar",
+   "axis": "chrome",
+   "group": "color",
+   "description": "滚动条滑块",
+   "default": {
+    "light": "rgba(0,0,0,.2)",
+    "dark": "rgba(255,255,255,.18)"
+   },
+   "role": "scrollbar.thumb"
+  },
+  {
+   "name": "color-diff-add-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "对比视图：新增行底色",
+   "default": {
+    "light": "#e6ffec",
+    "dark": "rgba(46,160,67,.18)"
+   },
+   "role": "diff.add-bg",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-diff-add-fg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "对比视图：新增行文字",
+   "default": {
+    "light": "#116329",
+    "dark": "#7ee787"
+   },
+   "role": "diff.add-fg",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-diff-del-bg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "对比视图：删除行底色",
+   "default": {
+    "light": "#ffebe9",
+    "dark": "rgba(248,81,73,.18)"
+   },
+   "role": "diff.del-bg",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-diff-del-fg",
+   "axis": "chrome",
+   "group": "color",
+   "description": "对比视图：删除行文字",
+   "default": {
+    "light": "#82071e",
+    "dark": "#ffa198"
+   },
+   "role": "diff.del-fg",
+   "since": "2.0.0"
+  },
+  {
+   "name": "color-icon-folder",
+   "axis": "chrome",
+   "group": "color",
+   "description": "文件夹图标",
+   "default": {
+    "light": "#c09553",
+    "dark": "#c09553"
+   },
+   "role": "icon.folder"
+  },
+  {
+   "name": "color-icon-root",
+   "axis": "chrome",
+   "group": "color",
+   "description": "根目录图标",
+   "default": {
+    "light": "#005fb8",
+    "dark": "#3794ff"
+   },
+   "role": "icon.root"
+  },
+  {
+   "name": "color-icon-file",
+   "axis": "chrome",
+   "group": "color",
+   "description": "普通文件图标",
+   "default": {
+    "light": "#7a7a7a",
+    "dark": "#9d9d9d"
+   },
+   "role": "icon.file"
+  },
+  {
+   "name": "color-icon-md",
+   "axis": "chrome",
+   "group": "color",
+   "description": "Markdown 图标",
+   "default": {
+    "light": "#3b82f6",
+    "dark": "#519aba"
+   },
+   "role": "icon.md"
+  },
+  {
+   "name": "color-icon-pdf",
+   "axis": "chrome",
+   "group": "color",
+   "description": "PDF 图标",
+   "default": {
+    "light": "#e5484d",
+    "dark": "#e5484d"
+   },
+   "role": "icon.pdf"
+  },
+  {
+   "name": "color-icon-image",
+   "axis": "chrome",
+   "group": "color",
+   "description": "图片图标",
+   "default": {
+    "light": "#30a46c",
+    "dark": "#4ec27a"
+   },
+   "role": "icon.image"
+  },
+  {
+   "name": "color-icon-csv",
+   "axis": "chrome",
+   "group": "color",
+   "description": "表格图标",
+   "default": {
+    "light": "#12a594",
+    "dark": "#2ec4b6"
+   },
+   "role": "icon.csv"
+  },
+  {
+   "name": "read-font",
+   "axis": "reading",
+   "group": "typography",
+   "description": "正文字体",
+   "default": {
+    "light": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+    "dark": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif"
+   }
+  },
+  {
+   "name": "read-font-heading",
+   "axis": "reading",
+   "group": "typography",
+   "description": "标题字体",
+   "default": {
+    "light": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif",
+    "dark": "\"Segoe UI\", \"Microsoft YaHei UI\", \"Microsoft YaHei\", \"PingFang SC\", \"Noto Sans CJK SC\", sans-serif"
+   }
+  },
+  {
+   "name": "read-font-mono",
+   "axis": "reading",
+   "group": "typography",
+   "description": "代码/纯文本字体",
+   "default": {
+    "light": "\"Cascadia Mono\", Consolas, \"JetBrains Mono\", \"Noto Sans Mono CJK SC\", monospace",
+    "dark": "\"Cascadia Mono\", Consolas, \"JetBrains Mono\", \"Noto Sans Mono CJK SC\", monospace"
+   }
+  },
+  {
+   "name": "read-fs",
+   "axis": "reading",
+   "group": "typography",
+   "description": "正文字号",
+   "default": {
+    "light": "15px",
+    "dark": "15px"
+   }
+  },
+  {
+   "name": "read-fs-code",
+   "axis": "reading",
+   "group": "typography",
+   "description": "代码/纯文本字号",
+   "default": {
+    "light": "13px",
+    "dark": "13px"
+   }
+  },
+  {
+   "name": "read-lh",
+   "axis": "reading",
+   "group": "typography",
+   "description": "正文行高",
+   "default": {
+    "light": "1.75",
+    "dark": "1.75"
+   }
+  },
+  {
+   "name": "read-max-width",
+   "axis": "reading",
+   "group": "layout",
+   "description": "Markdown 正文最大宽度（100% 表示铺满）",
+   "default": {
+    "light": "880px",
+    "dark": "880px"
+   }
+  },
+  {
+   "name": "read-pad-x",
+   "axis": "reading",
+   "group": "layout",
+   "description": "正文左右内边距",
+   "default": {
+    "light": "32px",
+    "dark": "32px"
+   }
+  },
+  {
+   "name": "read-pad-y",
+   "axis": "reading",
+   "group": "layout",
+   "description": "正文上下内边距",
+   "default": {
+    "light": "24px",
+    "dark": "24px"
+   }
+  },
+  {
+   "name": "read-bg",
+   "axis": "reading",
+   "group": "color",
+   "description": "阅读区底色",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#1e1e1e"
+   },
+   "role": "reader.surface"
+  },
+  {
+   "name": "read-fg",
+   "axis": "reading",
+   "group": "color",
+   "description": "正文颜色",
+   "default": {
+    "light": "#24292f",
+    "dark": "#d4d4d4"
+   },
+   "role": "reader.text"
+  },
+  {
+   "name": "read-muted",
+   "axis": "reading",
+   "group": "color",
+   "description": "引用/注释文字",
+   "default": {
+    "light": "#57606a",
+    "dark": "#9d9d9d"
+   },
+   "role": "reader.text-muted"
+  },
+  {
+   "name": "read-heading",
+   "axis": "reading",
+   "group": "color",
+   "description": "标题颜色",
+   "default": {
+    "light": "#1f2328",
+    "dark": "#e8e8e8"
+   },
+   "role": "reader.heading"
+  },
+  {
+   "name": "read-link",
+   "axis": "reading",
+   "group": "color",
+   "description": "链接颜色",
+   "default": {
+    "light": "#0969da",
+    "dark": "#4daafc"
+   },
+   "role": "reader.link"
+  },
+  {
+   "name": "read-quote-bar",
+   "axis": "reading",
+   "group": "color",
+   "description": "引用块左侧条",
+   "default": {
+    "light": "#d0d7de",
+    "dark": "#3c3c3c"
+   },
+   "role": "reader.quote-bar"
+  },
+  {
+   "name": "read-code-bg",
+   "axis": "reading",
+   "group": "color",
+   "description": "行内/块代码底色",
+   "default": {
+    "light": "#f6f8fa",
+    "dark": "#2d2d2d"
+   },
+   "role": "reader.code-bg"
+  },
+  {
+   "name": "read-code-fg",
+   "axis": "reading",
+   "group": "color",
+   "description": "代码文字",
+   "default": {
+    "light": "#24292f",
+    "dark": "#d4d4d4"
+   },
+   "role": "reader.code-fg"
+  },
+  {
+   "name": "read-rule",
+   "axis": "reading",
+   "group": "color",
+   "description": "表格线/分隔线",
+   "default": {
+    "light": "#d0d7de",
+    "dark": "#3c3c3c"
+   },
+   "role": "reader.rule"
+  },
+  {
+   "name": "read-table-head-bg",
+   "axis": "reading",
+   "group": "color",
+   "description": "表头底色（Markdown 表格、CSV 视图）",
+   "default": {
+    "light": "#f6f8fa",
+    "dark": "#252526"
+   },
+   "role": "reader.table-head-bg"
+  },
+  {
+   "name": "read-selection",
+   "axis": "reading",
+   "group": "color",
+   "description": "文字选区底色",
+   "default": {
+    "light": "rgba(9,105,218,.2)",
+    "dark": "rgba(38,79,120,.8)"
+   },
+   "role": "reader.selection"
+  },
+  {
+   "name": "read-mark",
+   "axis": "reading",
+   "group": "color",
+   "description": "搜索命中高亮",
+   "default": {
+    "light": "#fff8c5",
+    "dark": "#613d00"
+   },
+   "role": "reader.mark"
+  },
+  {
+   "name": "read-editor-bg",
+   "axis": "reading",
+   "group": "color",
+   "description": "编辑器底色（txt/md 原位编辑）",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#1e1e1e"
+   },
+   "role": "editor.surface",
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-editor-caret",
+   "axis": "reading",
+   "group": "color",
+   "description": "编辑器光标颜色",
+   "default": {
+    "light": "#0969da",
+    "dark": "#4daafc"
+   },
+   "role": "editor.caret",
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-pdf-backdrop",
+   "axis": "reading",
+   "group": "color",
+   "description": "PDF/图片页面背后的底色",
+   "default": {
+    "light": "#e9ebee",
+    "dark": "#2a2a2a"
+   },
+   "role": "pdf.backdrop"
+  },
+  {
+   "name": "read-pdf-page-bg",
+   "axis": "reading",
+   "group": "color",
+   "description": "PDF 页面底色（加载前）",
+   "default": {
+    "light": "#ffffff",
+    "dark": "#ffffff"
+   },
+   "role": "pdf.page-bg"
+  },
+  {
+   "name": "read-pdf-page-shadow",
+   "axis": "reading",
+   "group": "color",
+   "description": "PDF 页面阴影",
+   "default": {
+    "light": "0 2px 8px rgba(0,0,0,.15)",
+    "dark": "0 2px 8px rgba(0,0,0,.5)"
+   },
+   "role": "pdf.page-shadow"
+  },
+  {
+   "name": "read-pdf-dark-filter",
+   "axis": "reading",
+   "group": "color",
+   "description": "PDF 深色滤镜参数：只在用户于 PDF 面板中打开“深色滤镜”时应用（默认原色显示）；v1 的 read-pdf-filter 改名",
+   "default": {
+    "light": "invert(.9) hue-rotate(180deg)",
+    "dark": "invert(.88) hue-rotate(180deg) brightness(.95)"
+   },
+   "role": "pdf.dark-filter",
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-bg",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式阅读区底色",
+   "default": {
+    "light": "#fbfaf7",
+    "dark": "#191919"
+   },
+   "role": "focus.surface",
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-fg",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式正文颜色",
+   "default": {
+    "light": "#1f2328",
+    "dark": "#dcdcdc"
+   },
+   "role": "focus.text",
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-fs",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式正文字号",
+   "default": {
+    "light": "17px",
+    "dark": "17px"
+   },
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-lh",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式正文行高",
+   "default": {
+    "light": "1.9",
+    "dark": "1.9"
+   },
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-max-width",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式正文最大宽度",
+   "default": {
+    "light": "720px",
+    "dark": "720px"
+   },
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-pad-x",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式正文左右内边距",
+   "default": {
+    "light": "48px",
+    "dark": "48px"
+   },
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-pad-y",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式正文上下内边距",
+   "default": {
+    "light": "48px",
+    "dark": "48px"
+   },
+   "since": "2.0.0"
+  },
+  {
+   "name": "read-focus-chrome-opacity",
+   "axis": "reading",
+   "group": "focus",
+   "description": "专注模式下外框（顶栏、侧栏、状态栏、标签栏）的不透明度；1 表示不淡出",
+   "default": {
+    "light": ".35",
+    "dark": ".35"
+   },
+   "since": "2.0.0"
+  }
+ ],
+ "components": [
+  {
+   "id": "button",
+   "name": "按钮（主/次/幽灵）",
+   "axis": "chrome",
+   "hook": ".kb-button, .kb-button--secondary, .kb-button--ghost",
+   "states": {
+    "default": ".kb-button",
+    "hover": ":hover",
+    "active": ":active",
+    "focus-visible": ":focus-visible",
+    "disabled": ":disabled",
+    "selected": "[aria-pressed=\"true\"]（开关按钮按下，例如 PDF“深色滤镜”、编辑器“预览”）",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "input",
+   "name": "输入框/下拉框/多行文本",
+   "axis": "chrome",
+   "hook": ".kb-input, .kb-select, .kb-textarea",
+   "states": {
+    "default": ".kb-input",
+    "hover": ":hover",
+    "active": null,
+    "focus-visible": ":focus-visible",
+    "disabled": ":disabled",
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "toggle",
+   "name": "复选开关",
+   "axis": "chrome",
+   "hook": ".kb-toggle",
+   "states": {
+    "default": ".kb-toggle",
+    "hover": ":hover",
+    "active": null,
+    "focus-visible": ".kb-toggle input:focus-visible",
+    "disabled": "[aria-disabled=\"true\"]",
+    "selected": ".kb-toggle input:checked（勾选）",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "",
+   "since": "2.0.0"
+  },
+  {
+   "id": "tab",
+   "name": "标签页（dockview）",
+   "axis": "chrome",
+   "hook": ".kb-dock .dv-tab",
+   "states": {
+    "default": ".dv-tab",
+    "hover": ":hover",
+    "active": ":active",
+    "focus-visible": ":focus-visible",
+    "disabled": null,
+    "selected": ".dv-active-tab（所在分组激活时外层有 .dv-active-group）",
+    "dragging": ".dv-tab[data-dragging=\"true\"]（正被拖动的标签）",
+    "drag-over": ".kb-dock .dv-drop-target-selection（拖到分组上方时出现的覆盖层，颜色来自 --kb-color-drag-over）"
+   },
+   "note": "未加载的后台标签：.dv-tab [data-lazy=\"pending\"]（冷启动分级加载，切到它时才加载内容）"
+  },
+  {
+   "id": "group",
+   "name": "分栏分组（可做成卡片）",
+   "axis": "chrome",
+   "hook": ".kb-dock .dv-groupview, .kb-dock .dv-tabs-and-actions-container",
+   "states": {
+    "default": ".dv-groupview",
+    "hover": null,
+    "active": ".dv-active-group（当前激活分组）",
+    "focus-visible": null,
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": ".kb-dock .dv-drop-target-selection"
+   },
+   "note": ""
+  },
+  {
+   "id": "tree-row",
+   "name": "目录树行/收藏行",
+   "axis": "chrome",
+   "hook": ".kb-tree-row",
+   "states": {
+    "default": ".kb-tree-row",
+    "hover": ":hover",
+    "active": ":active",
+    "focus-visible": ":focus-visible",
+    "disabled": "[aria-disabled=\"true\"]（文件已不在原处）",
+    "selected": "[aria-selected=\"true\"]（当前激活标签对应的文件）",
+    "dragging": null,
+    "drag-over": "[data-drag-over=\"true\"]（预留）"
+   },
+   "note": "被忽略的项（显示被忽略的项时）：.kb-tree-row.ignored"
+  },
+  {
+   "id": "collection-row",
+   "name": "工作资料行（侧栏“本工作的资料”）",
+   "axis": "chrome",
+   "hook": ".kb-collection, .kb-collection-row",
+   "states": {
+    "default": ".kb-collection-row",
+    "hover": ":hover",
+    "active": ":active",
+    "focus-visible": ":focus-visible",
+    "disabled": "[aria-disabled=\"true\"]（原文件已不在原处）",
+    "selected": "[aria-selected=\"true\"]（当前激活标签）",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "已打开为标签：[data-open=\"true\"]",
+   "since": "2.0.0"
+  },
+  {
+   "id": "splitter",
+   "name": "分隔条（侧栏 + 分栏）",
+   "axis": "chrome",
+   "hook": ".kb-sash, .kb-dock .dv-sash",
+   "states": {
+    "default": ".kb-sash",
+    "hover": ":hover",
+    "active": ":active",
+    "focus-visible": null,
+    "disabled": ".dv-sash.dv-disabled",
+    "selected": null,
+    "dragging": "[data-dragging=\"true\"]（侧栏分隔条拖动中；分栏分隔条拖动中为 .dv-sash:active）",
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "search-result",
+   "name": "搜索结果行",
+   "axis": "chrome",
+   "hook": ".kb-search-results, .kb-search-hit",
+   "states": {
+    "default": ".kb-search-hit",
+    "hover": ":hover",
+    "active": ":active",
+    "focus-visible": null,
+    "disabled": null,
+    "selected": "[aria-selected=\"true\"]（键盘选中）",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "menu-item",
+   "name": "菜单项（工作区切换、外观、命令面板）",
+   "axis": "chrome",
+   "hook": ".kb-popover, .kb-menu-item, .kb-menu-group-title",
+   "states": {
+    "default": ".kb-menu-item",
+    "hover": ":hover",
+    "active": ":active",
+    "focus-visible": ":focus-visible",
+    "disabled": "[aria-disabled=\"true\"]",
+    "selected": "[aria-selected=\"true\"]（当前工作区/选中命令）",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "plugin-row",
+   "name": "插件侧栏行",
+   "axis": "chrome",
+   "hook": ".kb-plugin-row, .kb-badge",
+   "states": {
+    "default": ".kb-plugin-row",
+    "hover": ":hover",
+    "active": null,
+    "focus-visible": null,
+    "disabled": "[data-status=\"disabled\"] / [data-status=\"error\"|\"incompatible\"|\"denied\"]",
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "statusbar",
+   "name": "状态栏",
+   "axis": "chrome",
+   "hook": ".kb-statusbar, .kb-status-item",
+   "states": {
+    "default": ".kb-status-item",
+    "hover": ".kb-status-item button:hover",
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "状态：.kb-status-item[data-state=\"idle\"|\"scanning\"|\"error\"]"
+  },
+  {
+   "id": "dialog",
+   "name": "对话框",
+   "axis": "chrome",
+   "hook": ".kb-dialog-backdrop, .kb-dialog, .kb-dialog-title, .kb-dialog-body, .kb-dialog-actions",
+   "states": {
+    "default": ".kb-dialog",
+    "hover": null,
+    "active": null,
+    "focus-visible": ".kb-dialog:focus-within",
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "toast",
+   "name": "提示条与横幅（保存成功、冲突、只读工作区）",
+   "axis": "chrome",
+   "hook": ".kb-toast, .kb-banner",
+   "states": {
+    "default": ".kb-toast / .kb-banner",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "语气：[data-tone=\"info\"|\"success\"|\"warning\"|\"danger\"]",
+   "since": "2.0.0"
+  },
+  {
+   "id": "section",
+   "name": "侧栏区块/顶栏",
+   "axis": "chrome",
+   "hook": ".kb-sidebar, .kb-section, .kb-section-title, .kb-topbar",
+   "states": {
+    "default": ".kb-section",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "view-toolbar",
+   "name": "视图工具栏（PDF 页码/缩放/深色滤镜、编辑器 编辑/预览/保存）",
+   "axis": "chrome",
+   "hook": ".kb-view-toolbar",
+   "states": {
+    "default": ".kb-view-toolbar",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "其中的按钮使用 button 组件的全部状态"
+  },
+  {
+   "id": "notice",
+   "name": "空状态/占位/错误提示",
+   "axis": "chrome",
+   "hook": ".kb-notice, .kb-watermark",
+   "states": {
+    "default": ".kb-notice",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "diff",
+   "name": "改动对比（保存前预览、冲突对比）",
+   "axis": "chrome",
+   "hook": ".kb-diff, .kb-diff-line",
+   "states": {
+    "default": ".kb-diff-line[data-kind=\"ctx\"]",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": ".kb-diff-line[data-kind=\"add\"] / [data-kind=\"del\"]（新增/删除行，颜色来自 diff.* 角色）",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "",
+   "since": "2.0.0"
+  },
+  {
+   "id": "reading",
+   "name": "阅读区（所有视图的内容根）",
+   "axis": "reading",
+   "hook": ".kb-reading, .kb-reading .kb-md, .kb-reading pre, .kb-table",
+   "states": {
+    "default": ".kb-reading",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": ".kb-reading ::selection",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": ""
+  },
+  {
+   "id": "editor",
+   "name": "文本/Markdown 原位编辑器",
+   "axis": "reading",
+   "hook": ".kb-editor, .kb-editor-text",
+   "states": {
+    "default": ".kb-editor-text",
+    "hover": null,
+    "active": null,
+    "focus-visible": ":focus-visible",
+    "disabled": "[readonly]（只读：冲突待处理时）",
+    "selected": "::selection",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "有未保存修改：.kb-editor[data-dirty=\"true\"]；冲突：.kb-editor[data-conflict=\"true\"]",
+   "since": "2.0.0"
+  },
+  {
+   "id": "pdf-page",
+   "name": "PDF 页面",
+   "axis": "reading",
+   "hook": ".kb-pdf-page",
+   "states": {
+    "default": ".kb-pdf-page（原色，不加滤镜）",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": ".kb-reading[data-dark-filter=\"on\"] .kb-pdf-page（用户在该 PDF 面板开启了深色滤镜，应用 --kb-read-pdf-dark-filter）",
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "",
+   "since": "2.0.0"
+  },
+  {
+   "id": "reading-focus",
+   "name": "阅读专注模式",
+   "axis": "reading",
+   "hook": ".kb-reading[data-focus=\"on\"]",
+   "states": {
+    "default": ".kb-reading[data-focus=\"on\"]（使用 read-focus-* 令牌）",
+    "hover": null,
+    "active": null,
+    "focus-visible": null,
+    "disabled": null,
+    "selected": null,
+    "dragging": null,
+    "drag-over": null
+   },
+   "note": "",
+   "since": "2.0.0"
+  }
+ ],
+ "css": {
+  "disallowedProperties": [
+   "position",
+   "display",
+   "float",
+   "clear",
+   "flex",
+   "flex-basis",
+   "flex-direction",
+   "flex-flow",
+   "flex-grow",
+   "flex-shrink",
+   "flex-wrap",
+   "order",
+   "grid",
+   "grid-area",
+   "grid-auto-columns",
+   "grid-auto-flow",
+   "grid-auto-rows",
+   "grid-column",
+   "grid-row",
+   "grid-template",
+   "grid-template-areas",
+   "grid-template-columns",
+   "grid-template-rows",
+   "width",
+   "height",
+   "min-width",
+   "min-height",
+   "max-width",
+   "max-height",
+   "top",
+   "right",
+   "bottom",
+   "left",
+   "inset",
+   "z-index",
+   "overflow",
+   "overflow-x",
+   "overflow-y",
+   "visibility",
+   "columns",
+   "column-count",
+   "column-width",
+   "margin",
+   "margin-top",
+   "margin-right",
+   "margin-bottom",
+   "margin-left",
+   "transform",
+   "translate",
+   "scale",
+   "rotate",
+   "content",
+   "pointer-events",
+   "contain",
+   "zoom",
+   "aspect-ratio",
+   "resize",
+   "direction",
+   "writing-mode"
+  ],
+  "allowedAtRules": [
+   "@media (prefers-reduced-motion: reduce)",
+   "@media (prefers-contrast: more)"
+  ],
+  "forbiddenValues": [
+   "url(",
+   "expression(",
+   "@import",
+   "javascript:"
+  ]
+ }
+}

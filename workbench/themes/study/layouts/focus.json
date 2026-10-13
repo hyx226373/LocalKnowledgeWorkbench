@@ -1,0 +1,14 @@
+{
+  "id": "study.focus",
+  "label": "专注阅读（单栏）",
+  "description": "所有标签合并到一栏，侧栏收窄",
+  "sidebarWidth": 240,
+  "grid": {
+    "split": "row",
+    "children": [
+      {
+        "slot": 1
+      }
+    ]
+  }
+}

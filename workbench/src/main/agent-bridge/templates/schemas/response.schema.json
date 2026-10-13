@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kb://agent-bridge/response.schema.json",
+  "title": "Agent bridge response",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["requestId", "status", "updatedAt"],
+  "properties": {
+    "requestId": { "type": "string", "format": "uuid" },
+    "status": {
+      "enum": ["pending", "awaiting_approval", "running", "success", "failed", "conflict"]
+    },
+    "updatedAt": { "type": "string" },
+    "result": {},
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      }
+    },
+    "planId": { "type": "string" },
+    "ignoredFields": { "type": "array", "items": { "type": "string" } },
+    "suggestedAction": { "enum": ["re-propose", "open-restore-ui", "inspect-plan"] }
+  }
+}

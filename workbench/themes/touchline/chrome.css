@@ -1,0 +1,126 @@
+/* 球场指挥室外框。侧栏左侧用内阴影做俱乐部色竖条，不改宽度。列表用淡斜纹，圆角走令牌。 */
+
+.kb-sidebar {
+  background-image: linear-gradient(180deg, var(--kb-color-chrome) 0%, var(--kb-color-bg) 100%);
+  box-shadow: inset 3px 0 0 var(--kb-color-accent);
+}
+
+.kb-topbar {
+  box-shadow: inset 0 -2px 0 var(--kb-color-accent);
+}
+
+.kb-section-title,
+.kb-menu-group-title {
+  font-weight: var(--kb-fw-strong);
+  letter-spacing: var(--kb-ls-caps);
+  text-transform: uppercase;
+}
+
+.kb-statusbar {
+  box-shadow: inset 0 1px 0 var(--kb-color-accent);
+}
+
+.kb-status-item,
+.kb-tree-row,
+.kb-collection-row,
+.kb-search-hit,
+.kb-menu-item,
+.kb-plugin-row,
+.kb-view-toolbar,
+.kb-diff {
+  font-variant-numeric: tabular-nums;
+}
+
+.kb-tree-row,
+.kb-collection-row,
+.kb-search-hit,
+.kb-plugin-row {
+  border-bottom: 1px solid var(--kb-color-border);
+  border-radius: var(--kb-radius-sm);
+}
+
+.kb-tree-row:nth-child(even),
+.kb-collection-row:nth-child(even),
+.kb-search-hit:nth-child(even) {
+  background-image: repeating-linear-gradient(-45deg, transparent, transparent 3px, color-mix(in srgb, var(--kb-color-accent) 16%, transparent) 3px, color-mix(in srgb, var(--kb-color-accent) 16%, transparent) 4px);
+}
+
+.kb-tree-row:hover,
+.kb-collection-row:hover,
+.kb-search-hit:hover,
+.kb-tree-row:active,
+.kb-collection-row:active,
+.kb-search-hit:active,
+.kb-tree-row[aria-selected="true"],
+.kb-collection-row[aria-selected="true"],
+.kb-search-hit[aria-selected="true"],
+.kb-tree-row[data-drag-over="true"] {
+  background-image: none;
+}
+
+.kb-dock .dv-tab {
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--kb-radius-sm) var(--kb-radius-sm) 0 0;
+}
+
+.kb-dock .dv-groupview {
+  border-radius: var(--kb-radius-sm);
+}
+
+.kb-button,
+.kb-button--secondary,
+.kb-button--ghost,
+.kb-input,
+.kb-select,
+.kb-textarea,
+.kb-menu-item,
+.kb-toast,
+.kb-banner,
+.kb-dialog {
+  border-radius: var(--kb-radius-sm);
+}
+
+.kb-button,
+.kb-button--secondary,
+.kb-button--ghost {
+  font-weight: var(--kb-fw-strong);
+}
+
+.kb-dialog {
+  border: 1px solid var(--kb-color-border-strong);
+}
+
+.kb-diff-line[data-kind="add"] {
+  background: var(--kb-color-diff-add-bg);
+  color: var(--kb-color-diff-add-fg);
+}
+
+.kb-diff-line[data-kind="del"] {
+  background: var(--kb-color-diff-del-bg);
+  color: var(--kb-color-diff-del-fg);
+}
+
+.kb-notice {
+  letter-spacing: .01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-tree-row,
+  .kb-button,
+  .kb-input {
+    transition-duration: 0s;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .kb-section-title,
+  .kb-menu-group-title {
+    color: var(--kb-color-text);
+  }
+  .kb-tree-row,
+  .kb-collection-row,
+  .kb-search-hit,
+  .kb-plugin-row {
+    border-bottom-color: var(--kb-color-border-strong);
+  }
+}

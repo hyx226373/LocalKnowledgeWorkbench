@@ -1,0 +1,36 @@
+/* 原始风格外框。纸色安静，圆角走令牌，不改宽度。 */
+
+.kb-topbar {
+  box-shadow: inset 0 -1px 0 var(--kb-color-border);
+}
+
+.kb-section-title,
+.kb-menu-group-title {
+  font-weight: 500;
+  letter-spacing: .06em;
+}
+
+.kb-statusbar {
+  box-shadow: inset 0 1px 0 var(--kb-color-border);
+}
+
+.kb-tree-row,
+.kb-collection-row,
+.kb-search-hit,
+.kb-plugin-row {
+  border-radius: var(--kb-radius-sm);
+}
+
+.kb-dock .dv-tab {
+  border-radius: var(--kb-radius-sm) var(--kb-radius-sm) 0 0;
+}
+
+.kb-button,
+.kb-button--secondary,
+.kb-button--ghost,
+.kb-input,
+.kb-select,
+.kb-textarea,
+.kb-dialog {
+  border-radius: var(--kb-radius-md);
+}

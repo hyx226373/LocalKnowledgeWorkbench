@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "paths": {
+      "@kb-workbench/adapter-sdk": [
+        "./src/shared/adapter-sdk/index.ts"
+      ],
+      "@kb-workbench/adapter-sdk/*": [
+        "./src/shared/adapter-sdk/*"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "tests",
+    "e2e",
+    "*.mts",
+    "builtin-adapters"
+  ]
+}

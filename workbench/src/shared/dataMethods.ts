@@ -1,0 +1,120 @@
+/** 这些调用留在主进程（对话框、窗口、网页面板、更新）。其余走数据进程。 */
+export const MAIN_METHODS = [
+  'pickFolder',
+  'pickFile',
+  'setBoundShortcuts',
+  'getStartupTrace',
+  'webCreate',
+  'webDestroy',
+  'webNavigate',
+  'webBack',
+  'webForward',
+  'webReload',
+  'webGetScroll',
+  'webSetScroll',
+  'webGetZoom',
+  'webSetZoom',
+  'webSnapshot',
+  'webClearSessionData',
+  'webOpenExternal',
+  'webSiteApply',
+  'webSiteList',
+  'killPluginFrames',
+  'pluginProcesses',
+  'openMigration',
+  'updateState',
+  'aboutInfo',
+  'updateCheck',
+  'updateSaveSettings',
+  'updateApply',
+  'agentLiveStartDrag',
+] as const;
+
+export const MAIN_METHOD_SET = new Set<string>(MAIN_METHODS);
+
+/**
+ * 不进写队列。界面读取走只读连接，不等待正在进行的写入。
+ * 漏掉的方法仍会执行，只是和写入串行。
+ */
+/** 渲染进程不能调用点号方法，也不能调用 resolve* / indexer*。这些只走控制端口。 */
+export function isRendererDataMethod(method: string): boolean {
+  if (MAIN_METHOD_SET.has(method)) return false;
+  if (method.includes('.')) return false;
+  if (method.startsWith('resolve') || method.startsWith('indexer')) return false;
+  return true;
+}
+
+export function errorText(e: unknown): string {
+  if (e instanceof Error) {
+    const prefix = e.name && e.name !== 'Error' ? `${e.name}: ` : '';
+    return prefix + e.message;
+  }
+  return String(e);
+}
+
+export const READ_METHODS = new Set<string>([
+  'listRoots',
+  'listFavorites',
+  'listDir',
+  'getShowIgnored',
+  'getResource',
+  'resourceAbsPath',
+  'rootWorkspace',
+  'readText',
+  'search',
+  'searchGrouped',
+  'opsPending',
+  'opsGet',
+  'opsReview',
+  'agentInfo',
+  'getLayout',
+  'getIndexStatus',
+  'getIndexHealth',
+  'listOps',
+  'opsView',
+  'listPlugins',
+  'getDevMode',
+  'listAdapterPlugins',
+  'listPluginAudit',
+  'pluginStorageGet',
+  'appProfileGet',
+  'appDetect',
+  'appList',
+  'appPendingChanges',
+  'listWorkspaces',
+  'getWorkspace',
+  'listWorkspaceRefs',
+  'workspacesReferencing',
+  'listVirtualFolders',
+  'listVfolderMembership',
+  'listVfolderView',
+  'vfolderUndoAvailable',
+  'getCurrentWorkspaceId',
+  'agentLiveList',
+  'listThemePacks',
+  'textOpen',
+  'textStat',
+  'textHistory',
+  'consoleResolvePath',
+  'webResourceGet',
+  'webResourceGetByUrl',
+  'webResourceList',
+  'webGrantedSites',
+  'webPageInfo',
+  'adapterUninstallInfo',
+  'resolveKbfile',
+  'resolvePluginFile',
+  'resolvePluginAsset',
+  'plugin.webPlugins',
+  'plugin.accessList',
+  'plugin.maintenance',
+  'web.cacheFile',
+  'migration.info',
+  'migration.inspect',
+  'migration.suggest',
+  'migration.roots',
+  'migration.listMissing',
+  'migration.listBackups',
+  'harness.realPath',
+  'harness.setConfirm',
+]);

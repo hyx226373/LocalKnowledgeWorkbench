@@ -1,0 +1,25 @@
+/**
+ * 壳层在打开总览之前调用。本文件不改顶栏。
+ * 预加载没挂上或主进程失败时返回结果，不抛错，避免挡住总览。
+ */
+import { decideSnapshotCapture, type SnapshotCaptureDecision, type WorkspaceSnapshotRequest } from '../shared/workspacePicker/snapshotCapture';
+import { kb } from './kb';
+
+export async function captureWorkspaceSnapshot(input: WorkspaceSnapshotRequest): Promise<SnapshotCaptureDecision> {
+  try {
+    if (!kb || typeof kb.captureWorkspaceSnapshot !== 'function') return decideSnapshotCapture(input, null);
+    const result = await kb.captureWorkspaceSnapshot(input);
+    const summary = {
+      ok: result.ok,
+      captured: result.captured,
+      includesNativeWeb: result.includesNativeWeb,
+      nativeWebPresent: result.nativeWebPresent,
+      fileName: result.fileName,
+      reason: result.reason,
+    };
+    (window as Window & { __kbLastSnapshot?: typeof summary }).__kbLastSnapshot = summary;
+    return result;
+  } catch {
+    return decideSnapshotCapture(null, null);
+  }
+}

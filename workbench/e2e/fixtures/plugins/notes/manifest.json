@@ -1,0 +1,27 @@
+{
+  "id": "test.notes",
+  "name": "笔记整理（批量计划示例）",
+  "version": "0.1.0",
+  "publisher": "test",
+  "description": "演示 fileops.write：给 .note 文件追加一行，每次都要用户批准计划。",
+  "engines": { "workbench": "^0.2.0", "adapterApi": "^0.1.0" },
+  "main": "dist/index.js",
+  "activationEvents": ["onAdapter:test.notes.reader"],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "test.notes.reader",
+        "title": "笔记",
+        "sourceKinds": ["file"],
+        "displayMode": "in-app-reader",
+        "match": { "file": { "extensions": ["note"] }, "priority": 100 },
+        "permissions": [
+          { "id": "read", "kind": "fs.read", "scope": "ask-per-root", "extensions": ["note"], "reason": "读取 .note 笔记" },
+          { "id": "write", "kind": "fileops.write", "operations": ["write"], "reason": "在你批准后给笔记追加一行", "optional": true }
+        ],
+        "stateSchemaVersion": 1
+      }
+    ]
+  }
+}

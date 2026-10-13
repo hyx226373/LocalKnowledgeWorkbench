@@ -1,0 +1,11 @@
+export { startAgentBridge, type BridgeOptions, type RunningBridge } from './pump';
+export { mountFileAgentBridge, type MountOptions } from './startFromWire';
+export { resolveBridgeRoot, BRIDGE_DIR_NAME } from './paths';
+export { buildManifest } from './initBridge';
+export { CAPABILITIES, INVOKE_WHITELIST, REQUEST_STATES, APP_COMMIT, MODULES_COMMIT } from './types';
+export type { BridgeHost, BridgeResponse, BridgeStatus, AgentOpsPort, PlanOpInput } from './types';
+export { decidePlanBridge, statusesToWrite } from './conflict';
+export type { PlanDecision, SuggestedAction, WatchedPlan } from './conflict';
+export { BRIDGE_BACKUP_POLICY, isNonTerminal, savedContentHash } from './recovery';
+export { omitAgentBridgeFromLayout } from './layoutPolicy';
+export { startPlanBridge } from './planBridge';

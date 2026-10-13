@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Array.prototype.map() | MDN（本地测试夹具）</title><link rel="stylesheet" href="/static/site.css">
+<style>#interactive-example iframe{width:100%;height:220px;border:1px solid #ccc} .bc-table{border-collapse:collapse} .bc-table td,.bc-table th{border:1px solid #ccc;padding:4px 8px} .spacer{height:1600px}</style></head><body>
+<header class="top"><a href="/zh-CN/">MDN Web Docs</a> <span class="fixture">本地测试夹具（KB_TEST_WEB_FIXTURE）· 不是真实的 MDN</span></header>
+<main><h1>Array.prototype.map()</h1>
+<section id="interactive-example"><h2>Try it</h2><iframe src="https://ex1-4f2a.mdnplay.dev/runner.html?state=map" title="交互示例运行器（*.mdnplay.dev）"></iframe></section>
+<p>The map() method of Array instances creates a new array populated with the results of calling a provided function on every element in the calling array.</p>
+<div class="spacer"></div>
+<h2 id="browser_compatibility">Browser compatibility</h2><table class="bc-table"><thead><tr><th></th></tr></thead><tbody id="bc-body"><tr><td>加载中…</td></tr></tbody></table>
+</main>
+<script>
+fetch('https://bcd.developer.mozilla.org/bcd/api/v0/current/javascript.builtins.Array.map.json').then((r) => r.json()).then((d) => {
+  const s = d.data.__compat.support; const names = Object.keys(s);
+  document.querySelector('.bc-table thead tr').innerHTML = '<th></th>' + names.map((n) => '<th>' + n + '</th>').join('');
+  document.getElementById('bc-body').innerHTML = '<tr><th>map</th>' + names.map((n) => '<td>' + s[n].version_added + '</td>').join('') + '</tr><tr><th>说明</th>' + names.map(() => '<td>✓</td>').join('') + '</tr>';
+});
+// 模仿 MDN 的遥测请求（应被宿主拦截：不在 domains ∪ resourceDomains 中）
+fetch('https://incoming.telemetry.mozilla.org/submit/fixture', { method: 'POST', body: '{}', mode: 'no-cors' }).catch(() => {});
+</script><script src="/static/site.js"></script></body></html>

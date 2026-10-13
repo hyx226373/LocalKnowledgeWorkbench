@@ -1,0 +1,127 @@
+{
+  "id": "kb.theme.pro",
+  "name": "专业工具（占位）",
+  "version": "0.1.0",
+  "description": "方向 B：紧凑、等宽强调、VS Code 风格。占位实现，等待主题外包定稿。",
+  "engines": {
+    "workbench": "^0.2.0",
+    "themeContract": "^1.0.0"
+  },
+  "contributes": {
+    "chromeThemes": [
+      {
+        "id": "pro",
+        "label": "专业工具",
+        "light": {
+          "css": "chrome.css",
+          "tokens": {
+            "font-ui-accent": "\"Cascadia Mono\", Consolas, \"JetBrains Mono\", \"Noto Sans Mono CJK SC\", monospace",
+            "fs-xs": "10px",
+            "fs-sm": "11px",
+            "fs-md": "12px",
+            "size-row": "20px",
+            "size-control": "22px",
+            "size-topbar": "32px",
+            "size-statusbar": "20px",
+            "size-tab": "28px",
+            "space-4": "8px",
+            "space-5": "12px",
+            "space-6": "16px",
+            "radius-sm": "2px",
+            "radius-md": "2px",
+            "radius-lg": "2px",
+            "color-bg": "#f3f3f3",
+            "color-chrome": "#f8f8f8",
+            "color-chrome-alt": "#ececec",
+            "color-surface": "#ffffff",
+            "color-surface-raised": "#ffffff",
+            "color-border": "#e5e5e5",
+            "color-border-strong": "#c8c8c8",
+            "color-text": "#1f1f1f",
+            "color-text-muted": "#616161",
+            "color-text-faint": "#9e9e9e",
+            "color-accent": "#005fb8",
+            "color-selected": "#e4e6f1",
+            "color-tab-bg": "#f8f8f8",
+            "color-tab-active-bg": "#ffffff",
+            "color-tab-indicator": "#005fb8",
+            "color-status-bg": "#005fb8",
+            "color-status-fg": "#ffffff",
+            "color-input-bg": "#ffffff"
+          }
+        },
+        "dark": {
+          "css": "chrome.css",
+          "tokens": {
+            "font-ui-accent": "\"Cascadia Mono\", Consolas, \"JetBrains Mono\", \"Noto Sans Mono CJK SC\", monospace",
+            "fs-xs": "10px",
+            "fs-sm": "11px",
+            "fs-md": "12px",
+            "size-row": "20px",
+            "size-control": "22px",
+            "size-topbar": "32px",
+            "size-statusbar": "20px",
+            "size-tab": "28px",
+            "space-4": "8px",
+            "space-5": "12px",
+            "space-6": "16px",
+            "radius-sm": "2px",
+            "radius-md": "2px",
+            "radius-lg": "2px",
+            "color-bg": "#181818",
+            "color-chrome": "#1f1f1f",
+            "color-chrome-alt": "#252526",
+            "color-surface": "#1e1e1e",
+            "color-surface-raised": "#252526",
+            "color-border": "#2b2b2b",
+            "color-border-strong": "#454545",
+            "color-text": "#cccccc",
+            "color-text-muted": "#8b8b8b",
+            "color-text-faint": "#5f5f5f",
+            "color-accent": "#0078d4",
+            "color-selected": "#04395e",
+            "color-tab-bg": "#1f1f1f",
+            "color-tab-active-bg": "#1e1e1e",
+            "color-tab-indicator": "#0078d4",
+            "color-status-bg": "#007acc",
+            "color-status-fg": "#ffffff",
+            "color-input-bg": "#313131",
+            "color-input-border": "#3c3c3c"
+          }
+        }
+      }
+    ],
+    "readingThemes": [
+      {
+        "id": "pro",
+        "label": "紧凑排版",
+        "light": {
+          "tokens": {
+            "read-fs": "13px",
+            "read-fs-code": "12px",
+            "read-lh": "1.6",
+            "read-max-width": "100%",
+            "read-pad-x": "20px",
+            "read-pad-y": "16px"
+          }
+        },
+        "dark": {
+          "tokens": {
+            "read-fs": "13px",
+            "read-fs-code": "12px",
+            "read-lh": "1.6",
+            "read-max-width": "100%",
+            "read-pad-x": "20px",
+            "read-pad-y": "16px",
+            "read-pdf-backdrop": "#252526"
+          }
+        }
+      }
+    ],
+    "layoutPresets": [
+      {
+        "file": "layouts/three.json"
+      }
+    ]
+  }
+}

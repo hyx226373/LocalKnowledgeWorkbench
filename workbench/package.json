@@ -1,0 +1,209 @@
+{
+  "name": "kb-workbench",
+  "productName": "LocalKnowledgeWorkbench",
+  "version": "0.2.5",
+  "description": "本地知识工作台",
+  "author": "kb-workbench",
+  "private": true,
+  "main": "out/main/index.js",
+  "type": "commonjs",
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/markdown-it": "^14.2.0",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dockview": "^8.4.0",
+    "dockview-react": "^8.4.0",
+    "dompurify": "^3.4.16",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "iconv-lite": "^0.6.3",
+    "markdown-it": "^15.0.2",
+    "mermaid": "12.1.0",
+    "pdfjs-dist": "^6.3.289",
+    "playwright": "^1.63.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "resedit": "^1.7.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@kb/agent-api": "file:../modules/agent-api",
+    "@kb/fileops": "file:../modules/fileops",
+    "@kb/identity-watch": "file:../modules/identity-watch",
+    "@kb/indexer": "file:../modules-r11-E-3888323/indexer",
+    "@kb/plan": "file:../modules/plan",
+    "@kb/sync": "file:../modules/sync",
+    "better-sqlite3": "^13.0.3",
+    "chokidar": "^5.0.0",
+    "katex": "0.19.0"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build-main.mjs && vite build",
+    "start": "electron .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node scripts/run-electron-node.mjs node_modules/vitest/vitest.mjs run",
+    "e2e": "npm run build && node scripts/run-e2e.mjs",
+    "sample": "python3 scripts/make_sample.py /workspace/kb-sample",
+    "dist:win": "node scripts/dist-win.mjs nsis portable",
+    "dist:win-portable": "node scripts/dist-win.mjs portable",
+    "theme:shots": "node scripts/theme-shots.mjs",
+    "theme:kit": "node scripts/gen-theme-kit.mjs",
+    "plugin:build": "node scripts/build-adapter-plugin.mjs",
+    "dist:win-zip": "node scripts/dist-win.mjs zip",
+    "icon": "python3 scripts/gen-icon.py",
+    "dist:linux-dir": "npm run build && electron-builder --linux dir --x64",
+    "smoke:packaged": "node e2e/packaged-fuses-smoke.mjs"
+  },
+  "build": {
+    "appId": "local.kb.workbench",
+    "productName": "LocalKnowledgeWorkbench",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**",
+      "package.json",
+      "!**/*.map",
+      "!node_modules/better-sqlite3/deps/**",
+      "!node_modules/better-sqlite3/src/**",
+      "!node_modules/better-sqlite3/binding.gyp",
+      "node_modules/katex/dist/**",
+      "node_modules/pdfjs-dist/**",
+      "!node_modules/@kb/**/node_modules/**",
+      "!node_modules/mermaid/**",
+      "!node_modules/@mermaid-js/**",
+      "!node_modules/@braintree/**",
+      "!node_modules/@iconify/**",
+      "!node_modules/@upsetjs/**",
+      "!node_modules/chevrotain/**",
+      "!node_modules/cytoscape/**",
+      "!node_modules/cytoscape-cose-bilkent/**",
+      "!node_modules/cytoscape-fcose/**",
+      "!node_modules/d3/**",
+      "!node_modules/d3-*/**",
+      "!node_modules/dagre-d3-es/**",
+      "!node_modules/dayjs/**",
+      "!node_modules/dompurify/**",
+      "!node_modules/elkjs/**",
+      "!node_modules/es-toolkit/**",
+      "!node_modules/khroma/**",
+      "!node_modules/marked/**",
+      "!node_modules/roughjs/**",
+      "!node_modules/stylis/**",
+      "!node_modules/ts-dedent/**",
+      "!node_modules/uuid/**"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**",
+      "node_modules/@kb/indexer/dist/**",
+      "node_modules/katex/dist/fonts/**",
+      "out/**/*.woff",
+      "out/**/*.woff2",
+      "out/main/reap-orphans.exe"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/builtin-adapters",
+        "to": "builtin-adapters"
+      }
+    ],
+    "npmRebuild": false,
+    "afterSign": "scripts/afterSign-file-description.mjs",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}",
+      "files": [
+        "out/**",
+        "package.json",
+        "!**/*.map",
+        "!node_modules/better-sqlite3/deps/**",
+        "!node_modules/better-sqlite3/src/**",
+        "!node_modules/better-sqlite3/binding.gyp",
+        "!node_modules/better-sqlite3/prebuilds/{darwin-*,linux-*,linuxmusl-*,win32-arm64}.node",
+        "node_modules/katex/dist/**",
+        "node_modules/pdfjs-dist/**",
+        "!node_modules/@kb/**/node_modules/**",
+        "!node_modules/mermaid/**",
+        "!node_modules/@mermaid-js/**",
+        "!node_modules/@braintree/**",
+        "!node_modules/@iconify/**",
+        "!node_modules/@upsetjs/**",
+        "!node_modules/chevrotain/**",
+        "!node_modules/cytoscape/**",
+        "!node_modules/cytoscape-cose-bilkent/**",
+        "!node_modules/cytoscape-fcose/**",
+        "!node_modules/d3/**",
+        "!node_modules/d3-*/**",
+        "!node_modules/dagre-d3-es/**",
+        "!node_modules/dayjs/**",
+        "!node_modules/dompurify/**",
+        "!node_modules/elkjs/**",
+        "!node_modules/es-toolkit/**",
+        "!node_modules/khroma/**",
+        "!node_modules/marked/**",
+        "!node_modules/roughjs/**",
+        "!node_modules/stylis/**",
+        "!node_modules/ts-dedent/**",
+        "!node_modules/uuid/**"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "本地知识工作台",
+      "uninstallDisplayName": "本地知识工作台 ${version}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "include": "build/installer.nsh",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "${productName}-${version}-win-${arch}-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-win-${arch}-portable.${ext}"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "loadBrowserProcessSpecificV8Snapshot": false,
+      "grantFileProtocolExtraPrivileges": true
+    },
+    "linux": {
+      "target": [
+        "dir"
+      ],
+      "category": "Office"
+    }
+  }
+}

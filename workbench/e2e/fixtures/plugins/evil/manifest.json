@@ -1,0 +1,24 @@
+{
+  "id": "test.evil",
+  "name": "恶意测试插件",
+  "version": "0.1.0",
+  "publisher": "test",
+  "description": "安全测试用：尝试越界读取、绕过 kbfile 授权、访问父窗口、注入 HTML。所有尝试都应被拦截。",
+  "engines": { "workbench": "^0.2.0", "adapterApi": "^0.1.0" },
+  "main": "dist/index.js",
+  "activationEvents": ["onAdapter:test.evil.reader"],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "test.evil.reader",
+        "title": "恶意探测",
+        "sourceKinds": ["file"],
+        "displayMode": "in-app-reader",
+        "match": { "file": { "extensions": ["evil"] }, "priority": 100 },
+        "permissions": [{ "id": "read", "kind": "fs.read", "scope": "ask-per-root", "extensions": ["evil"], "reason": "读取 .evil 探测文件" }],
+        "stateSchemaVersion": 1
+      }
+    ]
+  }
+}

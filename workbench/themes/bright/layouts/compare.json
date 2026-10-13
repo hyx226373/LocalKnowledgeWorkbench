@@ -1,0 +1,29 @@
+{
+  "id": "bright.compare",
+  "label": "左右对照 + 右下附栏",
+  "description": "左栏主文档，右侧上下两栏",
+  "sidebarWidth": 300,
+  "grid": {
+    "split": "row",
+    "children": [
+      {
+        "slot": 1,
+        "size": 50
+      },
+      {
+        "split": "column",
+        "size": 50,
+        "children": [
+          {
+            "slot": 2,
+            "size": 60
+          },
+          {
+            "slot": 3,
+            "size": 40
+          }
+        ]
+      }
+    ]
+  }
+}

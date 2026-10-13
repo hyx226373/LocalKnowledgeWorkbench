@@ -1,0 +1,38 @@
+{
+  "id": "example.json-viewer",
+  "name": "JSON 查看器（示例）",
+  "version": "0.1.0",
+  "publisher": "example",
+  "description": "把 .json 文件显示为可折叠的树。文件适配器模板示例。",
+  "engines": { "workbench": "^0.2.0", "adapterApi": "^0.1.0" },
+  "main": "dist/index.js",
+  "activationEvents": ["onAdapter:example.json-viewer.reader"],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "example.json-viewer.reader",
+        "title": "JSON 树",
+        "description": "只读查看 JSON，记住展开的节点",
+        "sourceKinds": ["file"],
+        "displayMode": "in-app-reader",
+        "match": {
+          "file": { "extensions": ["json"], "mimeTypes": ["application/json"], "maxSizeBytes": 10485760 },
+          "priority": 150
+        },
+        "permissions": [
+          {
+            "id": "read-json",
+            "kind": "fs.read",
+            "scope": "ask-per-root",
+            "extensions": ["json"],
+            "reason": "读取你打开的 JSON 文件，以树形显示"
+          }
+        ],
+        "stateSchemaVersion": 2,
+        "stateMigrations": [{ "from": 1, "to": 2, "note": "字段 open 改名为 expanded，新增 showTypes" }],
+        "maxStateBytes": 8192
+      }
+    ]
+  }
+}

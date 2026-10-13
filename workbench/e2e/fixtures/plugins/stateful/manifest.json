@@ -1,0 +1,25 @@
+{
+  "id": "test.stateful",
+  "name": "计数器（状态迁移示例）",
+  "version": "0.1.0",
+  "publisher": "test",
+  "description": "e2e 夹具：插件停用、缺失、升级（版本号与清单字段变化、状态迁移成功/失败）时条目与视图状态的保留。e2e 在构建前改写 version / stateSchemaVersion / 扩展名。",
+  "engines": { "workbench": "^0.2.0", "adapterApi": "^0.1.0" },
+  "main": "dist/index.js",
+  "activationEvents": ["onAdapter:test.stateful.reader"],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "test.stateful.reader",
+        "title": "计数器",
+        "sourceKinds": ["file"],
+        "displayMode": "in-app-reader",
+        "match": { "file": { "extensions": ["stv"] }, "priority": 100 },
+        "permissions": [{ "id": "read", "kind": "fs.read", "scope": "ask-per-root", "extensions": ["stv"], "reason": "读取 .stv 计数文件" }],
+        "stateSchemaVersion": 1,
+        "stateMigrations": []
+      }
+    ]
+  }
+}

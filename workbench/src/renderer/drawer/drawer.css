@@ -1,0 +1,191 @@
+/* Drawer: tokens only (--kb-*). Preview icon-pop / emerge wired. */
+
+.kb-drawer {
+  box-sizing: border-box;
+  position: relative;
+  flex: none;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  background: var(--kb-color-chrome);
+  color: var(--kb-color-text);
+  border-right: 1px solid var(--kb-color-border);
+  font-family: var(--kb-font-ui);
+  font-size: var(--kb-fs-md);
+  transition: width 280ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.kb-drawer[data-open="false"] {
+  border-right-color: transparent;
+  pointer-events: none;
+}
+
+.kb-drawer-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.kb-drawer-cards {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: var(--kb-space-3);
+}
+
+.kb-drawer-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 112px;
+  margin: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--kb-color-surface) 72%, transparent);
+  color: var(--kb-color-text);
+  font: inherit;
+  cursor: pointer;
+  animation: kb-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.kb-drawer-card-mark {
+  display: grid;
+  place-items: center;
+  transform-origin: center;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.kb-drawer-card > svg {
+  width: 58px;
+  height: 58px;
+  transform-origin: center;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.kb-drawer-card-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.kb-drawer-card:hover {
+  background: var(--kb-color-hover);
+}
+
+.kb-drawer-card:active .kb-drawer-card-mark {
+  transform: scale(0.9);
+}
+
+.kb-drawer-card[aria-pressed="true"] {
+  background: var(--kb-color-selected);
+  color: var(--kb-color-selected-fg);
+}
+
+.kb-drawer-card.on .kb-drawer-card-name,
+.kb-drawer-card[aria-pressed="true"] .kb-drawer-card-name {
+  font-weight: 600;
+}
+
+.kb-drawer-card[aria-pressed="true"] .kb-drawer-card-mark {
+  animation: kb-icon-pop 380ms cubic-bezier(0.2, 0.85, 0.2, 1);
+}
+
+.kb-drawer-card[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 5px;
+  height: 9px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.kb-drawer-card:focus-visible,
+.kb-drawer-sash:focus-visible {
+  outline: 2px solid var(--kb-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.kb-drawer-modules {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-top: 1px solid var(--kb-color-border);
+  animation: kb-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.kb-drawer-module {
+  min-width: 0;
+  animation: kb-emerge 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.kb-drawer-pending {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kb-space-1);
+  margin: 0;
+  padding: var(--kb-space-4);
+  color: var(--kb-color-text-muted);
+  font-size: var(--kb-fs-sm);
+}
+
+.kb-drawer-pending-name {
+  color: var(--kb-color-text);
+  font-weight: var(--kb-fw-strong);
+}
+
+.kb-drawer-sash {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.kb-drawer-sash:hover {
+  background: var(--kb-color-sash-hover);
+}
+
+@keyframes kb-icon-pop {
+  0% { transform: scale(0.82); }
+  55% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes kb-emerge {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-drawer,
+  .kb-drawer-card > svg {
+    transition: none;
+  }
+  .kb-drawer-card,
+  .kb-drawer-modules,
+  .kb-drawer-module,
+  .kb-drawer-card[aria-pressed="true"] .kb-drawer-card-mark {
+    animation: none;
+  }
+  .kb-drawer-card-mark {
+    transition: none;
+  }
+}

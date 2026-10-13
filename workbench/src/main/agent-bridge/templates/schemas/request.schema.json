@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kb://agent-bridge/request.schema.json",
+  "title": "Agent bridge request",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["requestId", "type"],
+  "properties": {
+    "requestId": { "type": "string", "format": "uuid" },
+    "type": {
+      "enum": ["query", "search-help", "console-draft", "classify", "workspace-ref", "open", "invoke", "plan-submit", "plan-status", "state-export"]
+    },
+    "actionId": { "type": "string", "description": "invoke 的推荐字段，可写在顶层或 invoke 内。与 commandId 同值。" },
+    "args": { "type": "object" },
+    "agentName": { "type": "string" },
+    "snapshot": { "type": "boolean" },
+    "query": { "type": "object" },
+    "draft": { "type": "object" },
+    "open": { "type": "object" },
+    "invoke": { "type": "object" },
+    "title": { "type": "string" },
+    "ops": { "type": "array" },
+    "planId": { "type": "string" },
+    "sourceRequestId": { "type": "string", "format": "uuid" },
+    "classify": { "type": "object" },
+    "workspaceRef": { "type": "object" },
+    "approved": { "description": "无效。宿主忽略，不会批准。" },
+    "approve": { "description": "无效。宿主忽略。" },
+    "contentHash": { "description": "无效。这不是批准凭据。" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "query" } }, "required": ["type"] },
+      "then": { "required": ["query"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "console-draft" } }, "required": ["type"] },
+      "then": { "required": ["draft"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "open" } }, "required": ["type"] },
+      "then": { "required": ["open"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "invoke" } }, "required": ["type"] },
+      "then": { "anyOf": [{ "required": ["invoke"] }, { "required": ["actionId"] }] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "plan-submit" } }, "required": ["type"] },
+      "then": { "required": ["title", "ops"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "classify" } }, "required": ["type"] },
+      "then": { "required": ["classify"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "workspace-ref" } }, "required": ["type"] },
+      "then": { "required": ["workspaceRef"] }
+    }
+  ]
+}

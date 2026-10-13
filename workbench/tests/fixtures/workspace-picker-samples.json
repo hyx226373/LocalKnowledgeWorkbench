@@ -1,0 +1,510 @@
+{
+  "format": "kb-workbench.workspace-picker-sample",
+  "formatVersion": 1,
+  "note": "视觉组与组件组共用的假数据。不是库里的工作区。",
+  "settings": {
+    "v": 1,
+    "startup": "last",
+    "startupWorkspaceId": null,
+    "overviewHidden": false,
+    "quickSwitchKey": "Ctrl+Shift+E",
+    "quickSwitchConflict": null
+  },
+  "workspaces": [
+    {
+      "id": "ws-empty",
+      "name": "空白",
+      "purpose": "",
+      "tags": [],
+      "project": "",
+      "favorite": false,
+      "lastUsedAt": null,
+      "counts": { "files": 0, "webs": 0, "apps": 0, "panels": 0 },
+      "icon": null,
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": { "cacheKey": "empty", "aspect": 1.777, "nodes": [] },
+      "detail": {
+        "files": [],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 0,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-mixed",
+      "name": "论文与参考",
+      "purpose": "一边看笔记，一边留着参考页和计算器",
+      "tags": ["论文", "数学"],
+      "project": "考研",
+      "favorite": true,
+      "lastUsedAt": 1780000000000,
+      "counts": { "files": 2, "webs": 1, "apps": 1, "panels": 4 },
+      "icon": "folder",
+      "accent": "#3D6B4F",
+      "coverRef": null,
+      "thumbVersion": 1,
+      "thumb": {
+        "cacheKey": "mixed-v1",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "p-md", "rect": { "x": 0, "y": 0, "w": 0.5, "h": 1 }, "kind": "file", "iconKey": "markdown", "shortName": "笔记", "flags": {}, "unknown": false },
+          { "id": "p-pdf", "rect": { "x": 0.5, "y": 0, "w": 0.5, "h": 0.5 }, "kind": "file", "iconKey": "pdf", "shortName": "真题", "flags": {}, "unknown": false },
+          { "id": "p-web", "rect": { "x": 0.5, "y": 0.5, "w": 0.25, "h": 0.5 }, "kind": "web", "iconKey": "web", "shortName": "公式", "flags": {}, "unknown": false },
+          { "id": "p-app", "rect": { "x": 0.75, "y": 0.5, "w": 0.25, "h": 0.5 }, "kind": "app", "iconKey": "app", "shortName": "计算", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [
+          { "resourceId": "res-note", "title": "高数笔记.md", "missing": false },
+          { "resourceId": "res-exam", "title": "真题.pdf", "missing": false }
+        ],
+        "webs": [{ "ref": "https://example.com/formula", "title": "公式表" }],
+        "apps": [{ "ref": "ap-calc", "title": "计算器", "configured": true }],
+        "nativeHosts": [],
+        "agents": [
+          { "roomId": "room-1", "title": "校对", "roles": [{ "id": "role-reader", "name": "阅读", "configured": true }], "running": "unknown" }
+        ],
+        "savedAt": 1780000001000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      },
+      "restore": [
+        { "panelId": "p-md", "phase": "restored", "retryable": false },
+        { "panelId": "p-pdf", "phase": "loading", "retryable": false },
+        { "panelId": "p-web", "phase": "unknown", "reason": "no-view-yet", "retryable": false },
+        { "panelId": "p-app", "phase": "unavailable", "reason": "manual-open", "retryable": false }
+      ]
+    },
+    {
+      "id": "ws-same-file",
+      "name": "同一资料三栏",
+      "purpose": "同一篇笔记拆成三块对照",
+      "tags": ["笔记"],
+      "project": "考研",
+      "favorite": false,
+      "lastUsedAt": 1780000002000,
+      "counts": { "files": 1, "webs": 0, "apps": 0, "panels": 3 },
+      "icon": "file",
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "same-file",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "a", "rect": { "x": 0, "y": 0, "w": 0.34, "h": 1 }, "kind": "file", "iconKey": "markdown", "shortName": "笔记", "flags": {}, "unknown": false },
+          { "id": "b", "rect": { "x": 0.34, "y": 0, "w": 0.33, "h": 1 }, "kind": "file", "iconKey": "markdown", "shortName": "笔记", "flags": {}, "unknown": false },
+          { "id": "c", "rect": { "x": 0.67, "y": 0, "w": 0.33, "h": 1 }, "kind": "file", "iconKey": "markdown", "shortName": "笔记", "flags": { "maximized": false }, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [{ "resourceId": "res-note", "title": "高数笔记.md", "missing": false }],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1780000002000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-broken",
+      "name": "部分失效",
+      "purpose": "有的文件已经不在原处",
+      "tags": ["待修"],
+      "project": "",
+      "favorite": false,
+      "lastUsedAt": 1770000000000,
+      "counts": { "files": 2, "webs": 1, "apps": 0, "panels": 3 },
+      "icon": "folder",
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 2,
+      "thumb": {
+        "cacheKey": "broken",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "ok", "rect": { "x": 0, "y": 0, "w": 0.5, "h": 1 }, "kind": "file", "iconKey": "text", "shortName": "还在", "flags": {}, "unknown": false },
+          { "id": "miss", "rect": { "x": 0.5, "y": 0, "w": 0.25, "h": 1 }, "kind": "file", "iconKey": "file", "shortName": "缺失", "flags": {}, "unknown": false },
+          { "id": "web", "rect": { "x": 0.75, "y": 0, "w": 0.25, "h": 1 }, "kind": "web", "iconKey": "web", "shortName": "失败", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [
+          { "resourceId": "res-ok", "title": "还在.txt", "missing": false },
+          { "resourceId": "res-gone", "title": "已移走.txt", "missing": true }
+        ],
+        "webs": [{ "ref": "https://example.com/down", "title": "打不开的页" }],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1770000000000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": [
+          { "code": "resource-missing", "panelId": "miss", "message": "原文件不在原处", "retryable": true },
+          { "code": "load-failed", "panelId": "web", "message": "主帧加载失败", "retryable": true }
+        ]
+      },
+      "restore": [
+        { "panelId": "ok", "phase": "restored", "retryable": false },
+        { "panelId": "miss", "phase": "failed", "reason": "resource-missing", "retryable": true },
+        { "panelId": "web", "phase": "failed", "reason": "ERR_NAME_NOT_RESOLVED（-105）：example.com", "retryable": true }
+      ]
+    },
+    {
+      "id": "ws-plugin-off",
+      "name": "插件已禁用",
+      "purpose": "表格视图的插件被关掉了",
+      "tags": ["插件"],
+      "project": "工具",
+      "favorite": false,
+      "lastUsedAt": 1760000000000,
+      "counts": { "files": 1, "webs": 0, "apps": 0, "panels": 1 },
+      "icon": "plugin",
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "plugin-off",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "csv", "rect": { "x": 0.1, "y": 0.1, "w": 0.8, "h": 0.8 }, "kind": "file", "iconKey": "table", "shortName": "成绩", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [{ "resourceId": "res-csv", "title": "成绩.csv", "missing": false }],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1760000000000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": [
+          { "code": "adapter-disabled", "panelId": "csv", "message": "提供此视图的插件已禁用", "retryable": false }
+        ]
+      },
+      "restore": [
+        { "panelId": "csv", "phase": "unavailable", "reason": "adapter-disabled", "retryable": false }
+      ]
+    },
+    {
+      "id": "ws-unknown",
+      "name": "未知插件",
+      "purpose": "这块面板的适配器本机没有",
+      "tags": [],
+      "project": "工具",
+      "favorite": false,
+      "lastUsedAt": 1750000000000,
+      "counts": { "files": 1, "webs": 0, "apps": 0, "panels": 1 },
+      "icon": null,
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "unknown",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "u", "rect": { "x": 0, "y": 0, "w": 1, "h": 1 }, "kind": "unknown", "iconKey": "unknown", "shortName": "未知", "flags": {}, "unknown": true }
+        ]
+      },
+      "detail": {
+        "files": [{ "resourceId": "res-bin", "title": "数据.bin", "missing": false }],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1750000000000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": [
+          { "code": "adapter-missing", "panelId": "u", "message": "没有能显示此条目的适配器", "retryable": false }
+        ]
+      },
+      "restore": [
+        { "panelId": "u", "phase": "unavailable", "reason": "adapter-missing", "retryable": false }
+      ]
+    },
+    {
+      "id": "ws-long",
+      "name": "八十字上限的工作区名称用来把卡片标题撑到存储允许的最长一截看省略号会不会把收藏和进入挤出画面外甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥天地玄黄宇宙洪荒日月盈",
+      "purpose": "名称本身已经顶到存储上限，卡片上要省略，不能把栏位撑开。",
+      "tags": ["视觉", "超长"],
+      "project": "界面",
+      "favorite": true,
+      "lastUsedAt": 1780000003000,
+      "counts": { "files": 1, "webs": 0, "apps": 0, "panels": 1 },
+      "icon": "file",
+      "accent": "#8A4B2F",
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "long",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "only", "rect": { "x": 0, "y": 0, "w": 1, "h": 1 }, "kind": "file", "iconKey": "text", "shortName": "超长名称样本", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [{ "resourceId": "res-long", "title": "超长标题的纯文本.txt", "missing": false }],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1780000003000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-host",
+      "name": "托管记事本",
+      "purpose": "只恢复格子，不自动把程序嵌进来",
+      "tags": ["托管"],
+      "project": "工具",
+      "favorite": false,
+      "lastUsedAt": 1780000004000,
+      "counts": { "files": 0, "webs": 0, "apps": 1, "panels": 1 },
+      "icon": "native",
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "host",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "npp", "rect": { "x": 0.05, "y": 0.05, "w": 0.9, "h": 0.9 }, "kind": "native-host", "iconKey": "native", "shortName": "记事本", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [{ "panelId": "npp", "hostPath": "notepad.exe", "titleHint": "无标题" }],
+        "agents": [],
+        "savedAt": 1780000004000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": [
+          { "code": "host-gate", "panelId": "npp", "message": "应用接入与内部文档恢复尚未过门禁", "retryable": false }
+        ]
+      },
+      "restore": [
+        {
+          "panelId": "npp",
+          "phase": "unavailable",
+          "reason": "host-gate",
+          "retryable": false,
+          "host": { "layout": "restored", "attach": "unavailable", "document": "unavailable" }
+        }
+      ]
+    },
+    {
+      "id": "ws-webs",
+      "name": "只上网页",
+      "purpose": "两份参考页，没有本地文件",
+      "tags": ["网页"],
+      "project": "考研",
+      "favorite": false,
+      "lastUsedAt": 1780000005000,
+      "counts": { "files": 0, "webs": 2, "apps": 0, "panels": 2 },
+      "icon": "web",
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "webs",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "w1", "rect": { "x": 0, "y": 0, "w": 0.5, "h": 1 }, "kind": "web", "iconKey": "web", "shortName": "大纲", "flags": {}, "unknown": false },
+          { "id": "w2", "rect": { "x": 0.5, "y": 0, "w": 0.5, "h": 1 }, "kind": "web", "iconKey": "web", "shortName": "词汇", "flags": { "collapsed": true }, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [],
+        "webs": [
+          { "ref": "https://example.com/syllabus", "title": "大纲" },
+          { "ref": "https://example.com/words", "title": "词汇" }
+        ],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1780000005000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-english",
+      "name": "英语阅读",
+      "purpose": "阅读真题和词汇表",
+      "tags": ["英语", "阅读"],
+      "project": "考研",
+      "favorite": true,
+      "lastUsedAt": 1780000006000,
+      "counts": { "files": 2, "webs": 0, "apps": 0, "panels": 2 },
+      "icon": "file",
+      "accent": "#2F4A6B",
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "english",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "e1", "rect": { "x": 0, "y": 0, "w": 0.62, "h": 1 }, "kind": "file", "iconKey": "pdf", "shortName": "阅读", "flags": { "maximized": true }, "unknown": false },
+          { "id": "e2", "rect": { "x": 0.62, "y": 0, "w": 0.38, "h": 1 }, "kind": "file", "iconKey": "markdown", "shortName": "词汇", "flags": { "hidden": true }, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [
+          { "resourceId": "res-read", "title": "阅读.pdf", "missing": false },
+          { "resourceId": "res-vocab", "title": "词汇.md", "missing": false }
+        ],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1780000006000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-english-2",
+      "name": "英语作文",
+      "purpose": "作文提纲，和阅读分组在同一个项目下",
+      "tags": ["英语", "作文"],
+      "project": "考研",
+      "favorite": false,
+      "lastUsedAt": 1740000000000,
+      "counts": { "files": 1, "webs": 0, "apps": 0, "panels": 1 },
+      "icon": "file",
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "english-2",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "z", "rect": { "x": 0.15, "y": 0.1, "w": 0.7, "h": 0.8 }, "kind": "file", "iconKey": "markdown", "shortName": "提纲", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [{ "resourceId": "res-essay", "title": "提纲.md", "missing": false }],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1740000000000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-stale",
+      "name": "很久没打开",
+      "purpose": "用来排在最近列表的末尾",
+      "tags": [],
+      "project": "",
+      "favorite": false,
+      "lastUsedAt": 1700000000000,
+      "counts": { "files": 1, "webs": 0, "apps": 0, "panels": 1 },
+      "icon": null,
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": {
+        "cacheKey": "stale",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "s", "rect": { "x": 0, "y": 0, "w": 1, "h": 1 }, "kind": "file", "iconKey": "text", "shortName": "旧稿", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [{ "resourceId": "res-old", "title": "旧稿.txt", "missing": false }],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [{ "roomId": "room-old", "title": "旧房间", "roles": [], "running": "unknown" }],
+        "savedAt": 1700000000000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-cover",
+      "name": "自设封面",
+      "purpose": "封面是可选项，缩略图仍然由布局画出来",
+      "tags": ["封面"],
+      "project": "界面",
+      "favorite": true,
+      "lastUsedAt": 1780000007000,
+      "counts": { "files": 1, "webs": 1, "apps": 0, "panels": 2 },
+      "icon": "cover",
+      "accent": "#6B3D5C",
+      "coverRef": "ws-cover.png",
+      "thumbVersion": 4,
+      "thumb": {
+        "cacheKey": "cover-v4",
+        "aspect": 1.777,
+        "nodes": [
+          { "id": "c1", "rect": { "x": 0, "y": 0, "w": 0.7, "h": 1 }, "kind": "file", "iconKey": "image", "shortName": "封面图", "flags": {}, "unknown": false },
+          { "id": "c2", "rect": { "x": 0.7, "y": 0, "w": 0.3, "h": 1 }, "kind": "web", "iconKey": "web", "shortName": "说明", "flags": {}, "unknown": false }
+        ]
+      },
+      "detail": {
+        "files": [{ "resourceId": "res-pic", "title": "封面图.png", "missing": false }],
+        "webs": [{ "ref": "https://example.com/about", "title": "说明" }],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1780000007000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    },
+    {
+      "id": "ws-norecent",
+      "name": "从未进入",
+      "purpose": "建好了还没进入过，最近一栏不出现",
+      "tags": ["新建"],
+      "project": "界面",
+      "favorite": false,
+      "lastUsedAt": null,
+      "counts": { "files": 0, "webs": 0, "apps": 0, "panels": 0 },
+      "icon": "folder",
+      "accent": null,
+      "coverRef": null,
+      "thumbVersion": 0,
+      "thumb": { "cacheKey": "norecent", "aspect": 1.777, "nodes": [] },
+      "detail": {
+        "files": [],
+        "webs": [],
+        "apps": [],
+        "nativeHosts": [],
+        "agents": [],
+        "savedAt": 1780000008000,
+        "restorePolicy": "manual-open-apps",
+        "recentResults": [],
+        "problems": []
+      }
+    }
+  ]
+}

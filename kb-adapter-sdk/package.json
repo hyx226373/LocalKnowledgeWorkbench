@@ -1,0 +1,35 @@
+{
+  "name": "@kb-workbench/adapter-sdk",
+  "version": "0.1.0",
+  "description": "本地知识工作台 适配器 SDK：类型、策略参考实现、模拟宿主与模板",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./mock-host": {
+      "types": "./src/mock-host.ts",
+      "default": "./dist/src/mock-host.js"
+    },
+    "./policy": {
+      "types": "./src/policy.ts",
+      "default": "./dist/src/policy.js"
+    },
+    "./types": {
+      "types": "./src/types.ts",
+      "default": "./dist/src/types.js"
+    }
+  },
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test \"dist/**/*.test.js\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^7.0.2"
+  }
+}

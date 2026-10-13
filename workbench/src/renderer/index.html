@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' kbfile: data: blob:; connect-src 'self' kbfile: data: blob:; worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; frame-src kbplugin:; child-src kbplugin:"
+    />
+    <title>本地知识工作台</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

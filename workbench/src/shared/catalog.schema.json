@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kb-workbench.catalog/v1",
+  "title": "kb-workbench.catalog",
+  "description": "编排集可读文件，扩展名 .kbcatalog.json。权威副本是库内 library.catalogs。文件用于手改、agent、备份、迁移。禁止盘符、UNC 和本机绝对路径。digest 是编排集（id、name、revision、virtualRootName、folders、refs）去掉 digest 与 refs.pending 之后的规范 JSON（键名排序、无空白）的 sha256，不含 format、baseDigest、sources。baseDigest 必须等于导入时库内当前 digest，否则整份拒绝、不写库。未知 resourceId 保留并标 pending。未知 folderId、环、空名、斜杠名：整份拒绝。sources 只含 sourceId、kind、name、extensions；kind=web 再加 url。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "formatVersion", "id", "name", "revision", "digest", "virtualRootName", "folders", "refs", "sources"],
+  "properties": {
+    "format": { "const": "kb-workbench.catalog" },
+    "formatVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "revision": { "type": "integer", "minimum": 0 },
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "baseDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "导入时必须等于库内当前 digest。" },
+    "virtualRootName": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "folders": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/folder" }
+    },
+    "refs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ref" }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/source" }
+    }
+  },
+  "$defs": {
+    "folder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["folderId", "parentId", "name", "sort", "createdAt"],
+      "properties": {
+        "folderId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "parentId": { "type": ["string", "null"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "sort": { "type": "number" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["folderId", "resourceId"],
+      "properties": {
+        "folderId": { "type": ["string", "null"] },
+        "resourceId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "pending": { "type": "boolean", "description": "资料 ID 在本库不存在时为 true。不参与 digest。" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "kind", "name", "extensions"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "kind": { "enum": ["folder", "file", "web"] },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "extensions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9]+$" },
+          "description": "空数组表示不限制扩展名。小写、不带点。"
+        },
+        "url": { "type": "string", "description": "仅 kind=web。sanitize 后的 http(s) 网址，无 query、fragment、账号密码。" }
+      }
+    }
+  }
+}

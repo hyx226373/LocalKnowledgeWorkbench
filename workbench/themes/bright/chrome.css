@@ -1,0 +1,6 @@
+/* 方向 C 占位：侧栏与分组做成圆角卡片 */
+.kb-sidebar { background: var(--kb-color-surface); border-radius: var(--kb-radius-lg); box-shadow: var(--kb-shadow-1); }
+.kb-dock .dv-groupview { border-radius: var(--kb-radius-lg); box-shadow: var(--kb-shadow-1); }
+.kb-section { border-bottom-color: transparent; }
+.kb-statusbar { border-top-color: transparent; }
+.kb-dock .dv-tab { font-weight: 500; }

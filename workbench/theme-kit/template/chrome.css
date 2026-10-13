@@ -1,0 +1,7 @@
+/* 外框样式的受限 CSS（可留空）。规则必须以钩子类开头，见 ../COMPONENTS.md。
+   宿主会自动加作用域前缀，浅色/深色可以共用一个文件，也可以分开。
+   禁止：布局属性（width/height/margin/display/position/transform…）、url()、@import、改写 --kb-* 变量。 */
+
+.kb-section-title { letter-spacing: .1em; }
+.kb-tree-row[aria-selected="true"] { font-weight: 600; }
+.kb-dock .dv-tab { border-radius: var(--kb-radius-sm) var(--kb-radius-sm) 0 0; }

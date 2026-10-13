@@ -1,0 +1,60 @@
+{
+  "id": "example.notepadpp",
+  "name": "Notepad++（外部程序示例）",
+  "version": "0.2.0",
+  "publisher": "example",
+  "description": "用 Notepad++ 打开工作区中的文本文件。Notepad++ 在独立窗口中运行，面板只显示状态与控制。应用适配器模板示例。",
+  "engines": { "workbench": "^0.2.0", "adapterApi": "^0.1.0" },
+  "main": "dist/index.js",
+  "activationEvents": ["onAdapter:example.notepadpp.app"],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "example.notepadpp.app",
+        "title": "Notepad++",
+        "sourceKinds": ["app"],
+        "displayMode": "external-managed",
+        "match": { "app": { "programIds": ["notepadpp"] }, "priority": 100 },
+        "permissions": [
+          {
+            "id": "launch-notepadpp",
+            "kind": "process.launch",
+            "reason": "用 Notepad++ 打开你在应用档案中选定的文本文件",
+            "programs": [
+              {
+                "programId": "notepadpp",
+                "displayName": "Notepad++",
+                "exeCandidates": ["%ProgramFiles%\\Notepad++\\notepad++.exe", "%ProgramFiles(x86)%\\Notepad++\\notepad++.exe"],
+                "verify": { "publisher": "Notepad++", "versionRange": ">=8.8.7" },
+                "windowTracking": "best-effort",
+                "singleInstance": true,
+                "argTemplates": [
+                  {
+                    "id": "open-file",
+                    "label": "打开文件（独立实例）",
+                    "args": ["-multiInst", "-nosession", "{file}"],
+                    "slots": { "file": { "type": "resource", "extensions": ["txt", "md", "log", "ini", "csv", "json", "xml", "yaml", "yml"] } }
+                  },
+                  {
+                    "id": "open-file-at-line",
+                    "label": "打开文件并跳到指定行（独立实例）",
+                    "args": ["-multiInst", "-nosession", "-n{line}", "{file}"],
+                    "slots": {
+                      "line": { "type": "int", "min": 1, "max": 10000000 },
+                      "file": { "type": "resource", "extensions": ["txt", "md", "log", "ini", "csv", "json", "xml", "yaml", "yml"] }
+                    }
+                  },
+                  { "id": "blank", "label": "新建空白（独立实例）", "args": ["-multiInst", "-nosession"] }
+                ]
+              }
+            ]
+          }
+        ],
+        "app": { "programIds": ["notepadpp"], "onPanelClose": "leave-running", "autoLaunchOnRestore": false },
+        "stateSchemaVersion": 1,
+        "maxStateBytes": 1024
+      }
+    ]
+  }
+}

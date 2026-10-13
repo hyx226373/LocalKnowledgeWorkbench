@@ -1,0 +1,26 @@
+import { test, mock } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { removeGenerated } from './release-paths.mjs';
+test('cleanup rejects staging root, outside paths, unowned trees and junction descendants', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'release-safety-'));
+  const staging = path.join(root, 'stage'); fs.mkdirSync(staging);
+  fs.writeFileSync(path.join(staging, 'sentinel.txt'), 'keep');
+  assert.throws(() => removeGenerated(staging, staging));
+  assert.throws(() => removeGenerated(staging, root));
+  assert.throws(() => removeGenerated(staging, path.join(staging, 'sentinel.txt')));
+  const generated = path.join(staging, '_tar'); fs.mkdirSync(generated);
+  const outside = path.join(root, 'outside'); fs.mkdirSync(outside);
+  fs.writeFileSync(path.join(outside, 'keep'), 'keep');
+  const link = path.join(generated, 'link'); fs.mkdirSync(link);
+  const lstat = fs.lstatSync;
+  mock.method(fs, 'lstatSync', p => path.resolve(p) === link ? { isSymbolicLink: () => true } : lstat(p));
+  assert.throws(() => removeGenerated(staging, generated));
+  assert.equal(fs.readFileSync(path.join(outside, 'keep'), 'utf8'), 'keep');
+  mock.restoreAll(); removeGenerated(staging, generated);
+  assert.equal(fs.existsSync(generated), false);
+  assert.equal(fs.readFileSync(path.join(staging, 'sentinel.txt'), 'utf8'), 'keep');
+  fs.rmSync(root, { recursive: true });
+});

@@ -1,0 +1,89 @@
+/* 球场指挥室阅读区。标题、链接、代码、引用、表格、表头、选区、搜索高亮与公式一起配色。公式只改颜色。 */
+
+.kb-reading .kb-md h1,
+.kb-reading .kb-md h2,
+.kb-reading .kb-md h3 {
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.kb-reading .kb-md a {
+  text-underline-offset: 2px;
+}
+
+.kb-reading .kb-md blockquote {
+  font-style: normal;
+}
+
+.kb-reading .kb-md code,
+.kb-reading pre code {
+  border: 1px solid var(--kb-read-rule);
+  border-radius: 2px;
+}
+
+.kb-reading .kb-md th,
+.kb-table th {
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  box-shadow: inset 0 -2px 0 var(--kb-read-quote-bar);
+}
+
+.kb-reading .kb-md tr:nth-child(even) td,
+.kb-table tr:nth-child(even) td {
+  background-image: repeating-linear-gradient(-45deg, transparent, transparent 3px, color-mix(in srgb, var(--kb-read-rule) 65%, transparent) 3px, color-mix(in srgb, var(--kb-read-rule) 65%, transparent) 4px);
+}
+
+.kb-table,
+.kb-reading .kb-md table {
+  font-variant-numeric: tabular-nums;
+}
+
+.kb-reading mark {
+  color: var(--kb-read-fg);
+}
+
+.kb-reading .katex,
+.kb-reading .katex .mord,
+.kb-reading .katex .mrel,
+.kb-reading .katex .mbin,
+.kb-reading .katex .mop,
+.kb-reading .katex .mpunct,
+.kb-reading .katex .mopen,
+.kb-reading .katex .mclose,
+.kb-reading .katex .minner,
+.kb-reading .katex .mathnormal,
+.kb-reading .katex .mathbf {
+  color: var(--kb-read-fg);
+}
+
+.kb-editor {
+  caret-color: var(--kb-read-editor-caret);
+}
+
+.kb-editor[data-dirty="true"] {
+  box-shadow: inset 0 -2px 0 var(--kb-read-quote-bar);
+}
+
+.kb-editor[data-conflict="true"] {
+  box-shadow: inset 0 -2px 0 var(--kb-read-link);
+}
+
+.kb-pdf-page {
+  border-radius: 2px;
+}
+
+.kb-reading[data-focus="on"] {
+  background-color: var(--kb-read-focus-bg);
+  color: var(--kb-read-focus-fg);
+}
+
+@media (prefers-contrast: more) {
+  .kb-reading .kb-md a {
+    text-decoration-thickness: 2px;
+  }
+  .kb-reading .kb-md th,
+  .kb-table th {
+    color: var(--kb-read-heading);
+  }
+}

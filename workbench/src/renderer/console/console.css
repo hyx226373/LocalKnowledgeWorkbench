@@ -1,0 +1,68 @@
+.kb-console {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: 16px 18px;
+  overflow: auto;
+}
+.kb-console-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.kb-console h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.kb-console-note {
+  margin: 0;
+  color: var(--kb-fg-muted, #5c6570);
+}
+.kb-console-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kb-console-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--kb-border, #d7dbe0);
+  border-radius: 8px;
+}
+.kb-console-item .meta {
+  grid-column: 1 / -1;
+  color: var(--kb-fg-muted, #5c6570);
+  font-size: 0.85rem;
+}
+.kb-console-source {
+  width: 100%;
+  min-height: 240px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+}
+.kb-console-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 8px;
+}
+.kb-console-drop[data-over='1'] {
+  outline: 1px dashed var(--kb-accent, #3d6f9a);
+  outline-offset: 4px;
+}
+.kb-console-drop-hint {
+  font-size: 0.9rem;
+}
+.kb-console pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 12px;
+}

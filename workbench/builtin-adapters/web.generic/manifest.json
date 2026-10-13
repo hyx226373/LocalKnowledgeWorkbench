@@ -1,0 +1,55 @@
+{
+  "id": "web.generic",
+  "name": "通用网页（内置）",
+  "version": "1.0.0",
+  "publisher": "kb-workbench",
+  "description": "随工作台一起安装的通用网页适配器：在应用内打开任意 http(s) 网址；每个网站第一次打开时询问你（逐站授权，SDK 修订 10）。只读：不向网站提交任何工作台数据。",
+  "engines": {
+    "workbench": "^0.2.0",
+    "adapterApi": "^0.1.0"
+  },
+  "main": "dist/index.js",
+  "activationEvents": [
+    "onAdapter:web.generic"
+  ],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "web.generic",
+        "title": "网页",
+        "sourceKinds": [
+          "web"
+        ],
+        "displayMode": "in-app-web",
+        "match": {
+          "web": {
+            "urlPatterns": []
+          },
+          "priority": 1
+        },
+        "permissions": [
+          {
+            "id": "net-sites",
+            "kind": "net",
+            "mode": "ask-per-site",
+            "domains": [],
+            "reason": "在应用内打开你输入或点开的网址；每个网站（主机名）第一次打开时先询问你，只加载你批准过的网站"
+          }
+        ],
+        "web": {
+          "homeUrl": "https://example.com/",
+          "session": {
+            "partition": "persistent",
+            "maxAgeDays": 90
+          },
+          "offDomain": "open-external-with-confirm",
+          "popups": "open-external-with-confirm",
+          "downloads": "block"
+        },
+        "stateSchemaVersion": 1,
+        "maxStateBytes": 4096
+      }
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+/* 书房排版：段首缩进、标题字距 */
+.kb-reading .kb-md p { text-indent: 2em; }
+.kb-reading .kb-md h1, .kb-reading .kb-md h2 { letter-spacing: .04em; font-weight: 600; }

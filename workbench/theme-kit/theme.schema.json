@@ -1,0 +1,1160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kb-workbench/theme.schema.json",
+  "title": "本地知识工作台主题包 theme.json",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version",
+    "engines",
+    "contributes"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$",
+      "description": "全局唯一；不要与内置 kb.theme.* 重复"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+"
+    },
+    "description": {
+      "type": "string"
+    },
+    "engines": {
+      "type": "object",
+      "required": [
+        "workbench",
+        "themeContract"
+      ],
+      "properties": {
+        "workbench": {
+          "type": "string",
+          "description": "宿主 API 范围，当前 ^0.2.0"
+        },
+        "themeContract": {
+          "type": "string",
+          "description": "主题接口范围，当前 ^2.0.0"
+        }
+      }
+    },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "chromeThemes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "light",
+              "dark"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
+              },
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "light": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tokens": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "font-ui": {
+                        "type": "string",
+                        "description": "界面字体（菜单、树、按钮、标签）"
+                      },
+                      "font-mono": {
+                        "type": "string",
+                        "description": "界面等宽字体（快捷键、路径）"
+                      },
+                      "font-ui-accent": {
+                        "type": "string",
+                        "description": "强调字体（标签标题、状态栏、页码；可设为等宽或衬线）"
+                      },
+                      "fs-xs": {
+                        "type": "string",
+                        "description": "最小字号（徽标、区块小标题）"
+                      },
+                      "fs-sm": {
+                        "type": "string",
+                        "description": "小字号（按钮、标签、次要信息）"
+                      },
+                      "fs-md": {
+                        "type": "string",
+                        "description": "界面正文字号"
+                      },
+                      "fs-lg": {
+                        "type": "string",
+                        "description": "较大字号（对话框标题）"
+                      },
+                      "fs-xl": {
+                        "type": "string",
+                        "description": "最大字号（空状态标题）"
+                      },
+                      "fw-strong": {
+                        "type": "string",
+                        "description": "强调字重"
+                      },
+                      "ls-caps": {
+                        "type": "string",
+                        "description": "区块小标题字距"
+                      },
+                      "space-1": {
+                        "type": "string",
+                        "description": "间距阶梯第 1 级"
+                      },
+                      "space-2": {
+                        "type": "string",
+                        "description": "间距阶梯第 2 级"
+                      },
+                      "space-3": {
+                        "type": "string",
+                        "description": "间距阶梯第 3 级"
+                      },
+                      "space-4": {
+                        "type": "string",
+                        "description": "间距阶梯第 4 级"
+                      },
+                      "space-5": {
+                        "type": "string",
+                        "description": "间距阶梯第 5 级"
+                      },
+                      "space-6": {
+                        "type": "string",
+                        "description": "间距阶梯第 6 级"
+                      },
+                      "size-row": {
+                        "type": "string",
+                        "description": "树行/菜单项/搜索结果行高"
+                      },
+                      "size-control": {
+                        "type": "string",
+                        "description": "按钮、输入框高度"
+                      },
+                      "size-topbar": {
+                        "type": "string",
+                        "description": "顶栏高度"
+                      },
+                      "size-statusbar": {
+                        "type": "string",
+                        "description": "状态栏高度"
+                      },
+                      "size-tab": {
+                        "type": "string",
+                        "description": "标签栏高度"
+                      },
+                      "size-sash": {
+                        "type": "string",
+                        "description": "侧栏分隔条可见宽度"
+                      },
+                      "row-inset": {
+                        "type": "string",
+                        "description": "行（树/菜单）左右内缩，配合圆角做“胶囊”行"
+                      },
+                      "dock-gap": {
+                        "type": "string",
+                        "description": "分栏卡片之间的视觉间隙（纯视觉，不改变保存的分栏尺寸）"
+                      },
+                      "shell-inset": {
+                        "type": "string",
+                        "description": "外框四周留白（侧栏/分栏区与窗口边缘的距离）"
+                      },
+                      "radius-sm": {
+                        "type": "string",
+                        "description": "小圆角（行、徽标、代码）"
+                      },
+                      "radius-md": {
+                        "type": "string",
+                        "description": "中圆角（按钮、输入框、弹层）"
+                      },
+                      "radius-lg": {
+                        "type": "string",
+                        "description": "大圆角（卡片、对话框、分组）"
+                      },
+                      "radius-pill": {
+                        "type": "string",
+                        "description": "胶囊圆角"
+                      },
+                      "shadow-1": {
+                        "type": "string",
+                        "description": "一级阴影（卡片、分组）"
+                      },
+                      "shadow-2": {
+                        "type": "string",
+                        "description": "二级阴影（弹层、搜索结果）"
+                      },
+                      "shadow-3": {
+                        "type": "string",
+                        "description": "三级阴影（对话框）"
+                      },
+                      "motion-fast": {
+                        "type": "string",
+                        "description": "快速过渡时长（悬停）"
+                      },
+                      "motion-normal": {
+                        "type": "string",
+                        "description": "常规过渡时长（展开、弹层）"
+                      },
+                      "motion-ease": {
+                        "type": "string",
+                        "description": "缓动曲线"
+                      },
+                      "opacity-dragging": {
+                        "type": "string",
+                        "description": "被拖动元素（标签、分隔条）的不透明度"
+                      },
+                      "color-bg": {
+                        "type": "string",
+                        "description": "应用底色（窗口最底层）"
+                      },
+                      "color-chrome": {
+                        "type": "string",
+                        "description": "外框底色（顶栏、侧栏）"
+                      },
+                      "color-chrome-alt": {
+                        "type": "string",
+                        "description": "次级外框色（区块头、次级按钮）"
+                      },
+                      "color-surface": {
+                        "type": "string",
+                        "description": "分组/面板底色"
+                      },
+                      "color-surface-raised": {
+                        "type": "string",
+                        "description": "浮层底色（弹层、对话框、工具栏、提示条）"
+                      },
+                      "color-surface-sunken": {
+                        "type": "string",
+                        "description": "凹陷底色（编辑器装订线、对比视图、资料列表、代码框外框）"
+                      },
+                      "color-border": {
+                        "type": "string",
+                        "description": "常规边框/分隔线"
+                      },
+                      "color-border-strong": {
+                        "type": "string",
+                        "description": "强调边框（输入框悬停、对话框）"
+                      },
+                      "color-text": {
+                        "type": "string",
+                        "description": "主文字"
+                      },
+                      "color-text-muted": {
+                        "type": "string",
+                        "description": "次要文字"
+                      },
+                      "color-text-faint": {
+                        "type": "string",
+                        "description": "弱文字（占位、空状态）"
+                      },
+                      "color-text-disabled": {
+                        "type": "string",
+                        "description": "禁用文字（v1 的 color-disabled-fg 改名）"
+                      },
+                      "color-accent": {
+                        "type": "string",
+                        "description": "强调色（主按钮、焦点、激活指示）"
+                      },
+                      "color-accent-fg": {
+                        "type": "string",
+                        "description": "强调色上的文字"
+                      },
+                      "color-accent-soft": {
+                        "type": "string",
+                        "description": "强调色浅底（标签、提示）"
+                      },
+                      "color-hover": {
+                        "type": "string",
+                        "description": "悬停底色"
+                      },
+                      "color-active": {
+                        "type": "string",
+                        "description": "按下底色"
+                      },
+                      "color-selected": {
+                        "type": "string",
+                        "description": "选中底色（当前文件、选中结果）"
+                      },
+                      "color-selected-fg": {
+                        "type": "string",
+                        "description": "选中文字"
+                      },
+                      "color-focus-ring": {
+                        "type": "string",
+                        "description": "键盘焦点环（focus-visible）"
+                      },
+                      "color-disabled-bg": {
+                        "type": "string",
+                        "description": "禁用底色"
+                      },
+                      "color-drag-over": {
+                        "type": "string",
+                        "description": "拖放目标高亮"
+                      },
+                      "color-overlay": {
+                        "type": "string",
+                        "description": "对话框/命令面板遮罩"
+                      },
+                      "color-fav": {
+                        "type": "string",
+                        "description": "收藏星标"
+                      },
+                      "color-danger": {
+                        "type": "string",
+                        "description": "危险/错误"
+                      },
+                      "color-success": {
+                        "type": "string",
+                        "description": "成功/启用"
+                      },
+                      "color-warning": {
+                        "type": "string",
+                        "description": "警告/扫描中/冲突"
+                      },
+                      "color-status-bg": {
+                        "type": "string",
+                        "description": "状态栏底色"
+                      },
+                      "color-status-fg": {
+                        "type": "string",
+                        "description": "状态栏文字"
+                      },
+                      "color-tab-bg": {
+                        "type": "string",
+                        "description": "标签栏/未激活标签底色"
+                      },
+                      "color-tab-fg": {
+                        "type": "string",
+                        "description": "未激活标签文字"
+                      },
+                      "color-tab-active-bg": {
+                        "type": "string",
+                        "description": "激活标签底色"
+                      },
+                      "color-tab-active-fg": {
+                        "type": "string",
+                        "description": "激活标签文字"
+                      },
+                      "color-tab-indicator": {
+                        "type": "string",
+                        "description": "激活标签指示条（transparent 表示不显示）"
+                      },
+                      "color-sash": {
+                        "type": "string",
+                        "description": "分隔条颜色"
+                      },
+                      "color-sash-hover": {
+                        "type": "string",
+                        "description": "分隔条悬停颜色"
+                      },
+                      "color-sash-dragging": {
+                        "type": "string",
+                        "description": "分隔条拖动中颜色"
+                      },
+                      "color-input-bg": {
+                        "type": "string",
+                        "description": "输入框底色"
+                      },
+                      "color-input-border": {
+                        "type": "string",
+                        "description": "输入框边框"
+                      },
+                      "color-scrollbar": {
+                        "type": "string",
+                        "description": "滚动条滑块"
+                      },
+                      "color-diff-add-bg": {
+                        "type": "string",
+                        "description": "对比视图：新增行底色"
+                      },
+                      "color-diff-add-fg": {
+                        "type": "string",
+                        "description": "对比视图：新增行文字"
+                      },
+                      "color-diff-del-bg": {
+                        "type": "string",
+                        "description": "对比视图：删除行底色"
+                      },
+                      "color-diff-del-fg": {
+                        "type": "string",
+                        "description": "对比视图：删除行文字"
+                      },
+                      "color-icon-folder": {
+                        "type": "string",
+                        "description": "文件夹图标"
+                      },
+                      "color-icon-root": {
+                        "type": "string",
+                        "description": "根目录图标"
+                      },
+                      "color-icon-file": {
+                        "type": "string",
+                        "description": "普通文件图标"
+                      },
+                      "color-icon-md": {
+                        "type": "string",
+                        "description": "Markdown 图标"
+                      },
+                      "color-icon-pdf": {
+                        "type": "string",
+                        "description": "PDF 图标"
+                      },
+                      "color-icon-image": {
+                        "type": "string",
+                        "description": "图片图标"
+                      },
+                      "color-icon-csv": {
+                        "type": "string",
+                        "description": "表格图标"
+                      }
+                    }
+                  },
+                  "css": {
+                    "type": "string",
+                    "description": "包内相对路径，如 chrome.css"
+                  }
+                }
+              },
+              "dark": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tokens": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "font-ui": {
+                        "type": "string",
+                        "description": "界面字体（菜单、树、按钮、标签）"
+                      },
+                      "font-mono": {
+                        "type": "string",
+                        "description": "界面等宽字体（快捷键、路径）"
+                      },
+                      "font-ui-accent": {
+                        "type": "string",
+                        "description": "强调字体（标签标题、状态栏、页码；可设为等宽或衬线）"
+                      },
+                      "fs-xs": {
+                        "type": "string",
+                        "description": "最小字号（徽标、区块小标题）"
+                      },
+                      "fs-sm": {
+                        "type": "string",
+                        "description": "小字号（按钮、标签、次要信息）"
+                      },
+                      "fs-md": {
+                        "type": "string",
+                        "description": "界面正文字号"
+                      },
+                      "fs-lg": {
+                        "type": "string",
+                        "description": "较大字号（对话框标题）"
+                      },
+                      "fs-xl": {
+                        "type": "string",
+                        "description": "最大字号（空状态标题）"
+                      },
+                      "fw-strong": {
+                        "type": "string",
+                        "description": "强调字重"
+                      },
+                      "ls-caps": {
+                        "type": "string",
+                        "description": "区块小标题字距"
+                      },
+                      "space-1": {
+                        "type": "string",
+                        "description": "间距阶梯第 1 级"
+                      },
+                      "space-2": {
+                        "type": "string",
+                        "description": "间距阶梯第 2 级"
+                      },
+                      "space-3": {
+                        "type": "string",
+                        "description": "间距阶梯第 3 级"
+                      },
+                      "space-4": {
+                        "type": "string",
+                        "description": "间距阶梯第 4 级"
+                      },
+                      "space-5": {
+                        "type": "string",
+                        "description": "间距阶梯第 5 级"
+                      },
+                      "space-6": {
+                        "type": "string",
+                        "description": "间距阶梯第 6 级"
+                      },
+                      "size-row": {
+                        "type": "string",
+                        "description": "树行/菜单项/搜索结果行高"
+                      },
+                      "size-control": {
+                        "type": "string",
+                        "description": "按钮、输入框高度"
+                      },
+                      "size-topbar": {
+                        "type": "string",
+                        "description": "顶栏高度"
+                      },
+                      "size-statusbar": {
+                        "type": "string",
+                        "description": "状态栏高度"
+                      },
+                      "size-tab": {
+                        "type": "string",
+                        "description": "标签栏高度"
+                      },
+                      "size-sash": {
+                        "type": "string",
+                        "description": "侧栏分隔条可见宽度"
+                      },
+                      "row-inset": {
+                        "type": "string",
+                        "description": "行（树/菜单）左右内缩，配合圆角做“胶囊”行"
+                      },
+                      "dock-gap": {
+                        "type": "string",
+                        "description": "分栏卡片之间的视觉间隙（纯视觉，不改变保存的分栏尺寸）"
+                      },
+                      "shell-inset": {
+                        "type": "string",
+                        "description": "外框四周留白（侧栏/分栏区与窗口边缘的距离）"
+                      },
+                      "radius-sm": {
+                        "type": "string",
+                        "description": "小圆角（行、徽标、代码）"
+                      },
+                      "radius-md": {
+                        "type": "string",
+                        "description": "中圆角（按钮、输入框、弹层）"
+                      },
+                      "radius-lg": {
+                        "type": "string",
+                        "description": "大圆角（卡片、对话框、分组）"
+                      },
+                      "radius-pill": {
+                        "type": "string",
+                        "description": "胶囊圆角"
+                      },
+                      "shadow-1": {
+                        "type": "string",
+                        "description": "一级阴影（卡片、分组）"
+                      },
+                      "shadow-2": {
+                        "type": "string",
+                        "description": "二级阴影（弹层、搜索结果）"
+                      },
+                      "shadow-3": {
+                        "type": "string",
+                        "description": "三级阴影（对话框）"
+                      },
+                      "motion-fast": {
+                        "type": "string",
+                        "description": "快速过渡时长（悬停）"
+                      },
+                      "motion-normal": {
+                        "type": "string",
+                        "description": "常规过渡时长（展开、弹层）"
+                      },
+                      "motion-ease": {
+                        "type": "string",
+                        "description": "缓动曲线"
+                      },
+                      "opacity-dragging": {
+                        "type": "string",
+                        "description": "被拖动元素（标签、分隔条）的不透明度"
+                      },
+                      "color-bg": {
+                        "type": "string",
+                        "description": "应用底色（窗口最底层）"
+                      },
+                      "color-chrome": {
+                        "type": "string",
+                        "description": "外框底色（顶栏、侧栏）"
+                      },
+                      "color-chrome-alt": {
+                        "type": "string",
+                        "description": "次级外框色（区块头、次级按钮）"
+                      },
+                      "color-surface": {
+                        "type": "string",
+                        "description": "分组/面板底色"
+                      },
+                      "color-surface-raised": {
+                        "type": "string",
+                        "description": "浮层底色（弹层、对话框、工具栏、提示条）"
+                      },
+                      "color-surface-sunken": {
+                        "type": "string",
+                        "description": "凹陷底色（编辑器装订线、对比视图、资料列表、代码框外框）"
+                      },
+                      "color-border": {
+                        "type": "string",
+                        "description": "常规边框/分隔线"
+                      },
+                      "color-border-strong": {
+                        "type": "string",
+                        "description": "强调边框（输入框悬停、对话框）"
+                      },
+                      "color-text": {
+                        "type": "string",
+                        "description": "主文字"
+                      },
+                      "color-text-muted": {
+                        "type": "string",
+                        "description": "次要文字"
+                      },
+                      "color-text-faint": {
+                        "type": "string",
+                        "description": "弱文字（占位、空状态）"
+                      },
+                      "color-text-disabled": {
+                        "type": "string",
+                        "description": "禁用文字（v1 的 color-disabled-fg 改名）"
+                      },
+                      "color-accent": {
+                        "type": "string",
+                        "description": "强调色（主按钮、焦点、激活指示）"
+                      },
+                      "color-accent-fg": {
+                        "type": "string",
+                        "description": "强调色上的文字"
+                      },
+                      "color-accent-soft": {
+                        "type": "string",
+                        "description": "强调色浅底（标签、提示）"
+                      },
+                      "color-hover": {
+                        "type": "string",
+                        "description": "悬停底色"
+                      },
+                      "color-active": {
+                        "type": "string",
+                        "description": "按下底色"
+                      },
+                      "color-selected": {
+                        "type": "string",
+                        "description": "选中底色（当前文件、选中结果）"
+                      },
+                      "color-selected-fg": {
+                        "type": "string",
+                        "description": "选中文字"
+                      },
+                      "color-focus-ring": {
+                        "type": "string",
+                        "description": "键盘焦点环（focus-visible）"
+                      },
+                      "color-disabled-bg": {
+                        "type": "string",
+                        "description": "禁用底色"
+                      },
+                      "color-drag-over": {
+                        "type": "string",
+                        "description": "拖放目标高亮"
+                      },
+                      "color-overlay": {
+                        "type": "string",
+                        "description": "对话框/命令面板遮罩"
+                      },
+                      "color-fav": {
+                        "type": "string",
+                        "description": "收藏星标"
+                      },
+                      "color-danger": {
+                        "type": "string",
+                        "description": "危险/错误"
+                      },
+                      "color-success": {
+                        "type": "string",
+                        "description": "成功/启用"
+                      },
+                      "color-warning": {
+                        "type": "string",
+                        "description": "警告/扫描中/冲突"
+                      },
+                      "color-status-bg": {
+                        "type": "string",
+                        "description": "状态栏底色"
+                      },
+                      "color-status-fg": {
+                        "type": "string",
+                        "description": "状态栏文字"
+                      },
+                      "color-tab-bg": {
+                        "type": "string",
+                        "description": "标签栏/未激活标签底色"
+                      },
+                      "color-tab-fg": {
+                        "type": "string",
+                        "description": "未激活标签文字"
+                      },
+                      "color-tab-active-bg": {
+                        "type": "string",
+                        "description": "激活标签底色"
+                      },
+                      "color-tab-active-fg": {
+                        "type": "string",
+                        "description": "激活标签文字"
+                      },
+                      "color-tab-indicator": {
+                        "type": "string",
+                        "description": "激活标签指示条（transparent 表示不显示）"
+                      },
+                      "color-sash": {
+                        "type": "string",
+                        "description": "分隔条颜色"
+                      },
+                      "color-sash-hover": {
+                        "type": "string",
+                        "description": "分隔条悬停颜色"
+                      },
+                      "color-sash-dragging": {
+                        "type": "string",
+                        "description": "分隔条拖动中颜色"
+                      },
+                      "color-input-bg": {
+                        "type": "string",
+                        "description": "输入框底色"
+                      },
+                      "color-input-border": {
+                        "type": "string",
+                        "description": "输入框边框"
+                      },
+                      "color-scrollbar": {
+                        "type": "string",
+                        "description": "滚动条滑块"
+                      },
+                      "color-diff-add-bg": {
+                        "type": "string",
+                        "description": "对比视图：新增行底色"
+                      },
+                      "color-diff-add-fg": {
+                        "type": "string",
+                        "description": "对比视图：新增行文字"
+                      },
+                      "color-diff-del-bg": {
+                        "type": "string",
+                        "description": "对比视图：删除行底色"
+                      },
+                      "color-diff-del-fg": {
+                        "type": "string",
+                        "description": "对比视图：删除行文字"
+                      },
+                      "color-icon-folder": {
+                        "type": "string",
+                        "description": "文件夹图标"
+                      },
+                      "color-icon-root": {
+                        "type": "string",
+                        "description": "根目录图标"
+                      },
+                      "color-icon-file": {
+                        "type": "string",
+                        "description": "普通文件图标"
+                      },
+                      "color-icon-md": {
+                        "type": "string",
+                        "description": "Markdown 图标"
+                      },
+                      "color-icon-pdf": {
+                        "type": "string",
+                        "description": "PDF 图标"
+                      },
+                      "color-icon-image": {
+                        "type": "string",
+                        "description": "图片图标"
+                      },
+                      "color-icon-csv": {
+                        "type": "string",
+                        "description": "表格图标"
+                      }
+                    }
+                  },
+                  "css": {
+                    "type": "string",
+                    "description": "包内相对路径，如 chrome.css"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "readingThemes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label",
+              "light",
+              "dark"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9.-]{1,63}$"
+              },
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "light": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tokens": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "read-font": {
+                        "type": "string",
+                        "description": "正文字体"
+                      },
+                      "read-font-heading": {
+                        "type": "string",
+                        "description": "标题字体"
+                      },
+                      "read-font-mono": {
+                        "type": "string",
+                        "description": "代码/纯文本字体"
+                      },
+                      "read-fs": {
+                        "type": "string",
+                        "description": "正文字号"
+                      },
+                      "read-fs-code": {
+                        "type": "string",
+                        "description": "代码/纯文本字号"
+                      },
+                      "read-lh": {
+                        "type": "string",
+                        "description": "正文行高"
+                      },
+                      "read-max-width": {
+                        "type": "string",
+                        "description": "Markdown 正文最大宽度（100% 表示铺满）"
+                      },
+                      "read-pad-x": {
+                        "type": "string",
+                        "description": "正文左右内边距"
+                      },
+                      "read-pad-y": {
+                        "type": "string",
+                        "description": "正文上下内边距"
+                      },
+                      "read-bg": {
+                        "type": "string",
+                        "description": "阅读区底色"
+                      },
+                      "read-fg": {
+                        "type": "string",
+                        "description": "正文颜色"
+                      },
+                      "read-muted": {
+                        "type": "string",
+                        "description": "引用/注释文字"
+                      },
+                      "read-heading": {
+                        "type": "string",
+                        "description": "标题颜色"
+                      },
+                      "read-link": {
+                        "type": "string",
+                        "description": "链接颜色"
+                      },
+                      "read-quote-bar": {
+                        "type": "string",
+                        "description": "引用块左侧条"
+                      },
+                      "read-code-bg": {
+                        "type": "string",
+                        "description": "行内/块代码底色"
+                      },
+                      "read-code-fg": {
+                        "type": "string",
+                        "description": "代码文字"
+                      },
+                      "read-rule": {
+                        "type": "string",
+                        "description": "表格线/分隔线"
+                      },
+                      "read-table-head-bg": {
+                        "type": "string",
+                        "description": "表头底色（Markdown 表格、CSV 视图）"
+                      },
+                      "read-selection": {
+                        "type": "string",
+                        "description": "文字选区底色"
+                      },
+                      "read-mark": {
+                        "type": "string",
+                        "description": "搜索命中高亮"
+                      },
+                      "read-editor-bg": {
+                        "type": "string",
+                        "description": "编辑器底色（txt/md 原位编辑）"
+                      },
+                      "read-editor-caret": {
+                        "type": "string",
+                        "description": "编辑器光标颜色"
+                      },
+                      "read-pdf-backdrop": {
+                        "type": "string",
+                        "description": "PDF/图片页面背后的底色"
+                      },
+                      "read-pdf-page-bg": {
+                        "type": "string",
+                        "description": "PDF 页面底色（加载前）"
+                      },
+                      "read-pdf-page-shadow": {
+                        "type": "string",
+                        "description": "PDF 页面阴影"
+                      },
+                      "read-pdf-dark-filter": {
+                        "type": "string",
+                        "description": "PDF 深色滤镜参数：只在用户于 PDF 面板中打开“深色滤镜”时应用（默认原色显示）；v1 的 read-pdf-filter 改名"
+                      },
+                      "read-focus-bg": {
+                        "type": "string",
+                        "description": "专注模式阅读区底色"
+                      },
+                      "read-focus-fg": {
+                        "type": "string",
+                        "description": "专注模式正文颜色"
+                      },
+                      "read-focus-fs": {
+                        "type": "string",
+                        "description": "专注模式正文字号"
+                      },
+                      "read-focus-lh": {
+                        "type": "string",
+                        "description": "专注模式正文行高"
+                      },
+                      "read-focus-max-width": {
+                        "type": "string",
+                        "description": "专注模式正文最大宽度"
+                      },
+                      "read-focus-pad-x": {
+                        "type": "string",
+                        "description": "专注模式正文左右内边距"
+                      },
+                      "read-focus-pad-y": {
+                        "type": "string",
+                        "description": "专注模式正文上下内边距"
+                      },
+                      "read-focus-chrome-opacity": {
+                        "type": "string",
+                        "description": "专注模式下外框（顶栏、侧栏、状态栏、标签栏）的不透明度；1 表示不淡出"
+                      }
+                    }
+                  },
+                  "css": {
+                    "type": "string",
+                    "description": "包内相对路径，如 chrome.css"
+                  }
+                }
+              },
+              "dark": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tokens": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "read-font": {
+                        "type": "string",
+                        "description": "正文字体"
+                      },
+                      "read-font-heading": {
+                        "type": "string",
+                        "description": "标题字体"
+                      },
+                      "read-font-mono": {
+                        "type": "string",
+                        "description": "代码/纯文本字体"
+                      },
+                      "read-fs": {
+                        "type": "string",
+                        "description": "正文字号"
+                      },
+                      "read-fs-code": {
+                        "type": "string",
+                        "description": "代码/纯文本字号"
+                      },
+                      "read-lh": {
+                        "type": "string",
+                        "description": "正文行高"
+                      },
+                      "read-max-width": {
+                        "type": "string",
+                        "description": "Markdown 正文最大宽度（100% 表示铺满）"
+                      },
+                      "read-pad-x": {
+                        "type": "string",
+                        "description": "正文左右内边距"
+                      },
+                      "read-pad-y": {
+                        "type": "string",
+                        "description": "正文上下内边距"
+                      },
+                      "read-bg": {
+                        "type": "string",
+                        "description": "阅读区底色"
+                      },
+                      "read-fg": {
+                        "type": "string",
+                        "description": "正文颜色"
+                      },
+                      "read-muted": {
+                        "type": "string",
+                        "description": "引用/注释文字"
+                      },
+                      "read-heading": {
+                        "type": "string",
+                        "description": "标题颜色"
+                      },
+                      "read-link": {
+                        "type": "string",
+                        "description": "链接颜色"
+                      },
+                      "read-quote-bar": {
+                        "type": "string",
+                        "description": "引用块左侧条"
+                      },
+                      "read-code-bg": {
+                        "type": "string",
+                        "description": "行内/块代码底色"
+                      },
+                      "read-code-fg": {
+                        "type": "string",
+                        "description": "代码文字"
+                      },
+                      "read-rule": {
+                        "type": "string",
+                        "description": "表格线/分隔线"
+                      },
+                      "read-table-head-bg": {
+                        "type": "string",
+                        "description": "表头底色（Markdown 表格、CSV 视图）"
+                      },
+                      "read-selection": {
+                        "type": "string",
+                        "description": "文字选区底色"
+                      },
+                      "read-mark": {
+                        "type": "string",
+                        "description": "搜索命中高亮"
+                      },
+                      "read-editor-bg": {
+                        "type": "string",
+                        "description": "编辑器底色（txt/md 原位编辑）"
+                      },
+                      "read-editor-caret": {
+                        "type": "string",
+                        "description": "编辑器光标颜色"
+                      },
+                      "read-pdf-backdrop": {
+                        "type": "string",
+                        "description": "PDF/图片页面背后的底色"
+                      },
+                      "read-pdf-page-bg": {
+                        "type": "string",
+                        "description": "PDF 页面底色（加载前）"
+                      },
+                      "read-pdf-page-shadow": {
+                        "type": "string",
+                        "description": "PDF 页面阴影"
+                      },
+                      "read-pdf-dark-filter": {
+                        "type": "string",
+                        "description": "PDF 深色滤镜参数：只在用户于 PDF 面板中打开“深色滤镜”时应用（默认原色显示）；v1 的 read-pdf-filter 改名"
+                      },
+                      "read-focus-bg": {
+                        "type": "string",
+                        "description": "专注模式阅读区底色"
+                      },
+                      "read-focus-fg": {
+                        "type": "string",
+                        "description": "专注模式正文颜色"
+                      },
+                      "read-focus-fs": {
+                        "type": "string",
+                        "description": "专注模式正文字号"
+                      },
+                      "read-focus-lh": {
+                        "type": "string",
+                        "description": "专注模式正文行高"
+                      },
+                      "read-focus-max-width": {
+                        "type": "string",
+                        "description": "专注模式正文最大宽度"
+                      },
+                      "read-focus-pad-x": {
+                        "type": "string",
+                        "description": "专注模式正文左右内边距"
+                      },
+                      "read-focus-pad-y": {
+                        "type": "string",
+                        "description": "专注模式正文上下内边距"
+                      },
+                      "read-focus-chrome-opacity": {
+                        "type": "string",
+                        "description": "专注模式下外框（顶栏、侧栏、状态栏、标签栏）的不透明度；1 表示不淡出"
+                      }
+                    }
+                  },
+                  "css": {
+                    "type": "string",
+                    "description": "包内相对路径，如 chrome.css"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "layoutPresets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "file"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "_说明": "仅为格式示例，未启用。要启用必须把下面的 embedding 合并进 manifest.json 的 adapters[0].app，并附上真实的逐版本验收记录。示例中的哈希、版本、证据均为占位，Notepad++ 也未经嵌入验证。",
+  "embedding": {
+    "method": "win32-reparent",
+    "enabledByDefault": false,
+    "verified": [
+      {
+        "programId": "notepadpp",
+        "productVersionRange": ">=8.9.0 <8.9.1",
+        "exeSha256": ["0000000000000000000000000000000000000000000000000000000000000000"],
+        "windowsBuilds": ["Windows 11 24H2 (26100)"],
+        "dpiScales": [1, 1.25, 1.5, 2],
+        "verifiedAt": "YYYY-MM-DD",
+        "verifiedBy": "姓名",
+        "evidence": "verify/embedding-notepadpp-8.9.0-26100.md",
+        "knownIssues": ["切换显示器后需重新布局", "输入法候选窗位置偏移", "Notepad++ 自身的停靠面板/对话框不随父窗口移动"]
+      }
+    ]
+  }
+}

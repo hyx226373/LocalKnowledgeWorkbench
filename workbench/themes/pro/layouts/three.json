@@ -1,0 +1,23 @@
+{
+  "id": "pro.three",
+  "label": "三栏",
+  "description": "分组依次放进三列",
+  "sidebarWidth": 260,
+  "grid": {
+    "split": "row",
+    "children": [
+      {
+        "slot": 1,
+        "size": 34
+      },
+      {
+        "slot": 2,
+        "size": 33
+      },
+      {
+        "slot": 3,
+        "size": 33
+      }
+    ]
+  }
+}

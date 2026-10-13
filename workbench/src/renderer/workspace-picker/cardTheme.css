@@ -1,0 +1,129 @@
+/* 工作区卡片。六套主题只换变量，不换这张结构。缩略图槽留给 P3，这里不画分栏。 */
+
+[data-kb-scheme="light"] .kb-ws-card,
+.kb-ws-card[data-kb-scheme="light"] { color-scheme: light; }
+
+[data-kb-scheme="dark"] .kb-ws-card,
+.kb-ws-card[data-kb-scheme="dark"] { color-scheme: dark; }
+
+.kb-ws-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--kb-space-3);
+  min-width: 0;
+  padding: var(--kb-space-4);
+  background-color: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  border: 1px solid var(--kb-color-border);
+  border-radius: var(--kb-radius-lg);
+  box-shadow: inset 0 3px 0 var(--kb-color-accent), var(--kb-shadow-1);
+  font-family: var(--kb-font-ui);
+  font-size: var(--kb-fs-md);
+  line-height: 1.45;
+  transition:
+    background-color var(--kb-motion-fast) var(--kb-motion-ease),
+    border-color var(--kb-motion-fast) var(--kb-motion-ease),
+    box-shadow var(--kb-motion-fast) var(--kb-motion-ease),
+    color var(--kb-motion-fast) var(--kb-motion-ease);
+}
+
+.kb-ws-card:hover {
+  background-image: linear-gradient(var(--kb-color-hover), var(--kb-color-hover));
+  border-color: var(--kb-color-border-strong);
+}
+
+.kb-ws-card:focus-visible {
+  outline: 2px solid var(--kb-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.kb-ws-card.is-selected {
+  background-color: var(--kb-color-surface);
+  background-image: linear-gradient(var(--kb-color-selected), var(--kb-color-selected));
+  color: var(--kb-color-selected-fg);
+  border-color: var(--kb-color-accent);
+  box-shadow: inset 0 0 0 1px var(--kb-color-accent), var(--kb-shadow-1);
+}
+
+.kb-ws-card.is-selected:hover {
+  background-image: linear-gradient(var(--kb-color-selected), var(--kb-color-selected));
+}
+
+.kb-ws-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--kb-space-2);
+  min-width: 0;
+}
+
+.kb-ws-card-mark {
+  flex: none;
+  color: var(--kb-color-text-faint);
+  font-size: var(--kb-fs-sm);
+  line-height: 1;
+}
+
+.kb-ws-card.is-favorite .kb-ws-card-mark { color: var(--kb-color-fav); }
+
+.kb-ws-card-name {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--kb-font-ui-accent);
+  font-size: var(--kb-fs-md);
+  font-weight: var(--kb-fw-strong);
+}
+
+.kb-ws-card-project {
+  margin: 0;
+  color: var(--kb-color-text-faint);
+  font-size: var(--kb-fs-xs);
+  letter-spacing: var(--kb-ls-caps);
+}
+
+.kb-ws-card-purpose {
+  margin: 0;
+  color: var(--kb-color-text-muted);
+  font-size: var(--kb-fs-sm);
+  overflow: hidden;
+  max-height: calc(var(--kb-fs-sm) * 2.9);
+}
+
+.kb-ws-card-thumb {
+  background: var(--kb-color-surface-sunken);
+  border: 1px solid var(--kb-color-border);
+  border-radius: var(--kb-radius-lg);
+  aspect-ratio: 16 / 9;
+}
+
+.kb-ws-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--kb-space-2);
+  min-height: var(--kb-space-4);
+}
+
+.kb-ws-card-tag {
+  background: var(--kb-color-accent-soft);
+  color: var(--kb-color-text);
+  border-radius: var(--kb-radius-pill);
+  font-size: var(--kb-fs-xs);
+  padding: var(--kb-space-1) var(--kb-space-2);
+}
+
+.kb-ws-card-counts {
+  margin: 0;
+  color: var(--kb-color-text-muted);
+  font-size: var(--kb-fs-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-ws-card,
+  .kb-ws-card * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

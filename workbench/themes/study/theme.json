@@ -1,0 +1,177 @@
+{
+  "id": "kb.theme.study",
+  "name": "安静书房（占位）",
+  "version": "0.1.0",
+  "description": "方向 A：暖纸色、衬线、低对比度外框。占位实现，等待主题外包定稿。",
+  "engines": {
+    "workbench": "^0.2.0",
+    "themeContract": "^1.0.0"
+  },
+  "contributes": {
+    "chromeThemes": [
+      {
+        "id": "study",
+        "label": "安静书房",
+        "light": {
+          "css": "chrome.css",
+          "tokens": {
+            "font-ui-accent": "\"Source Han Serif SC\", \"Noto Serif CJK SC\", \"Songti SC\", \"SimSun\", serif",
+            "size-row": "26px",
+            "radius-md": "2px",
+            "radius-sm": "2px",
+            "radius-lg": "4px",
+            "color-bg": "#ece5d8",
+            "color-chrome": "#e8e0d0",
+            "color-chrome-alt": "#e1d8c6",
+            "color-surface": "#f6f1e7",
+            "color-surface-raised": "#fbf8f1",
+            "color-border": "#d9cfbc",
+            "color-border-strong": "#c4b79f",
+            "color-text": "#3b342b",
+            "color-text-muted": "#7d7263",
+            "color-text-faint": "#a59a88",
+            "color-accent": "#8a5a2b",
+            "color-accent-fg": "#fffaf2",
+            "color-accent-soft": "#efe2cf",
+            "color-hover": "rgba(120,90,50,.08)",
+            "color-active": "rgba(120,90,50,.14)",
+            "color-selected": "rgba(138,90,43,.16)",
+            "color-selected-fg": "#3b342b",
+            "color-focus-ring": "#8a5a2b",
+            "color-disabled-fg": "#b5ab9a",
+            "color-disabled-bg": "#e8e0d0",
+            "color-drag-over": "rgba(138,90,43,.18)",
+            "color-overlay": "rgba(59,52,43,.25)",
+            "color-fav": "#b07a2a",
+            "color-danger": "#a0412d",
+            "color-success": "#5b7a3a",
+            "color-warning": "#b07a2a",
+            "color-status-bg": "#e1d8c6",
+            "color-status-fg": "#6c6152",
+            "color-tab-bg": "#e1d8c6",
+            "color-tab-fg": "#8a7f6e",
+            "color-tab-active-bg": "#f6f1e7",
+            "color-tab-active-fg": "#3b342b",
+            "color-sash": "#d9cfbc",
+            "color-sash-hover": "#b08a5c",
+            "color-input-bg": "#f6f1e7",
+            "color-input-border": "#d9cfbc",
+            "color-icon-root": "#8a5a2b",
+            "color-icon-folder": "#b08a5c"
+          }
+        },
+        "dark": {
+          "css": "chrome.css",
+          "tokens": {
+            "font-ui-accent": "\"Source Han Serif SC\", \"Noto Serif CJK SC\", \"Songti SC\", \"SimSun\", serif",
+            "size-row": "26px",
+            "radius-md": "2px",
+            "radius-sm": "2px",
+            "radius-lg": "4px",
+            "color-bg": "#1c1814",
+            "color-chrome": "#211c17",
+            "color-chrome-alt": "#29231c",
+            "color-surface": "#25201a",
+            "color-surface-raised": "#2d261f",
+            "color-border": "#3a3128",
+            "color-border-strong": "#4d4236",
+            "color-text": "#e6dccb",
+            "color-text-muted": "#a89a85",
+            "color-text-faint": "#75695a",
+            "color-accent": "#c8925a",
+            "color-accent-fg": "#1c1814",
+            "color-accent-soft": "#3a2c1d",
+            "color-hover": "rgba(230,200,160,.06)",
+            "color-active": "rgba(230,200,160,.1)",
+            "color-selected": "rgba(200,146,90,.22)",
+            "color-selected-fg": "#f3e9d8",
+            "color-focus-ring": "#c8925a",
+            "color-disabled-fg": "#5f5548",
+            "color-disabled-bg": "#29231c",
+            "color-drag-over": "rgba(200,146,90,.22)",
+            "color-overlay": "rgba(0,0,0,.45)",
+            "color-fav": "#d9a55a",
+            "color-danger": "#e07a5f",
+            "color-success": "#9cbf6b",
+            "color-warning": "#d9a55a",
+            "color-status-bg": "#29231c",
+            "color-status-fg": "#a89a85",
+            "color-tab-bg": "#211c17",
+            "color-tab-fg": "#8f826f",
+            "color-tab-active-bg": "#25201a",
+            "color-tab-active-fg": "#f3e9d8",
+            "color-sash": "#3a3128",
+            "color-sash-hover": "#c8925a",
+            "color-input-bg": "#25201a",
+            "color-input-border": "#3a3128",
+            "color-icon-root": "#c8925a",
+            "color-icon-folder": "#b08a5c"
+          }
+        }
+      }
+    ],
+    "readingThemes": [
+      {
+        "id": "study",
+        "label": "书房排版",
+        "light": {
+          "css": "reading.css",
+          "tokens": {
+            "read-font": "\"Source Han Serif SC\", \"Noto Serif CJK SC\", \"Songti SC\", \"SimSun\", serif",
+            "read-font-heading": "\"Source Han Serif SC\", \"Noto Serif CJK SC\", \"Songti SC\", \"SimSun\", serif",
+            "read-fs": "16px",
+            "read-lh": "1.9",
+            "read-max-width": "720px",
+            "read-pad-x": "40px",
+            "read-pad-y": "32px",
+            "read-bg": "#f6f1e7",
+            "read-fg": "#2f2a22",
+            "read-muted": "#7d7263",
+            "read-heading": "#4a2f17",
+            "read-link": "#8a5a2b",
+            "read-quote-bar": "#c8a97e",
+            "read-code-bg": "#ebe3d3",
+            "read-code-fg": "#3b342b",
+            "read-rule": "#d9cfbc",
+            "read-table-head-bg": "#ebe3d3",
+            "read-selection": "rgba(138,90,43,.22)",
+            "read-mark": "#f3dca0",
+            "read-pdf-backdrop": "#ddd3c1",
+            "read-pdf-page-shadow": "0 2px 10px rgba(80,60,30,.18)"
+          }
+        },
+        "dark": {
+          "css": "reading.css",
+          "tokens": {
+            "read-font": "\"Source Han Serif SC\", \"Noto Serif CJK SC\", \"Songti SC\", \"SimSun\", serif",
+            "read-font-heading": "\"Source Han Serif SC\", \"Noto Serif CJK SC\", \"Songti SC\", \"SimSun\", serif",
+            "read-fs": "16px",
+            "read-lh": "1.9",
+            "read-max-width": "720px",
+            "read-pad-x": "40px",
+            "read-pad-y": "32px",
+            "read-bg": "#25201a",
+            "read-fg": "#e2d6c2",
+            "read-muted": "#a89a85",
+            "read-heading": "#f0d9b5",
+            "read-link": "#d9a55a",
+            "read-quote-bar": "#6b5638",
+            "read-code-bg": "#2f2820",
+            "read-code-fg": "#e6dccb",
+            "read-rule": "#3a3128",
+            "read-table-head-bg": "#2d261f",
+            "read-selection": "rgba(200,146,90,.3)",
+            "read-mark": "#5a4320",
+            "read-pdf-backdrop": "#1c1814",
+            "read-pdf-filter": "sepia(.25) brightness(.92)"
+          }
+        }
+      }
+    ],
+    "layoutPresets": [
+      {
+        "file": "layouts/focus.json"
+      }
+    ]
+  }
+}

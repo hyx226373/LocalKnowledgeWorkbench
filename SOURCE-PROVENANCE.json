@@ -1,0 +1,26 @@
+{
+  "version": "0.2.5",
+  "application_commit": "84e1dd5a6e2d07ad0f8574f2f8b2bc241a07d10e",
+  "sources": [
+    {
+      "directory": "workbench",
+      "commit": "84e1dd5a6e2d07ad0f8574f2f8b2bc241a07d10e"
+    },
+    {
+      "directory": "modules",
+      "commit": "af836564b5dc22b17fa9e355537f2652e16f4290"
+    },
+    {
+      "directory": "modules-r11-E-3888323",
+      "commit": "7b0541d6d5020c2c47e6da5ce71b230231052db7"
+    },
+    {
+      "directory": "kb-adapter-sdk",
+      "commit": "8b7011f3fd1615087bdac3b45661ebf4c5882112"
+    }
+  ],
+  "release_validation": {
+    "checksums": "verified",
+    "native_database_gate": "failed_in_supplied_packaging_report; not rerun during upload"
+  }
+}

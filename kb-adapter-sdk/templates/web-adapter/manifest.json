@@ -1,0 +1,63 @@
+{
+  "id": "example.mdn-docs",
+  "name": "MDN 文档面板（示例）",
+  "version": "0.2.0",
+  "publisher": "example",
+  "description": "在工作区面板中浏览 developer.mozilla.org，只允许该域名。网页适配器模板示例。",
+  "engines": {
+    "workbench": "^0.2.0",
+    "adapterApi": "^0.1.0"
+  },
+  "main": "dist/index.js",
+  "activationEvents": [
+    "onAdapter:example.mdn-docs.web"
+  ],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "example.mdn-docs.web",
+        "title": "MDN 文档",
+        "sourceKinds": [
+          "web"
+        ],
+        "displayMode": "in-app-web",
+        "match": {
+          "web": {
+            "urlPatterns": [
+              "https://developer.mozilla.org/*"
+            ]
+          },
+          "priority": 150
+        },
+        "permissions": [
+          {
+            "id": "net-mdn",
+            "kind": "net",
+            "domains": [
+              "developer.mozilla.org"
+            ],
+            "resourceDomains": [
+              "bcd.developer.mozilla.org",
+              "*.mdnplay.dev",
+              "mdn.github.io"
+            ],
+            "reason": "在面板中加载 MDN 文档页面；另允许加载浏览器兼容性数据（bcd.developer.mozilla.org）、交互示例（*.mdnplay.dev，每个示例一个随机子域）与示例素材（mdn.github.io）"
+          }
+        ],
+        "web": {
+          "homeUrl": "https://developer.mozilla.org/zh-CN/",
+          "session": {
+            "partition": "persistent",
+            "maxAgeDays": 30
+          },
+          "offDomain": "open-external-with-confirm",
+          "popups": "block",
+          "downloads": "block"
+        },
+        "stateSchemaVersion": 1,
+        "maxStateBytes": 2048
+      }
+    ]
+  }
+}

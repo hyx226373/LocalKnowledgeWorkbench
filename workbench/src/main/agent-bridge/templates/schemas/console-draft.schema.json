@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kb://agent-bridge/console-draft.schema.json",
+  "title": "Console draft",
+  "type": "object",
+  "required": ["title"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "order", "openAs", "ref"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "note": { "type": "string" },
+          "order": { "type": "number" },
+          "openAs": {
+            "enum": ["tab", "split-left", "split-right", "split-up", "split-down", "float", "reveal-only"]
+          },
+          "includeInGroupOpen": { "type": "boolean" },
+          "ref": { "type": "object" }
+        }
+      }
+    }
+  }
+}
