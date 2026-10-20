@@ -131,6 +131,12 @@ export function ObsidianPane() {
         </button>
       </div>
       {settings?.usingDefault ? <p className="kb-set-copy">当前使用默认路径。</p> : null}
+      <div className="kb-set-row" data-testid="obsidian-bundled-plugin">
+        <div>
+          <b>可选插件：工作台桥{settings?.bundledPlugin ? ` ${settings.bundledPlugin.version}` : ''}</b>
+          <p>{settings?.bundledPlugin ? `已随工作台附带（${settings.bundledPlugin.id}），默认不启用。点下面的「初始化中转库」才会装进中转库并启用；不会装进你的其它库。` : '这个版本没有附带工作台桥。'}</p>
+        </div>
+      </div>
       <div className="kb-set-row">
         <div>
           <b>初始化中转库</b>

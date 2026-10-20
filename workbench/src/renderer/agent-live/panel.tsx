@@ -36,6 +36,15 @@ export function AgentMaterialsSidebar() {
   const [items, setItems] = useState<AgentMaterial[]>([]);
   const [chrome, setChrome] = useState<AgentLiveChromeState>(defaultChrome);
   const [over, setOver] = useState(false);
+  // r24-A：子元素（Agent 仓库）自己接住 drop 时，这里收不到 drop/dragleave，高亮会卡住。拖拽一结束就清掉。
+  const sectionRef = React.useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!over) return;
+    const clear = () => { setOver(false); sectionRef.current?.removeAttribute('data-drop-active'); };
+    window.addEventListener('dragend', clear, true);
+    window.addEventListener('drop', clear, true);
+    return () => { window.removeEventListener('dragend', clear, true); window.removeEventListener('drop', clear, true); };
+  }, [over]);
   const [selected, setSelected] = useState<string | null>(null);
   const [playbook, setPlaybook] = useState<CtxPlaybookState | null>(null);
   const workspaceId = binding?.host.workspaceId() ?? '';
@@ -109,6 +118,7 @@ export function AgentMaterialsSidebar() {
 
   return (
     <section
+      ref={sectionRef}
       className="kb-section kb-module al-materials"
       data-testid="agent-materials"
       data-collapsed={chrome.sectionCollapsed ? 'true' : 'false'}

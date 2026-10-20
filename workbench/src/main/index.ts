@@ -126,6 +126,10 @@ function obsidian(): ObsidianBridge {
         }));
       },
       openExternal: (uri) => shell.openExternal(uri),
+      // r24-A：安装包把 lkw-bridge 0.2.2 放在 out/ob-plugin/lkw-bridge（可选插件，只在「初始化中转库」时装进中转库）。设了 LKW_BRIDGE_TOOLS 时仍以环境变量为准。
+      toolsDir: !process.env.LKW_BRIDGE_TOOLS && fs.existsSync(path.join(__dirname, '..', 'ob-plugin', 'lkw-bridge', 'tools', 'relay-core.mjs'))
+        ? path.join(__dirname, '..', 'ob-plugin', 'lkw-bridge', 'tools')
+        : undefined,
     });
   }
   return obsidianBridge;

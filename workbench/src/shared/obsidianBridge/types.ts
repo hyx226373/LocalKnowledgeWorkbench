@@ -18,6 +18,8 @@ export interface ObsidianBridgeSettings {
   crossVolumeJunction: boolean;
   /** 中转库里已经有 .obsidian。 */
   vaultReady: boolean;
+  /** r24-A：随安装包附带的工作台桥（可选插件，默认不装进任何库）。没有附带时为 null。 */
+  bundledPlugin?: { id: string; version: string } | null;
   /** 开关打开时的风险提示。关闭时为空。 */
   warning: string;
 }

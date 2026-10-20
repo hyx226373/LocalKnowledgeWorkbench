@@ -1525,3 +1525,20 @@ html[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .
 html[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-reading .kb-md pre code,
 html[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-reading .kb-tex pre code { border-radius: 8px; padding: 12px 16px; background: #0E0F12; color: #E5E7EB; }
 
+
+/* r24-A 修正 */
+/* 1) 设置页：origin 外框的 .kb-dialog-backdrop 半透明遮罩（权重更高）盖掉了页模式的实底，主界面标签栏透出来。 */
+html .kb-dialog-backdrop.kb-settings-screen,
+html[data-kb-scheme][data-kb-chrome] .kb-dialog-backdrop.kb-settings-screen { background: var(--kb-color-bg); animation: none; }
+html .kb-settings.kb-settings--page { background: var(--kb-color-bg); }
+/* 2) 侧栏工具行：justify-content:flex-end 在窄宽度下把溢出推到左边，最左的「浮动」被裁掉点不到。改成靠右但溢出往右、可换行。 */
+.pm-sidebar-bar { justify-content: flex-start; flex-wrap: wrap; min-width: 0; row-gap: 2px; }
+.pm-sidebar-bar > :first-child { margin-left: auto; }
+.pm-sidebar-bar .pm-actions { flex-wrap: wrap; min-width: 0; height: auto; }
+html[data-kb-scheme][data-kb-chrome] .pm-sidebar-bar { height: auto; }
+/* 3) Agent 仓库标题行：按钮多于宽度时换行，不撑出侧栏。 */
+.rb.rb-sidebar .rb-heading { flex-wrap: wrap; row-gap: 2px; min-width: 0; }
+.rb.rb-sidebar .rb-head-btns { flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; max-width: 100%; }
+.al-materials { min-width: 0; overflow-x: hidden; }
+/* 标题行能换行后，窄栏（≤220）也保留「创建链接」短字，不再变成空按钮。 */
+@container (max-width:220px){ .rb.rb-sidebar .rb-heading .rb-short { display: inline; } }

@@ -1,7 +1,7 @@
 {
   "name": "kb-workbench",
   "productName": "LocalKnowledgeWorkbench",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "本地知识工作台",
   "author": "kb-workbench",
   "private": true,

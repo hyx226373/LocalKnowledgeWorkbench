@@ -149,6 +149,7 @@ export class ObsidianBridge {
       crossVolumeJunction: flag,
       vaultReady: this.isDirectory(path.join(relayVaultDir, '.obsidian')),
       warning: flag ? JUNCTION_WARNING : '',
+      bundledPlugin: this.readBundledPlugin(),
     };
   }
 
@@ -306,6 +307,14 @@ export class ObsidianBridge {
     const official = officialWorkbenchDataDir(this.env);
     if (official) out.push(official);
     return out;
+  }
+
+  /** 安装包附带的 lkw-bridge：toolsDir 的上一级有 manifest.json。只读。 */
+  private readBundledPlugin(): { id: string; version: string } | null {
+    if (!this.toolsDirOverride) return null;
+    const m = readJsonObject(path.join(path.resolve(this.toolsDirOverride), '..', 'manifest.json'));
+    if (!m || typeof m.id !== 'string' || typeof m.version !== 'string') return null;
+    return { id: m.id, version: m.version };
   }
 
   private async loadTools(): Promise<Tools> {
