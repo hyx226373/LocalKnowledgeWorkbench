@@ -1,7 +1,13 @@
+import { REBIRTH_METHODS } from './rebirth';
+import { AGENT_PANEL_READ_METHODS } from './agentPanel';
+
 /** 这些调用留在主进程（对话框、窗口、网页面板、更新）。其余走数据进程。 */
 export const MAIN_METHODS = [
+  ...REBIRTH_METHODS,
+  'agentPanelLocationGet', 'agentPanelLocationSet',
   'pickFolder',
   'pickFile',
+  'readUtf8File',
   'setBoundShortcuts',
   'getStartupTrace',
   'webCreate',
@@ -19,15 +25,57 @@ export const MAIN_METHODS = [
   'webOpenExternal',
   'webSiteApply',
   'webSiteList',
+  'extBrowseCreate',
+  'extBrowseDestroy',
+  'extBrowseNavigate',
+  'extBrowseBack',
+  'extBrowseReload',
+  'extBrowseOpenSystem',
+  'extBrowseSnapshot',
   'killPluginFrames',
   'pluginProcesses',
   'openMigration',
+  'openAgentPicker',
   'updateState',
   'aboutInfo',
   'updateCheck',
   'updateSaveSettings',
   'updateApply',
   'agentLiveStartDrag',
+  'aiWriteSettingsGet',
+  'aiWriteSettingsSet',
+  'aiWriteSyncRoots',
+  'aiWritePending',
+  'aiWriteApprove',
+  'aiWriteReject',
+  'aiWriteConflictResolve',
+  'aiWriteLinksGet',
+  'aiWriteLinksAdd',
+  'aiWriteLinksRemove',
+  'aiWriteLinksClear',
+  'aiWriteLinkStatus',
+  'aiWriteCollect',
+  'aiWriteApply',
+  'aiWriteSessionDiscard',
+  'aiWriteLegacyStages',
+  'aiWriteLegacyStageTrash',
+  'aiWritePlanDrop',
+  'host.list',
+  'host.attach',
+  'host.detach',
+  'host.setBounds',
+  'host.setVisible',
+  'host.activate',
+  'host.getState',
+  'host.screenToPanel',
+  'host.panelToScreen',
+  'grab.open',
+  'grab.pickSource',
+  'obsidianBridgeGet',
+  'obsidianBridgeSetVault',
+  'obsidianBridgeInit',
+  'obsidianBridgeSetJunction',
+  'obsidianOpen',
 ] as const;
 
 export const MAIN_METHOD_SET = new Set<string>(MAIN_METHODS);
@@ -39,6 +87,9 @@ export const MAIN_METHOD_SET = new Set<string>(MAIN_METHODS);
 /** 渲染进程不能调用点号方法，也不能调用 resolve* / indexer*。这些只走控制端口。 */
 export function isRendererDataMethod(method: string): boolean {
   if (MAIN_METHOD_SET.has(method)) return false;
+  // 允许列表含根外资料的绝对路径，只给窗口进程的控制端口。
+  if (method === 'nativeDragAllow') return false;
+  if (method.startsWith('agentPanel')) return false;
   if (method.includes('.')) return false;
   if (method.startsWith('resolve') || method.startsWith('indexer')) return false;
   return true;
@@ -56,6 +107,8 @@ export const READ_METHODS = new Set<string>([
   'listRoots',
   'listFavorites',
   'listDir',
+  'listDirAbs',
+  'listHiddenItems',
   'getShowIgnored',
   'getResource',
   'resourceAbsPath',
@@ -75,6 +128,7 @@ export const READ_METHODS = new Set<string>([
   'listPlugins',
   'getDevMode',
   'listAdapterPlugins',
+  'listPluginCatalog',
   'listPluginAudit',
   'pluginStorageGet',
   'appProfileGet',
@@ -91,6 +145,11 @@ export const READ_METHODS = new Set<string>([
   'vfolderUndoAvailable',
   'getCurrentWorkspaceId',
   'agentLiveList',
+  'agentLivePlaybookGet',
+  'agentMarksList',
+  'agentMarksRetention',
+  'agentMarksEligible',
+  ...AGENT_PANEL_READ_METHODS,
   'listThemePacks',
   'textOpen',
   'textStat',
@@ -105,6 +164,7 @@ export const READ_METHODS = new Set<string>([
   'resolveKbfile',
   'resolvePluginFile',
   'resolvePluginAsset',
+  'nativeDragAllow',
   'plugin.webPlugins',
   'plugin.accessList',
   'plugin.maintenance',

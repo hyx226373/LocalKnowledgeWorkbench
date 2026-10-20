@@ -331,10 +331,12 @@ describe('目录包交接', () => {
     const svc = new UpdateService(box.hooks);
     await svc.init();
     const snap = await svc.check();
-    expect(snap.phase).toBe('idle');
-    expect(snap.info).toBe('已是最新');
+    expect(snap.phase).toBe('failed');
+    expect(snap.error).toMatch(/latest\.yml 缺少/);
     expect(snap.layout).toBe('dirpack');
+    expect(snap.downloaded).toBe(false);
     await expect(fs.stat(path.join(dir, 'user', 'update-downloads'))).rejects.toThrow();
+    await expect(fs.stat(path.join(dir, 'install', 'versions'))).rejects.toThrow();
   });
 
   it('nsis 模式仍读 latest.yml，不把目录包当安装包', async () => {
@@ -361,30 +363,31 @@ describe('目录包交接', () => {
     await svc.init();
     expect(svc.snapshot().layout).toBe('nsis');
     const snap = await svc.check();
-    expect(snap.phase).toBe('ready');
+    expect(snap.phase).toBe('failed');
+    expect(snap.error).toMatch(/公开 https/);
     expect(snap.layout).toBe('nsis');
-    expect(snap.available?.fileName).toBe(name);
+    expect(snap.available).toBeNull();
     await expect(fs.stat(path.join(dir, 'install', 'versions', '0.2.5'))).rejects.toThrow();
   });
 
-  it('取消准备时删掉 partial', async () => {
+  it('本地目录包没有 https 时不留下 partial', async () => {
     const dir = tmp();
     await fs.mkdir(dir, { recursive: true });
     await seedUser(dir);
     await writeDirpack(path.join(dir, 'feed'), '0.2.5', Buffer.alloc(1024, 8));
-    const gate: { cancel?: () => void } = {};
+    let extracted = false;
     const box = hooks(dir, {
       extractDirpack: async (_zip, dest) => {
+        extracted = true;
         await writeRequired(dest);
-        gate.cancel?.();
       },
     });
     const svc = new UpdateService(box.hooks);
-    gate.cancel = () => svc.cancelDownload();
     await svc.init();
     const snap = await svc.check();
     expect(snap.phase).toBe('failed');
-    expect(snap.error).toMatch(/下载已取消/);
+    expect(snap.error).toMatch(/公开 https/);
+    expect(extracted).toBe(false);
     await expect(fs.stat(path.join(dir, 'install', 'versions', '0.2.5.partial'))).rejects.toThrow();
     await expect(fs.stat(path.join(dir, 'install', 'versions', '0.2.5'))).rejects.toThrow();
   });

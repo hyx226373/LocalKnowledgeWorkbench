@@ -20,6 +20,7 @@ import type { AdapterContribution, PermissionDecl, PermissionGrant, PermissionPr
 import { describePermission, isAskPerSite, matchUrlPattern, siteHostOf } from '../../shared/adapter-sdk/policy';
 import { netDecl } from '../../shared/webPanel';
 import { findGrant, grantDecision, upsertGrant, type GrantDecision } from '../../shared/grants';
+import { registerHostSearchProvider } from '../search/providers';
 
 export type PluginStatus = 'active' | 'disabled' | 'incompatible' | 'error' | 'denied';
 
@@ -50,6 +51,9 @@ export interface AdapterPermissionPrompt extends PermissionPromptRequest {
   preselectRootIds?: string[];
 }
 
+/** 权限框的回答。cancel = Esc、点背景或关闭，不写入授权；deny = 用户点了「拒绝」。 */
+export type AdapterPermissionAnswer = PermissionPromptAnswer | 'cancel';
+
 class PluginHost {
   private records = new Map<string, PluginRecord>();
   private modules = new Map<string, PluginModule>();
@@ -61,10 +65,12 @@ class PluginHost {
   /** 第三方沙箱插件（主进程列表的快照，含授权） */
   private sandboxed = new Map<string, AdapterPluginDto>();
   private inflightPrompts = new Map<string, Promise<GrantDecision>>();
+  /** 正在显示的权限框。插件从启用变成停用、或被卸掉时 abort：框关掉，且这次不写任何决定。 */
+  private promptAborts = new Map<string, Set<AbortController>>();
   /** 沙箱适配器面板组件（由 App 注入，避免循环依赖） */
   sandboxComponent: ComponentType<AdapterProps<unknown>> = () => null;
-  /** 授权对话框（App 注入应用内对话框；测试中可替换）。默认拒绝。 */
-  askAdapterPermission: (req: AdapterPermissionPrompt) => Promise<PermissionPromptAnswer> = async () => 'deny';
+  /** 授权对话框（App 注入应用内对话框；测试中可替换）。取消必须回 'cancel'。默认拒绝。 */
+  askAdapterPermission: (req: AdapterPermissionPrompt, opts?: { signal?: AbortSignal }) => Promise<AdapterPermissionAnswer> = async () => 'deny';
 
   private snapshot: PluginRecord[] = [];
   private version = 0;
@@ -96,6 +102,13 @@ class PluginHost {
   adapterOwner(adapterId: string) {
     const owner = this.adapterOwners.get(adapterId);
     return owner ? this.records.get(owner) : undefined;
+  }
+
+  /** MainShell remounts after sidebar mode; replace callbacks that close over its React state. */
+  async replaceWorkbench(module: PluginModule) {
+    if (module.manifest.id !== 'builtin.workbench') throw new Error('只允许替换工作台壳');
+    if (this.modules.has('builtin.workbench')) await this.dropLoaded('builtin.workbench');
+    await this.load([{ module, source: 'builtin' }]);
   }
 
   async load(mods: PluginEntry[]) {
@@ -210,6 +223,14 @@ class PluginHost {
 
   /** 用主进程的插件列表（重新）登记沙箱插件：只登记声明式适配器，不执行插件代码 */
   loadSandboxed(dtos: AdapterPluginDto[]) {
+    const incoming = new Map(dtos.map((d) => [d.id, d]));
+    for (const id of new Set([...this.sandboxed.keys(), ...this.promptAborts.keys()])) {
+      const next = incoming.get(id);
+      const wasActive = this.records.get(id)?.status === 'active';
+      const nowActive = !!next && next.enabled && next.errors.length === 0 && !!next.manifest;
+      // 正在用的插件被停用或卸掉：关掉它挂着的权限框。已经停用的插件上新开的询问不动。
+      if (!next || (wasActive && !nowActive)) this.abortPrompts(id);
+    }
     const ids = new Set(dtos.map((d) => d.id));
     for (const old of [...this.sandboxed.keys()]) {
       if (ids.has(old)) continue;
@@ -285,9 +306,31 @@ class PluginHost {
     this.changed();
   }
 
+  private beginPrompt(pluginId: string): AbortController {
+    const ac = new AbortController();
+    let set = this.promptAborts.get(pluginId);
+    if (!set) this.promptAborts.set(pluginId, (set = new Set()));
+    set.add(ac);
+    return ac;
+  }
+  private endPrompt(pluginId: string, ac: AbortController) {
+    const set = this.promptAborts.get(pluginId);
+    if (!set) return;
+    set.delete(ac);
+    if (!set.size) this.promptAborts.delete(pluginId);
+  }
+  private abortPrompts(pluginId: string) {
+    const set = this.promptAborts.get(pluginId);
+    if (!set) return;
+    this.promptAborts.delete(pluginId);
+    for (const ac of set) ac.abort();
+  }
+
   /**
    * 首次打开使用该适配器的条目时询问（同一权限同时只弹一次）；已有记录则直接返回。
    * force：插件管理页“改为允许/更改文件夹”时重新询问。
+   * 取消（Esc、点背景、关闭）不写库：重新询问时原授权保持不变；第一次询问保持未询问，下次还会再问。
+   * 只有点「拒绝」才写入 denied。提问期间插件被停用则关掉对话框，不写任何决定。
    */
   async ensurePermission(pluginId: string, adapter: AdapterContribution, perm: PermissionDecl, force = false, suggestRootId?: string): Promise<GrantDecision> {
     if (!force) {
@@ -298,32 +341,41 @@ class PluginHost {
     const inflight = this.inflightPrompts.get(key);
     if (inflight) return inflight;
     const p = (async (): Promise<GrantDecision> => {
-      const dto = this.sandboxed.get(pluginId);
-      const roots = await kb.listRoots();
-      const prev = findGrant(this.grantsOf(pluginId), pluginId, adapter.id, perm.id);
-      const preselect = prev?.decision === 'granted' && Array.isArray(prev.rootIds) ? prev.rootIds : suggestRootId ? [suggestRootId] : [];
-      const answer = await this.askAdapterPermission({
-        pluginId,
-        pluginName: dto?.name ?? pluginId,
-        adapterId: adapter.id,
-        adapterTitle: adapter.title,
-        displayMode: adapter.displayMode,
-        permission: perm,
-        scopeLines: describePermission(perm),
-        roots,
-        suggestRootId,
-        preselectRootIds: preselect,
-      });
-      const granted = answer !== 'deny';
-      const g = await kb.setPermissionGrant({
-        pluginId,
-        adapterId: adapter.id,
-        permissionId: perm.id,
-        decision: granted ? 'granted' : 'denied',
-        ...(typeof answer === 'object' ? { rootIds: answer.rootIds } : granted && perm.kind === 'fs.read' && perm.scope === 'ask-per-root' ? { rootIds: roots.map((r) => r.id) } : {}),
-      });
-      this.storeGrant(g);
-      return g.decision;
+      const ac = this.beginPrompt(pluginId);
+      try {
+        const dto = this.sandboxed.get(pluginId);
+        const roots = await kb.listRoots();
+        const prev = findGrant(this.grantsOf(pluginId), pluginId, adapter.id, perm.id);
+        const preselect = prev?.decision === 'granted' && Array.isArray(prev.rootIds) ? prev.rootIds : suggestRootId ? [suggestRootId] : [];
+        const answer = await this.askAdapterPermission(
+          {
+            pluginId,
+            pluginName: dto?.name ?? pluginId,
+            adapterId: adapter.id,
+            adapterTitle: adapter.title,
+            displayMode: adapter.displayMode,
+            permission: perm,
+            scopeLines: describePermission(perm),
+            roots,
+            suggestRootId,
+            preselectRootIds: preselect,
+          },
+          { signal: ac.signal },
+        );
+        if (answer === 'cancel' || ac.signal.aborted) return this.decision(pluginId, adapter.id, perm);
+        const granted = answer !== 'deny';
+        const g = await kb.setPermissionGrant({
+          pluginId,
+          adapterId: adapter.id,
+          permissionId: perm.id,
+          decision: granted ? 'granted' : 'denied',
+          ...(typeof answer === 'object' ? { rootIds: answer.rootIds } : granted && perm.kind === 'fs.read' && perm.scope === 'ask-per-root' ? { rootIds: roots.map((r) => r.id) } : {}),
+        });
+        this.storeGrant(g);
+        return g.decision;
+      } finally {
+        this.endPrompt(pluginId, ac);
+      }
     })().finally(() => this.inflightPrompts.delete(key));
     this.inflightPrompts.set(key, p);
     return p;
@@ -410,6 +462,22 @@ class PluginHost {
       storage: {
         get: async <T,>(key: string) => (await kb.pluginStorageGet(id, key)) as T | null,
         set: (key, value) => kb.pluginStorageSet(id, key, value),
+      },
+      search: {
+        registerProvider: (reg) => {
+          const declared = rec.manifest.contributes?.searchProviders ?? [];
+          if (!declared.some((item) => item.id === reg.id)) throw new Error(`搜索提供者 ${reg.id} 未在 manifest 中声明`);
+          const meta = declared.find((item) => item.id === reg.id)!;
+          return track(
+            registerHostSearchProvider({
+              id: reg.id,
+              label: meta.label,
+              icon: meta.icon,
+              search: (query, ctx, signal) => reg.search(query, ctx, signal),
+              onAction: reg.onAction,
+            }),
+          );
+        },
       },
     };
   }

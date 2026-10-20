@@ -167,7 +167,9 @@ export function startDataPlane(opts: {
     const env = { ...msg.env };
     delete env.ELECTRON_RUN_AS_NODE;
     delete env.VITE_DEV_SERVER_URL;
-    const forked = utilityProcess.fork(msg.modulePath, [], {
+    env.KB_INDEXER_TARGET = msg.modulePath;
+    // 索引脚本按 child_process 写，经 indexerShim 把 process.send 接到 parentPort。
+    const forked = utilityProcess.fork(path.join(__dirname, 'indexerShim.js'), [], {
       env,
       cwd: msg.cwd,
       execArgv: msg.execArgv,
@@ -337,6 +339,10 @@ export function startDataPlane(opts: {
     if (!env.KB_BUILTIN_ADAPTERS_DIR) env.KB_BUILTIN_ADAPTERS_DIR = builtinAdaptersEnv();
     if (opts.packaged) env.KB_PACKAGED = '1';
     env.KB_APP_VERSION = opts.version;
+    // 对话存档跟随应用目录。打包用 exe 目录，开发用 app.getAppPath() 的上一级。KB_AGENT_DATA 仍可覆盖。
+    if (!env.KB_APP_DIR) {
+      env.KB_APP_DIR = app.isPackaged ? path.dirname(app.getPath('exe')) : path.dirname(app.getAppPath());
+    }
     // 打包后 getAppPath() 是 app.asar 文件。把它当成 cwd，utilityProcess 会立刻以 1 退出。
     const forked = utilityProcess.fork(path.join(__dirname, 'dataEntry.js'), [], {
       env,

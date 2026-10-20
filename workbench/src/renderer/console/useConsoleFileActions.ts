@@ -18,7 +18,7 @@ function isGroupResult(value: unknown): value is OpenGroupResult {
 
 export function useConsoleFileActions(
   api: PluginApi,
-  doc: { draft: string; setDraft: (text: string) => void; save: () => Promise<void> },
+  doc: { draft: string; setDraft: (text: string) => void; save: () => Promise<boolean | void> },
   notify: (message: string) => void,
 ) {
   const draftRef = useRef(doc.draft);

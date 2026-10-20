@@ -3,7 +3,8 @@
  * 可交互只认界面壳已经画出来。可见内容超时不能当成可交互。
  */
 import type { WorkspaceItem } from '../shared/items';
-import type { Appearance } from './theme/appearance';
+import { LEGACY_SCHEME_SLIDER_FIELDS, normalizeAppearance, type Appearance } from './theme/appearance';
+import { sanitizeColorVars } from './theme/customColors';
 
 export const LAYOUT_SNAPSHOT_KEY = 'kb.layoutSnapshot.v1';
 export const UI_SNAPSHOT_KEY = 'kb.uiSnapshot.v1';
@@ -28,6 +29,8 @@ export interface UiSnapshotV1 {
   expanded: string[];
   dirView?: unknown;
   sidebarWidth: number;
+  /** 非空才写入。自定义配色覆盖，键是 --kb-*。 */
+  customColors?: Record<string, string>;
 }
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
@@ -122,28 +125,66 @@ export function snapshotToWorkspace(s: LayoutSnapshotV1) {
   };
 }
 
+function attachRootSlider(appearance: Appearance, root: Record<string, unknown>): Appearance {
+  const next = { ...appearance } as Appearance & Record<string, unknown>;
+  let added = false;
+  for (const key of LEGACY_SCHEME_SLIDER_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(next, key) || !Object.prototype.hasOwnProperty.call(root, key)) continue;
+    next[key] = root[key];
+    added = true;
+  }
+  return added ? next : appearance;
+}
+
+function appearanceFromSnapshot(raw: unknown, root: Record<string, unknown>): Appearance | null {
+  const direct = normalizeAppearance(raw);
+  if (direct) return attachRootSlider(direct, root);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const rec = { ...(raw as Record<string, unknown>) };
+  for (const key of LEGACY_SCHEME_SLIDER_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(rec, key) && Object.prototype.hasOwnProperty.call(root, key)) rec[key] = root[key];
+  }
+  const mapped = normalizeAppearance(rec);
+  return mapped ? attachRootSlider(mapped, root) : null;
+}
+
 export function readUiSnapshot(storage: Store | null = browserStore()): UiSnapshotV1 | null {
   const v = readJson(storage, UI_SNAPSHOT_KEY);
-  if (!v || typeof v !== 'object') return null;
-  const s = v as Partial<UiSnapshotV1>;
-  const a = s.appearance;
-  if (s.v !== 1 || !a || typeof a.chrome !== 'string' || typeof a.reading !== 'string') return null;
-  if (a.scheme !== 'light' && a.scheme !== 'dark' && a.scheme !== 'system') return null;
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const s = v as Partial<UiSnapshotV1> & Record<string, unknown>;
+  if (s.v !== 1) return null;
+  const appearance = appearanceFromSnapshot(s.appearance, s);
+  if (!appearance) return null;
   const width = typeof s.sidebarWidth === 'number' && s.sidebarWidth >= 180 && s.sidebarWidth <= 600 ? s.sidebarWidth : 280;
-  return {
+  const customColors = sanitizeColorVars(s.customColors);
+  const snap: UiSnapshotV1 = {
     v: 1,
-    appearance: { chrome: a.chrome, reading: a.reading, scheme: a.scheme },
+    appearance,
     focus: s.focus === true,
     expanded: Array.isArray(s.expanded) ? s.expanded.filter((id) => typeof id === 'string').slice(0, 500) : [],
     dirView: s.dirView,
     sidebarWidth: width,
   };
+  if (Object.keys(customColors).length) snap.customColors = customColors;
+  return snap;
 }
 
 export function writeUiSnapshot(snap: Omit<UiSnapshotV1, 'v'>, storage: Store | null = browserStore()): void {
   if (!storage) return;
   try {
-    storage.setItem(UI_SNAPSHOT_KEY, JSON.stringify({ v: 1, ...snap }));
+    const prev = readJson(storage, UI_SNAPSHOT_KEY);
+    const extras: Record<string, unknown> = {};
+    if (prev && typeof prev === 'object' && !Array.isArray(prev)) {
+      for (const [key, value] of Object.entries(prev as Record<string, unknown>)) {
+        if (key === 'v' || key === 'appearance' || key === 'focus' || key === 'expanded' || key === 'dirView' || key === 'sidebarWidth' || key === 'customColors') continue;
+        extras[key] = value;
+      }
+    }
+    const customColors = sanitizeColorVars(snap.customColors);
+    const body: Record<string, unknown> = { ...extras, v: 1, ...snap };
+    if (Object.keys(customColors).length) body.customColors = customColors;
+    else delete body.customColors;
+    storage.setItem(UI_SNAPSHOT_KEY, JSON.stringify(body));
   } catch {
     /* 忽略配额错误 */
   }

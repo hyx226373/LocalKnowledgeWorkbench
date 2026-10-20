@@ -1,12 +1,33 @@
+import type { AiWriteApplyDecision, AiWriteApplyResult, AiWriteApproveResult, AiWriteChangeView, AiWriteDiscardResult, AiWriteLegacyStage, AiWriteLinkStatus, AiWritePending, AiWritePlanDropInput, AiWritePlanDropResult, AiWriteSettings, LinkItem } from './aiWriteChannel';
+import type { RebirthApi as importRebirthApi } from './rebirth';
+import type { AttentionDraft, AttentionMark, MarkRetention } from './agentMarks';
+import type {
+  AgentPanelChanged,
+  AgentPanelConfigPatch,
+  AgentPanelConfigView,
+  AgentPanelLocationSet,
+  AgentPanelLocationView,
+  AgentPanelRenderResult,
+  AgentPanelResidentCopy,
+  AgentPanelWriteResult,
+  ContextBaseView,
+  ConversationsView,
+  ParsedConversation,
+  SelectionSetInput,
+  SelectionState,
+} from './agentPanel';
 import type { AgentMaterial, LivePanel, LiveReading, MaterialRef } from './agentLive/types';
+import type { NativeDragLogEntry, NativeDragResult } from './nativeDragPolicy';
 import type { WebBounds, WebEvent, WebViewInfo } from './webPanel';
 import type { NavigateResult } from './adapter-sdk/types';
 // 渲染进程与主进程共享的类型（也是未来 Agent API 的数据契约）
 import type { WorkspaceItem } from './items';
 import type { SaveOutcome, SavePreview, TextSnapshot, UndoOutcome, WriteRecord } from './textEdit';
 import type { AuditEntry, PluginProcessInfo, AdapterPluginDto, PlanPreviewDto, PluginFileOp, PluginFileResult, UninstallInfo, UninstallOptionsDto } from './pluginIpc';
+import type { PluginCatalogView } from './pluginCatalog';
 import type { FileopsPlan, FileopsResult, PermissionGrant } from './adapter-sdk/types';
 import type { RootOpReceipt, RootTask } from './rootTask';
+import type { BlankFileCreated } from './blankFile';
 export type { WorkspaceItem };
 export type { RootOpKind, RootOpReceipt, RootTask, RootPublishSnapshot, RootDiskDeleteRequest, RootDiskDeleteResult } from './rootTask';
 
@@ -50,6 +71,14 @@ export interface DirEntry {
   ext: string;
   /** 被索引忽略的项（node_modules、.git 等）；只有开启“显示被忽略的项”时才会出现在目录树中 */
   ignored?: boolean;
+}
+
+/** 从根目录移除后留在隐藏列表里的一项。relPath 相对该根，不是绝对路径。 */
+export interface HiddenRootItem {
+  rootId: string;
+  rootName: string;
+  relPath: string;
+  name: string;
 }
 
 export interface Favorite {
@@ -117,6 +146,7 @@ export type IndexState = 'idle' | 'scanning' | 'error';
 export interface IndexStatus {
   rootId: string;
   state: IndexState;
+  /** 已索引文件数（resources.kind='file' 且未缺失），按 rootId；非浅层 readdir 项数，虚拟目录成员不另开账 */
   fileCount: number;
   /** 扫描进度（已处理条目数），仅 scanning 时有意义 */
   progress: number;
@@ -287,6 +317,8 @@ export interface VfolderEntry {
   relPath: string;
   rootId: string;
   rootName: string;
+  /** 成员真实磁盘路径；虚拟目录自身无此字段。缺失/网页/无法解析时为 null */
+  absPath: string | null;
   missing: boolean;
   /** ok = 有阅读器；unsupported = 仍列出，打开时提示「暂无阅读器」 */
   reader: 'ok' | 'unsupported';
@@ -318,20 +350,44 @@ export interface ThemePackDto {
   error?: string;
 }
 
+/** 打开文件框时可以只传入口键，也可以带上标题和过滤器。键决定上次目录。 */
+export interface PickDialogRequest {
+  dialogKey?: string;
+  title?: string;
+  filters?: { name: string; extensions: string[] }[];
+}
+
 /** 渲染进程可调用的 API（preload 通过 contextBridge 暴露为 window.kb） */
-export interface KbApi {
-  pickFolder(): Promise<string | null>;
-  /** 选择单个文件。路径只走本机 IPC，不交给文件桥。 */
-  pickFile(): Promise<string | null>;
+export interface KbApi extends importRebirthApi {
+  sidebarWindow(request: import('./sidebarWindow').SidebarWindowRequest): Promise<void>;
+  /** 选择文件夹。dialogKey 缺省时记在「注册为根」。对象形式可另给标题。 */
+  pickFolder(spec?: string | PickDialogRequest): Promise<string | null>;
+  /** 选择单个文件。路径只走本机 IPC，不交给文件桥。dialogKey 缺省时记在「注册为来源」。 */
+  pickFile(spec?: string | PickDialogRequest): Promise<string | null>;
+  /** 选择对话存档目录。上次位置记在 dialogLastDir.archiveLocation。取消时 null。不写入配置。 */
+  agentPanelPickArchiveLocation(): Promise<string | null>;
+  /** 读取用户刚选中的本地文本。只接受普通文件，超过 1MB 拒绝。 */
+  readUtf8File(absPath: string): Promise<string>;
   listRoots(): Promise<Root[]>;
   addRoot(path: string, name?: string, extensions?: string[]): Promise<Root>;
   /** 登记单个文件来源。路径由界面在本机选定，不传给文件桥。extensions 不参与单文件排除。 */
   addFileSource(path: string, name?: string, extensions?: string[]): Promise<Root>;
+  /** 在文件夹里新建空白 md/txt。根内只刷新索引；根外按单文件来源登记。不覆盖已有文件。 */
+  createBlankFile(input: { dir: string; name: string; ext: 'md' | 'txt' }): Promise<BlankFileCreated>;
   removeRoot(rootId: string): Promise<void>;
   /** 从当前工作区解除登记。确认后立即隐藏，不等待扫盘或清索引。 */
   detachRoot(rootId: string): Promise<RootOpReceipt>;
-  /** 把磁盘上的根文件夹移入应用暂存区。界面先隐藏，阶段文案由任务给出。 */
+  /** 把磁盘上的根移到系统回收站（shell.trashItem）。失败则报错，不永久删除。 */
   deleteRootFolder(rootId: string): Promise<RootOpReceipt>;
+  /** 把根内的一个文件或子文件夹移到系统回收站。失败则报错，不永久删除。 */
+  trashInsideRoot(rootId: string, relPath: string): Promise<{ absPath: string }>;
+  /** 从工作台移除。只写入该根的隐藏列表，不删除磁盘文件。 */
+  hideFromRoot(rootId: string, relPath: string): Promise<{ rootId: string; relPath: string }>;
+  /** 恢复一项隐藏。重新显示并重新扫描索引。 */
+  restoreHidden(rootId: string, relPath: string): Promise<{ rootId: string; relPath: string }>;
+  /** 清空这一根的隐藏列表，重新显示并重新扫描索引。不删除磁盘文件。 */
+  restoreAllHidden(rootId: string): Promise<{ rootId: string; restored: string[] }>;
+  listHiddenItems(): Promise<HiddenRootItem[]>;
   listRootTasks(): Promise<RootTask[]>;
   cancelRootTask(taskId: string): Promise<void>;
   retryRootTask(taskId: string): Promise<RootOpReceipt>;
@@ -343,6 +399,8 @@ export interface KbApi {
   addFavorite(resourceId: string): Promise<Favorite>;
   removeFavorite(id: number): Promise<void>;
   listDir(rootId: string, relPath: string): Promise<DirEntry[]>;
+  /** 按绝对路径列一层。无 sourceId 的松散目录用；命中根则走 listDir，否则浅层 readdir */
+  listDirAbs(absPath: string): Promise<DirEntry[]>;
   /** 目录树是否显示被忽略的项（node_modules、.git 等；默认不显示，与索引一致） */
   getShowIgnored(): Promise<boolean>;
   setShowIgnored(on: boolean): Promise<void>;
@@ -355,7 +413,7 @@ export interface KbApi {
   rescan(rootId: string): Promise<void>;
   cancelScan(rootId: string): Promise<void>;
   search(query: string): Promise<SearchHit[]>;
-  searchGrouped(query: string, o?: { limit?: number; rootIds?: string[] }): Promise<unknown>;
+  searchGrouped(query: string, o?: { limit?: number; rootIds?: string[]; scope?: 'name' | 'content' | 'all' }): Promise<unknown>;
   opsPropose(title: string, ops: unknown[]): Promise<unknown>;
   opsPending(): Promise<PendingPlanDto[]>;
   opsGet(planId: string): Promise<PendingPlanDto | null>;
@@ -379,6 +437,8 @@ export interface KbApi {
   /** 恢复撤销冲突时备份下来的内容（撤销记录上的“恢复撤销前的内容”） */
   opRestoreBackup(opId: number, force?: boolean): Promise<OpUndoResult>;
   showInFolder(resourceId: string): Promise<void>;
+  /** 用系统默认程序打开。路径必须落在已登记根内。 */
+  openWithDefaultApp(resourceId: string): Promise<void>;
   registerPlugin(id: string, version: string, source: 'builtin' | 'user'): Promise<PluginStateDto>;
   listPlugins(): Promise<PluginStateDto[]>;
   setPluginEnabled(id: string, enabled: boolean): Promise<void>;
@@ -388,6 +448,10 @@ export interface KbApi {
   listAdapterPlugins(): Promise<AdapterPluginDto[]>;
   /** 开发者模式：选择本地插件文件夹安装；取消时 null */
   installAdapterPluginFromFolder(): Promise<AdapterPluginDto | null>;
+  /** 插件清单（本地 fixture / 远程 URL）；点一下安装用 */
+  listPluginCatalog(): Promise<PluginCatalogView>;
+  installPluginFromCatalog(entryId: string): Promise<AdapterPluginDto>;
+  setPluginCatalogUrl(url: string | null): Promise<string | null>;
   setAdapterPluginEnabled(id: string, enabled: boolean): Promise<void>;
   setPermissionGrant(g: { pluginId: string; adapterId: string; permissionId: string; decision: 'granted' | 'denied'; rootIds?: string[] | 'all' }): Promise<PermissionGrant>;
   revokePermission(pluginId: string, adapterId: string, permissionId: string): Promise<PermissionGrant>;
@@ -422,7 +486,16 @@ export interface KbApi {
   webOpenExternal(url: string, from: { viewId?: string; pluginId?: string; adapterId?: string }): Promise<{ ok: boolean; reason?: string }>;
   /** r12：人机界面批准外部资源的网站授权。桥不能调用。 */
   webSiteApply(req: import('./webSiteGrant').WebSiteApplyRequest): Promise<import('./webSiteGrant').WebSiteApplyResult>;
-  webSiteList(): Promise<{ version: 1; file: string; globalNeverBlock: boolean; sites: import('./webSiteGrant').WebSiteGrantRow[] }>;
+  webSiteList(): Promise<{ version: 1; file: string; globalNeverBlock: boolean; allowOpenExternal?: boolean; trustInsecureLinks?: boolean; sites: import('./webSiteGrant').WebSiteGrantRow[] }>;
+  /** 主窗口内容区的外链标签。分区与工作台、网页面板都不共用。 */
+  extBrowseCreate(viewId: string, url: string): Promise<{ ok: boolean; url?: string; reason?: string }>;
+  extBrowseDestroy(viewId: string): Promise<void>;
+  extBrowseNavigate(viewId: string, url: string): Promise<{ ok: boolean; url?: string; reason?: string }>;
+  extBrowseBack(viewId: string): Promise<void>;
+  extBrowseReload(viewId: string): Promise<void>;
+  extBrowseOpenSystem(viewId: string): Promise<{ ok: boolean; reason?: string }>;
+  extBrowseSnapshot(viewId: string): Promise<string | null>;
+  onExtBrowse(cb: (ev: import('./externalBrowse').ExtBrowseEvent) => void): () => void;
   /** 逐帧位置（fire-and-forget）；null = 隐藏 */
   sendWebBounds(viewId: string, bounds: WebBounds | null): void;
   // ---- r11-A 网络资料（总包 §2.1 / §2.11；webResourceAdd/Update/Get 之外的方法见 REPORT「接口变更申请」）
@@ -477,6 +550,8 @@ export interface KbApi {
   appUndoExternal(launchId: string, force?: boolean): Promise<import('./appIpc').AppUndoOutcome>;
   /** 打开“数据迁移”窗口的某一页（失效资料引用的“修复…”用 'repair'） */
   openMigration(tab: 'export' | 'import' | 'repair' | 'backups'): Promise<void>;
+  /** 打开全局 Agent 库小窗口。打开时冻结当前工作区为这次的落点。 */
+  openAgentPicker(): Promise<void>;
   onAppEvent(cb: (e: import('./appIpc').AppEvent) => void): () => void;
   listWorkspaces(): Promise<WorkspaceSummary[]>;
   getWorkspace(id: string): Promise<WorkspaceDto>;
@@ -511,6 +586,87 @@ export interface KbApi {
   agentLiveEntryPath(which: 'current' | 'workspace', workspaceId?: string): Promise<string>;
   agentLiveNoteScene(scene: { workspaceId: string; panels?: LivePanel[]; reading?: LiveReading | null }): Promise<void>;
   agentLiveStartDrag(files: string[]): Promise<boolean>;
+  /** 上下文剧本。缺文件等于关。新方法只追加。 */
+  agentLivePlaybookGet(workspaceId: string): Promise<import('./ctxPlaybook').CtxPlaybookState>;
+  agentLivePlaybookSet(workspaceId: string, patch: import('./ctxPlaybook').CtxPlaybookPatch): Promise<import('./ctxPlaybook').CtxPlaybookState>;
+  agentLivePlaybookGuess(workspaceId: string): Promise<{ assigned: number; unassigned: number }>;
+  agentLiveMaterialPlace(
+    workspaceId: string,
+    materialId: string,
+    patch: { slotId?: string | null; mount?: import('./ctxPlaybook').PlaybookMount | null; delivery?: import('./ctxPlaybook').PlaybookDelivery | null; summary?: string | null },
+  ): Promise<void>;
+  /** 标红给 Agent。存在 userData/agent-marks.json，不写源文件。 */
+  agentMarksList(): Promise<AttentionMark[]>;
+  agentMarksAdd(draft: AttentionDraft): Promise<AttentionMark>;
+  agentMarksUnmark(input: { absPath: string; start: number; end: number }): Promise<AttentionMark[]>;
+  agentMarksClear(): Promise<void>;
+  agentMarksRetention(): Promise<MarkRetention>;
+  agentMarksSetRetention(mode: MarkRetention): Promise<MarkRetention>;
+  agentMarksEligible(absPath: string): Promise<{ ok: boolean; reason?: string }>;
+  /** AI 写入通道。配置在应用目录 agent-data/ai-write，不写 %LOCALAPPDATA%\\LocalKnowledgeWorkbench。 */
+  aiWriteSettingsGet(): Promise<AiWriteSettings>;
+  aiWriteSettingsSet(input: AiWriteSettings): Promise<AiWriteSettings>;
+  aiWriteSyncRoots(input: { roots: { path: string; name?: string }[] }): Promise<void>;
+  aiWritePending(): Promise<AiWritePending>;
+  aiWriteApprove(input: { planId: string; force?: boolean }): Promise<AiWriteApproveResult>;
+  aiWriteReject(input: { planId: string }): Promise<void>;
+  aiWriteConflictResolve(input: { id: string; action: 'keep' | 'restore' }): Promise<void>;
+  aiWriteLinksGet(): Promise<LinkItem[]>;
+  aiWriteLinksAdd(input: { items: { path: string; name?: string; kind?: 'dir' | 'file' }[] }): Promise<LinkItem[]>;
+  aiWriteLinksRemove(input: { id: string }): Promise<LinkItem[]>;
+  aiWriteLinksClear(): Promise<LinkItem[]>;
+  aiWriteLinkStatus(): Promise<AiWriteLinkStatus>;
+  aiWriteCollect(input?: { sessionId?: string }): Promise<AiWriteChangeView[]>;
+  aiWriteApply(input: { sessionId: string; fileId: string; decision: AiWriteApplyDecision; landingDir?: string }): Promise<AiWriteApplyResult>;
+  aiWriteSessionDiscard(input?: { sessionId?: string; confirm?: boolean }): Promise<AiWriteDiscardResult>;
+  aiWriteLegacyStages(): Promise<AiWriteLegacyStage[]>;
+  aiWriteLegacyStageTrash(input: { paths: string[] }): Promise<{ trashed: string[] }>;
+  aiWritePlanDrop(input: AiWritePlanDropInput): Promise<AiWritePlanDropResult>;
+  /** Agent 配置与对话面板。数据在应用目录 agent-data，不在 userData。 */
+  agentPanelGetConfig(): Promise<AgentPanelConfigView>;
+  agentPanelSaveConfig(patch: AgentPanelConfigPatch): Promise<AgentPanelConfigView>;
+  agentPanelRender(input: { agentId: string }): Promise<AgentPanelRenderResult>;
+  agentPanelWriteProject(input: { agentId: string; rootPath: string; confirm?: boolean }): Promise<AgentPanelWriteResult>;
+  agentPanelSourceList(): Promise<{ name: string }[]>;
+  agentPanelSourceRead(input: { name: string }): Promise<{ name: string; content: string }>;
+  agentPanelSourceSave(input: { name: string; content: string }): Promise<{ name: string }>;
+  agentPanelSourceActivate(input: { name: string }): Promise<{ name: string }>;
+  agentPanelConversations(): Promise<ConversationsView>;
+  agentPanelParse(input: { path: string }): Promise<ParsedConversation>;
+  agentPanelSelectionGet(): Promise<SelectionState>;
+  agentPanelSelectionSet(input: SelectionSetInput): Promise<SelectionState>;
+  agentPanelBaseGet(): Promise<ContextBaseView | null>;
+  agentPanelBaseSet(input: { path: string } | null): Promise<ContextBaseView | null>;
+  agentPanelLocationGet(): Promise<AgentPanelLocationView>;
+  agentPanelLocationSet(input: AgentPanelLocationSet): Promise<AgentPanelLocationView>;
+  /**
+   * 按 config.activeAgent 生成常驻规则全文。
+   * 未选 agent 时返回 null，调用方仍复制原来的入口路径。
+   */
+  agentPanelCopyResidentRules(input?: { entryPath?: string } | null): Promise<AgentPanelResidentCopy | null>;
+  /** 按 activeAgent 生成对话链接。未选 agent 时用通用 Markdown，不返回 null。 */
+  agentPanelCopyConversationLink(input: { path: string }): Promise<AgentPanelResidentCopy>;
+  /** 给空上下文的新窗口。未选 agent 时用通用 Markdown，不返回 null。 */
+  agentPanelCopyNewLink(): Promise<AgentPanelResidentCopy>;
+  /** 改 frontmatter 标题并 rename 对话文件。勾选和标红里的旧路径会跟着走。 */
+  agentPanelRenameConversation(input: { path: string; title: string }): Promise<{ path: string; title: string }>;
+  /** 把对话文件移到系统回收站。调用前要先经确认对话框。 */
+  agentPanelDeleteConversation(input: { path: string }): Promise<void>;
+  onAgentPanelChanged(cb: (event: AgentPanelChanged) => void): () => void;
+  /**
+   * 同步通道，留给测试和仍直接调用的兼容路径。
+   * 界面拖出不要用它：startDrag 在 Windows 上会阻塞到放下，sendSync 会把渲染进程一起卡住。
+   * mode 为 path 时只记日志，不调用 startDrag。校验失败时不抛错。
+   */
+  startNativeDrag(paths: readonly string[], mode?: 'file' | 'path'): NativeDragResult;
+  /** 文件模式拖出。异步 send，主进程在该 IPC 里立刻 startDrag。 */
+  postNativeFileDrag(paths: readonly string[]): void;
+  /** startDrag 返回后主进程通知渲染进程清掉原生拖动会话。 */
+  onNativeDragEnded(cb: () => void): () => void;
+  /** 主进程 startDrag / 拒绝记录。只读，给开发工具和测试看。 */
+  nativeDragLog(): NativeDragLogEntry[];
+  /** 预热允许列表。文件模式拖出不再等待它。 */
+  prepareNativeDrag(): Promise<{ ok: boolean }>;
   onAgentLiveChanged(cb: (workspaceId: string) => void): () => void;
   /** 弹出保存对话框导出；返回保存的文件名（取消时 null） */
   exportWorkspaceToFile(id: string): Promise<string | null>;
@@ -527,6 +683,12 @@ export interface KbApi {
   captureWorkspaceSnapshot(
     input: import('./workspacePicker/snapshotCapture').WorkspaceSnapshotRequest,
   ): Promise<import('./workspacePicker/snapshotCapture').SnapshotCaptureDecision>;
+  /** 从 userData/workspace-snapshots 回填已落盘快照。缺文件的 id 不出现。 */
+  loadWorkspaceSnapshots(
+    workspaceIds: readonly string[],
+  ): Promise<import('./workspacePicker/snapshotCapture').WorkspaceSnapshotLoadResult>;
+  /** 删除相对文件名对应的落盘快照。返回实际删掉的名字。 */
+  deleteWorkspaceSnapshots(relativeNames: readonly string[]): Promise<string[]>;
   /** 数据进程重启。侧栏回到「加载中」，并重新拉目录。 */
   onDataReset?(cb: () => void): () => void;
   onFsChange(cb: (e: FsChangeEvent[]) => void): () => void;
@@ -562,6 +724,13 @@ export interface KbApi {
   consoleWriteDraft(req: import('./consoleSchema').ConsoleDraftInput & { rootId: string; relPath: string }): Promise<{ resourceId: string; relPath: string; bytes: number; text: string }>;
   /** 已存在的根相对路径 → resourceId。路径不存在时失败。 */
   consoleResolvePath(rootId: string, relPath: string): Promise<string>;
+  /** Obsidian 桥：中转库路径、跨盘开关。不写 obsidian.json。 */
+  obsidianBridgeGet(): Promise<import('./obsidianBridge/types').ObsidianBridgeSettings>;
+  obsidianBridgeSetVault(dir: string | null): Promise<import('./obsidianBridge/types').ObsidianBridgeSettings>;
+  obsidianBridgeInit(): Promise<import('./obsidianBridge/types').ObsidianInitResult>;
+  obsidianBridgeSetJunction(enabled: boolean): Promise<import('./obsidianBridge/types').ObsidianBridgeSettings>;
+  /** 在 Obsidian 打开这篇 Markdown。库内直接打开，否则经中转库。 */
+  obsidianOpen(req: import('./obsidianBridge/types').ObsidianOpenRequest): Promise<import('./obsidianBridge/types').ObsidianOpenResult>;
 }
 
 /** 按资源 ID 访问文件内容：kbfile://res/<resourceId>/<文件名（仅用于显示/扩展名）> */

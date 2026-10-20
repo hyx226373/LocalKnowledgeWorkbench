@@ -7,17 +7,25 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { claimUnownedRoots, EMPTY_ROOT_FILTER_JSON, openDb, openReadDb, workspaceRootFallbacks, type DB, type WorkspaceRootFallback } from './db';
+import { claimUnownedRoots, EMPTY_ROOT_FILTER_JSON, openDb, openReadDb, WORKSPACE_ROOT_FALLBACK_KEY, workspaceRootFallbacks, type DB, type WorkspaceRootFallback } from './db';
 import { PathEscapeError, normalizeRelPath, parseKbfileUrl, resolveInRoot, toRelPath } from './paths';
 import { extensionsFromFilterJson, inAccessScope, normalizeExtensions, OutOfScopeError, type AccessScope } from '../../shared/sourceFilter';
 import { isTemporaryWorkspaceId } from '../../shared/temporaryWorkspace';
-import { applyEvents, isIgnoredName, reconcileFilter, statForIndex, upsertSeen, hashFileSync, type FsEvent, type ScanChange } from './indexer';
+import { applyEvents, isIgnoredName, markMissing as markIndexedMissing, reconcileFilter, statForIndex, upsertSeen, hashFileSync, type FsEvent, type ScanChange } from './indexer';
 import { stallNote, stallOp } from '../startupTrace';
 import { disk, diskPromises } from './disk';
 import { noteDbWait } from '../runtimeStats';
 import type { FsChangeEvent } from '../../shared/types';
 import { PHASE_DELETED, PHASE_DELETING, type RootOpReceipt, type RootTask, type RootTaskPriority } from '../../shared/rootTask';
 import { runRootDiskDelete } from './rootDiskDelete';
+import {
+  HIDDEN_LAYOUT_KEY,
+  forgetIndexUnder,
+  hiddenRelSet,
+  isHiddenRel,
+  readHiddenMap,
+  stampReindexUnder,
+} from './rootHidden';
 import {
   ensureRootRetirementSchema,
   hiddenRootIds,
@@ -34,7 +42,8 @@ import { updateWorkspaceCardFields } from './workspaceCardFields';
 import { applyRemapPreview, buildRemapPreview, type RemapPreview, type RemapSelection } from './remapPreview';
 import { InProcessIndexRunner, type IndexRunner, type IndexRunnerEvents } from './indexRunner';
 import { PluginHostService } from './pluginHost';
-import { LAYOUT_SCHEMA_VERSION, panelItemId, pruneDock, sanitizeItem, splitLegacyItems, type SerializedDock, type StoredLayout, type WorkspaceItem } from '../../shared/items';
+import { PLUGIN_CATALOG_LAYOUT_KEY } from '../../shared/pluginCatalog';
+import { LAYOUT_SCHEMA_VERSION, NEW_LAYOUT_SIDEBAR_WIDTH, newLayoutSidebarWidth, panelItemId, pruneDock, sanitizeItem, splitLegacyItems, type SerializedDock, type StoredLayout, type WorkspaceItem } from '../../shared/items';
 import {
   readerTypeOf,
   type DirEntry,
@@ -59,6 +68,7 @@ import {
   type VirtualFolder,
   type VfolderView,
   type VfolderEntry,
+  type HiddenRootItem,
 } from '../../shared/types';
 import { DEFAULT_CATALOG_ID, DEFAULT_VIRTUAL_ROOT_NAME, parentChain, refsFromByFolder, type CatalogRef } from '../../shared/catalog';
 import { catalogSelectable, ensureDefaultCatalog, readCatalogView, saveCatalog } from './catalogStore';
@@ -252,6 +262,8 @@ export class WorkbenchService extends EventEmitter {
   private retirementReady = false;
   /** 删除磁盘上的根之前松开监听。返回的 Promise 会等句柄关掉。 */
   private beforeRootDelete: ((abs: string) => void | Promise<void>) | null = null;
+  /** 系统回收站。数据进程没有 shell 时，由主进程注入。缺了就报错，不永久删除。 */
+  private trashItem: ((abs: string) => Promise<void>) | null = null;
   private inflight = new Set<Promise<unknown>>();
   private cancelEpoch = new Map<string, number>();
   /** 同一个工作区的布局保存串行。锁被占时这条链在定时器上等，不占着主线程。 */
@@ -626,8 +638,8 @@ export class WorkbenchService extends EventEmitter {
   }
 
   /**
-   * 短事务退休后立刻返回。磁盘移动和清索引在队列里。
-   * phaseText 在移动成功之前保持「文件删除中」。
+   * 短事务退休后立刻返回。磁盘步骤只走系统回收站，清索引在队列里。
+   * phaseText 在回收站成功之前保持「文件删除中」。失败不永久删除。
    */
   deleteRootFolder(rootId: string): RootOpReceipt {
     const receipt = this.retireNow(rootId, 'delete-disk');
@@ -708,6 +720,144 @@ export class WorkbenchService extends EventEmitter {
   /** 删除根文件夹前等待监听句柄松开。 */
   setBeforeRootDelete(fn: (abs: string) => void | Promise<void>) {
     this.beforeRootDelete = fn;
+  }
+
+  /** 注入系统回收站。失败由调用方报错，这里不准备永久删除。 */
+  setTrashItem(fn: (abs: string) => Promise<void>) {
+    this.trashItem = fn;
+  }
+
+  /** 根内的一个文件或子文件夹移到系统回收站。空路径是整根，走 deleteRootFolder。 */
+  async trashInsideRoot(rootId: string, relPath: string): Promise<{ absPath: string }> {
+    if (!this.trashItem) throw new Error('无法移到回收站');
+    const rel = normalizeRelPath(relPath);
+    if (!rel) throw new Error('不能在这里移走根本身');
+    this.getRoot(rootId);
+    const abs = resolveInRoot(this.rootPath(rootId), rel);
+    let st: fs.Stats;
+    try {
+      st = disk.lstatSync(abs);
+    } catch {
+      throw new Error('文件不在原处');
+    }
+    if (st.isSymbolicLink()) throw new Error('不能移走符号链接');
+    const parsed = path.parse(abs);
+    if (parsed.root && path.resolve(abs) === parsed.root) throw new Error('不能移走文件系统根');
+    try {
+      await this.beforeRootDelete?.(abs);
+    } catch (err) {
+      console.error('[root] 松开监听失败', rootId, err instanceof Error ? err.message : err);
+    }
+    try {
+      await this.trashItem(abs);
+    } catch (err) {
+      this.afterMutate?.();
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(message || '移到回收站失败');
+    }
+    try {
+      markIndexedMissing(this.db, rootId, rel);
+      if (!this.closed) {
+        const event: FsChangeEvent = { rootId, relPath: rel, type: st.isDirectory() ? 'unlinkDir' : 'unlink' };
+        this.emit('fs-change', [event]);
+      }
+    } finally {
+      this.afterMutate?.();
+    }
+    return { absPath: abs };
+  }
+
+  /** 从工作台去掉。只改这份根的隐藏列表并丢掉全文索引，磁盘文件保持原样。 */
+  hideFromRoot(rootId: string, relPath: string): { rootId: string; relPath: string } {
+    this.getRoot(rootId);
+    const rel = normalizeRelPath(relPath);
+    if (!rel) throw new Error('不能从根目录移除根本身');
+    const abs = resolveInRoot(this.rootPath(rootId), rel);
+    let st: fs.Stats;
+    try {
+      st = disk.lstatSync(abs);
+    } catch {
+      throw new Error('文件不在原处');
+    }
+    if (st.isSymbolicLink()) throw new Error('不能隐藏符号链接');
+    const map = readHiddenMap(this.db);
+    const cur = map[rootId] ?? [];
+    if (isHiddenRel(cur, rel)) return { rootId, relPath: rel };
+    map[rootId] = [...cur.filter((item) => item !== rel && !item.startsWith(`${rel}/`)), rel];
+    this.setLayout(HIDDEN_LAYOUT_KEY, map);
+    forgetIndexUnder(this.db, rootId, rel);
+    if (!this.closed) {
+      const event: FsChangeEvent = { rootId, relPath: rel, type: st.isDirectory() ? 'unlinkDir' : 'unlink' };
+      this.emit('fs-change', [event]);
+    }
+    return { rootId, relPath: rel };
+  }
+
+  /** 从隐藏列表拿掉这一条，然后重新扫描，让它重新显示并重建索引。 */
+  async restoreHidden(rootId: string, relPath: string): Promise<{ rootId: string; relPath: string }> {
+    this.getRoot(rootId);
+    const rel = normalizeRelPath(relPath);
+    const map = readHiddenMap(this.db);
+    const cur = map[rootId] ?? [];
+    if (!cur.includes(rel)) throw new Error('没有这项隐藏记录');
+    const next = cur.filter((item) => item !== rel);
+    if (next.length) map[rootId] = next;
+    else delete map[rootId];
+    this.setLayout(HIDDEN_LAYOUT_KEY, map);
+    stampReindexUnder(this.db, rootId, rel);
+    if (!this.closed) this.emit('fs-change', [{ rootId, relPath: rel, type: 'add' } satisfies FsChangeEvent]);
+    await this.scanRoot(rootId);
+    return { rootId, relPath: rel };
+  }
+
+  /**
+   * 清空这一根的隐藏列表，再扫一遍并把索引建回来。
+   * 不改其它根的列表，不删除、不改写磁盘文件。列表已经是空的就直接返回，不再扫描。
+   */
+  async restoreAllHidden(rootId: string): Promise<{ rootId: string; restored: string[] }> {
+    this.getRoot(rootId);
+    const map = readHiddenMap(this.db);
+    const restored = [...(map[rootId] ?? [])];
+    if (!restored.length) return { rootId, restored: [] };
+    delete map[rootId];
+    this.setLayout(HIDDEN_LAYOUT_KEY, map);
+    for (const rel of restored) stampReindexUnder(this.db, rootId, rel);
+    if (!this.closed) {
+      this.emit('fs-change', restored.map((relPath) => ({ rootId, relPath, type: 'add' as const })));
+    }
+    await this.scanRoot(rootId);
+    return { rootId, restored };
+  }
+
+  listHiddenItems(): HiddenRootItem[] {
+    const map = readHiddenMap(this.db);
+    const out: HiddenRootItem[] = [];
+    for (const [rootId, rels] of Object.entries(map)) {
+      let rootName = '';
+      try {
+        rootName = this.getRoot(rootId).name;
+      } catch {
+        continue;
+      }
+      for (const relPath of rels) {
+        out.push({ rootId, rootName, relPath, name: relPath.split('/').pop() || relPath });
+      }
+    }
+    out.sort((a, b) => a.rootName.localeCompare(b.rootName, 'zh-CN') || a.relPath.localeCompare(b.relPath, 'zh-CN'));
+    return out;
+  }
+
+  private hiddenOf(rootId: string, cache: Map<string, string[]>): string[] {
+    const hit = cache.get(rootId);
+    if (hit) return hit;
+    const list = rootId ? hiddenRelSet(this.db, rootId) : [];
+    cache.set(rootId, list);
+    return list;
+  }
+
+  private entryHidden(rootId: string, relPath: string, cache: Map<string, string[]>): boolean {
+    if (!relPath) return false;
+    return isHiddenRel(this.hiddenOf(rootId, cache), relPath);
   }
 
   private ensureRetirement(): void {
@@ -872,7 +1022,7 @@ export class WorkbenchService extends EventEmitter {
       stagingDir: this.stagingDir,
       dataDir: this.dataDir,
       record: (detail) => this.recordRootTrash(task.rootId, detail),
-    });
+    }, this.trashItem ?? undefined);
     if (result.ok) {
       if (!this.generationMoved(task)) patchRootTask(this.db, task.taskId, { phaseText: PHASE_DELETED, error: null });
       this.emitRootTasks();
@@ -1201,6 +1351,87 @@ export class WorkbenchService extends EventEmitter {
     return out;
   }
 
+  /**
+   * 绝对路径落在哪个 folder 根里（最长前缀）。不要求 resources 行已存在。
+   * file 根不参与（单文件来源下列不出子项）。
+   */
+  locateRootRel(absPath: string): { sourceId: string; relPath: string } | null {
+    const target = path.resolve(absPath);
+    const targetKey = target.toLowerCase();
+    let best: { rootId: string; rel: string; len: number } | null = null;
+    for (const root of this.listRoots()) {
+      if (!root.path || root.kind === 'file') continue;
+      const rootPath = path.resolve(root.path);
+      const rootKey = rootPath.toLowerCase();
+      if (targetKey !== rootKey && !targetKey.startsWith(rootKey + path.sep)) continue;
+      const rel = targetKey === rootKey ? '' : target.slice(rootPath.length + 1).split(path.sep).join('/');
+      if (!best || rootPath.length > best.len) best = { rootId: root.id, rel, len: rootPath.length };
+    }
+    return best ? { sourceId: best.rootId, relPath: best.rel } : null;
+  }
+
+  /**
+   * 按绝对路径列一层。命中已登记 folder 根则走 listDir；未命中则浅层 readdir
+   *（忽略符号链接与默认 ignored，与 listDirInner 一致）。
+   * 根外条目 resourceId/rootId 为空串占位。
+   */
+  listDirAbs(absPath: string, opts: { showIgnored?: boolean } = {}): DirEntry[] {
+    const started = Date.now();
+    const abs = path.resolve(String(absPath || ''));
+    const located = this.locateRootRel(abs);
+    if (located) {
+      const out = this.listDir(located.sourceId, located.relPath, opts);
+      stallOp('listDirAbs', Date.now() - started, `rooted ${located.relPath || '/'} n=${out.length}`);
+      return out;
+    }
+    let st: fs.Stats;
+    try {
+      st = disk.lstatSync(abs);
+    } catch {
+      stallOp('listDirAbs', Date.now() - started, 'missing');
+      return [];
+    }
+    if (st.isSymbolicLink() || !st.isDirectory()) {
+      stallOp('listDirAbs', Date.now() - started, 'not-dir');
+      return [];
+    }
+    const ents = disk.readdirSync(abs, { withFileTypes: true });
+    const out: DirEntry[] = [];
+    for (const e of ents) {
+      if (e.isSymbolicLink()) continue;
+      const ignored = isIgnoredName(e.name);
+      if (ignored && !opts.showIgnored) continue;
+      let kind: EntryKind;
+      let size = 0;
+      let mtimeMs = 0;
+      try {
+        const child = disk.lstatSync(path.join(abs, e.name));
+        if (child.isSymbolicLink()) continue;
+        if (child.isDirectory()) kind = 'dir';
+        else if (child.isFile()) kind = 'file';
+        else continue;
+        size = child.size;
+        mtimeMs = Math.trunc(child.mtimeMs);
+      } catch {
+        continue;
+      }
+      out.push({
+        resourceId: '',
+        rootId: '',
+        relPath: e.name,
+        name: e.name,
+        kind,
+        size,
+        mtimeMs,
+        ext: kind === 'file' ? extOfName(e.name) : '',
+        ...(ignored ? { ignored: true } : {}),
+      });
+    }
+    out.sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, 'zh-CN', { numeric: true }) : a.kind === 'dir' ? -1 : 1));
+    stallOp('listDirAbs', Date.now() - started, `loose n=${out.length}`);
+    return out;
+  }
+
   private listDirInner(rootId: string, relPath: string, opts: { showIgnored?: boolean } = {}): DirEntry[] {
     if (this.rootKindOf(rootId) === 'file') {
       normalizeRelPath(relPath);
@@ -1208,6 +1439,8 @@ export class WorkbenchService extends EventEmitter {
     }
     const rootAbs = this.rootPath(rootId);
     const rel = normalizeRelPath(relPath);
+    const hidden = hiddenRelSet(this.db, rootId);
+    if (isHiddenRel(hidden, rel)) return [];
     const abs = resolveInRoot(rootAbs, rel);
     const ents = disk.readdirSync(abs, { withFileTypes: true });
     const names: Array<{ name: string; ignored: boolean; childRel: string }> = [];
@@ -1215,7 +1448,9 @@ export class WorkbenchService extends EventEmitter {
       if (e.isSymbolicLink()) continue;
       const ignored = isIgnoredName(e.name);
       if (ignored && !opts.showIgnored) continue;
-      names.push({ name: e.name, ignored, childRel: rel ? `${rel}/${e.name}` : e.name });
+      const childRel = rel ? `${rel}/${e.name}` : e.name;
+      if (isHiddenRel(hidden, childRel)) continue;
+      names.push({ name: e.name, ignored, childRel });
     }
     const byRel = new Map<string, { id: string; kind: string; size: number; mtime_ms: number; ext: string; out_of_scope: number }>();
     for (let i = 0; i < names.length; i += 400) {
@@ -1492,13 +1727,21 @@ export class WorkbenchService extends EventEmitter {
       const like = '%' + q.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
       rows = this.db
         .prepare(
-          "SELECT id AS resource_id, root_id, rel_path, name FROM resources WHERE missing_since IS NULL AND out_of_scope = 0 AND rel_path <> '' AND rel_path_key LIKE ? ESCAPE '\\' LIMIT ?",
+          `SELECT id AS resource_id, root_id, rel_path, name FROM resources
+           WHERE missing_since IS NULL AND out_of_scope = 0
+             AND (
+               (rel_path <> '' AND rel_path_key LIKE ? ESCAPE '\\')
+               OR (rel_path = '' AND kind = 'file' AND lower(name) LIKE ? ESCAPE '\\')
+             )
+           LIMIT ?`,
         )
-        .all(like.toLowerCase(), fetchN) as typeof rows;
+        .all(like.toLowerCase(), like.toLowerCase(), fetchN) as typeof rows;
     }
     const scopes = new Map<string, AccessScope>();
+    const hiddenByRoot = new Map<string, string[]>();
     const hits: SearchHit[] = [];
     for (const r of rows) {
+      if (this.entryHidden(r.root_id, r.rel_path, hiddenByRoot)) continue;
       const row = this.row(r.resource_id);
       if (row) {
         let scope = scopes.get(row.root_id);
@@ -1523,6 +1766,7 @@ export class WorkbenchService extends EventEmitter {
          FROM favorites f JOIN resources r ON r.id = f.resource_id ORDER BY f.sort_order, f.id`,
       )
       .all() as any[];
+    const hiddenByRoot = new Map<string, string[]>();
     return rows.map((r) => ({
       id: r.id,
       resourceId: r.resource_id,
@@ -1534,7 +1778,7 @@ export class WorkbenchService extends EventEmitter {
       label: r.label,
       sortOrder: r.sort_order,
       createdAt: r.created_at,
-    }));
+    })).filter((item) => !this.entryHidden(item.rootId, item.relPath, hiddenByRoot));
   }
 
   addFavorite(resourceId: string, label?: string): Favorite {
@@ -1561,13 +1805,17 @@ export class WorkbenchService extends EventEmitter {
 
   setLayout(key: string, value: unknown) {
     const json = JSON.stringify(value);
-    if (!key.startsWith(AGENT_PINNED_LAYOUT_PREFIX) && looksLikeAbsolutePath(json)) {
+    if (!key.startsWith(AGENT_PINNED_LAYOUT_PREFIX) && key !== PLUGIN_CATALOG_LAYOUT_KEY && looksLikeAbsolutePath(json)) {
       // 防御：布局里不应出现绝对路径（应使用 resourceId）。固定资料是冻结稿要求的例外。
       throw new Error('布局数据中不允许保存绝对路径');
     }
     this.db
       .prepare('INSERT INTO layout(key, json, updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET json=excluded.json, updated_at=excluded.updated_at')
       .run(key, json, Date.now());
+    if (key === 'settings.contentIndexScope' || key === 'workspace.current' || key.startsWith('workspace.refs:')) {
+      // layout may be written inside a transaction; the read connection sees it after commit.
+      queueMicrotask(() => { if (!this.closed) this.emit('content-scope-changed'); });
+    }
   }
 
   /** 只读列出某个前缀下的 layout 键。供固定资料恢复，不扫描资料根。 */
@@ -2246,7 +2494,7 @@ export class WorkbenchService extends EventEmitter {
     return { ...this.wsSummary(r), layout: JSON.parse(r.layout_json), items: this.wsItems(id) };
   }
 
-  createWorkspace(name: string, project = '', layout: unknown = { schema: LAYOUT_SCHEMA_VERSION, dock: null, shell: { sidebarWidth: 280 } }, items: unknown[] = []): WorkspaceSummary {
+  createWorkspace(name: string, project = '', layout: unknown = { schema: LAYOUT_SCHEMA_VERSION, dock: null, shell: { sidebarWidth: NEW_LAYOUT_SIDEBAR_WIDTH } }, items: unknown[] = []): WorkspaceSummary {
     const chk = this.checkLayout(layout, items);
     const id = crypto.randomUUID();
     const now = Date.now();
@@ -2307,6 +2555,7 @@ export class WorkbenchService extends EventEmitter {
         if (!r.changes) throw new NotFoundError(`工作区不存在: ${id}`);
         this.replaceItems(id, chk.items);
       }).immediate();
+      this.emit('content-scope-changed');
       const spent = Date.now() - started;
       if (spent >= 50) stallOp('saveWorkspaceLayout.commit', spent, id);
     } catch (err) {
@@ -2395,6 +2644,7 @@ export class WorkbenchService extends EventEmitter {
     if (isTemporaryWorkspaceId(wsId)) return [];
     this.wsRow(wsId);
     const rootNames = new Map(this.listRoots().map((r) => [r.id, r.name]));
+    const hiddenByRoot = new Map<string, string[]>();
     return this.refRecords(wsId).map(({ id, at }) => {
       const r = this.row(id);
       const web = !r ? this.externalResources?.workspaceRef(id, at) : null; // r11-A：网络资料引用
@@ -2411,7 +2661,7 @@ export class WorkbenchService extends EventEmitter {
         missing: !r || r.missing_since != null || !rootNames.has(r.root_id),
         addedAt: at,
       };
-    });
+    }).filter((item) => !this.entryHidden(item.rootId, item.relPath, hiddenByRoot));
   }
   /** 把文件加入工作资料（幂等）。只记录资源 ID，不触碰原文件。 */
   addWorkspaceRefs(wsId: string, resourceIds: string[]): WorkspaceRef[] {
@@ -2428,7 +2678,7 @@ export class WorkbenchService extends EventEmitter {
         continue;
       }
       if (!r) throw new NotFoundError(`资源不存在: ${id}`);
-      if (r.kind !== 'file') throw new Error('只能把文件加入工作资料（文件夹请收藏）');
+      if (r.kind !== 'file' && r.kind !== 'dir' && r.kind !== 'folder') throw new Error('只能把文件或文件夹加入工作资料');
       if (!have.has(id)) {
         cur.push({ id, at: now });
         have.add(id);
@@ -2622,6 +2872,14 @@ export class WorkbenchService extends EventEmitter {
     const rootNames = new Map(this.listRoots().map((r) => [r.id, r.name]));
     if (row) {
       const missing = row.missing_since != null || !rootNames.has(row.root_id);
+      let absPath: string | null = null;
+      if (!missing) {
+        try {
+          absPath = resolveInRoot(this.rootPath(row.root_id), row.rel_path);
+        } catch {
+          absPath = null;
+        }
+      }
       return {
         resourceId: id,
         name: row.name,
@@ -2630,6 +2888,7 @@ export class WorkbenchService extends EventEmitter {
         relPath: row.rel_path,
         rootId: row.root_id,
         rootName: rootNames.get(row.root_id) ?? '',
+        absPath,
         missing,
         reader: readerTypeOf(row.ext, row.kind) === 'unsupported' ? 'unsupported' : 'ok',
         sourceKind: 'file',
@@ -2645,6 +2904,7 @@ export class WorkbenchService extends EventEmitter {
         relPath: '',
         rootId: '',
         rootName: '',
+        absPath: null,
         missing: false,
         reader: 'unsupported',
         sourceKind: 'web',
@@ -2661,6 +2921,7 @@ export class WorkbenchService extends EventEmitter {
         relPath: '',
         rootId: '',
         rootName: '',
+        absPath: null,
         missing: false,
         reader: 'unsupported',
         sourceKind: 'web',
@@ -2675,6 +2936,7 @@ export class WorkbenchService extends EventEmitter {
       relPath: '',
       rootId: '',
       rootName: '',
+      absPath: null,
       missing: true,
       reader: 'unsupported',
       sourceKind: 'file',
@@ -2691,7 +2953,10 @@ export class WorkbenchService extends EventEmitter {
       .filter((f) => f.parentId === folderId)
       .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, 'zh-CN'))
       .map((f) => ({ folderId: f.folderId, parentId: f.parentId, name: f.name, sort: f.sort }));
-    const entries = (refs.byFolder[folderId ?? ''] ?? []).map((id) => this.resolveVfolderEntry(id));
+    const hiddenByRoot = new Map<string, string[]>();
+    const entries = (refs.byFolder[folderId ?? ''] ?? [])
+      .map((id) => this.resolveVfolderEntry(id))
+      .filter((entry) => !this.entryHidden(entry.rootId, entry.relPath, hiddenByRoot));
     return { folderId, crumbs, folders, entries };
   }
 
@@ -2758,19 +3023,45 @@ export class WorkbenchService extends EventEmitter {
     return result;
   }
 
-  /** 删除工作区只删除布局记录，不涉及任何文件。至少保留一个工作区。 */
+  /** 删掉这个工作区在库里的记录和关联。不删资料源、不碰磁盘上的文件。至少保留一个工作区。 */
   deleteWorkspace(id: string) {
     this.wsRow(id);
     const n = (this.db.prepare('SELECT COUNT(*) AS n FROM workspaces').get() as { n: number }).n;
     if (n <= 1) throw new Error('至少需要保留一个工作区');
-    this.db.prepare('DELETE FROM workspaces WHERE id=?').run(id);
-    this.db.prepare('DELETE FROM layout WHERE key=?').run(WS_REFS_KEY(id));
-    this.db.prepare('DELETE FROM layout WHERE key=?').run(AGENT_PINNED_LAYOUT_PREFIX + id);
-    if (this.getLayout(CURRENT_WS_KEY) === id) {
-      const next = this.db.prepare('SELECT id FROM workspaces ORDER BY last_opened_at DESC NULLS LAST, updated_at DESC LIMIT 1').get() as { id: string };
-      this.setLayout(CURRENT_WS_KEY, next.id);
-      this.emit('vfolders-change');
+    const deletingCurrent = this.getLayout(CURRENT_WS_KEY) === id;
+    const next = deletingCurrent
+      ? (this.db.prepare('SELECT id FROM workspaces WHERE id <> ? ORDER BY last_opened_at DESC NULLS LAST, updated_at DESC LIMIT 1').get(id) as { id: string } | undefined)
+      : undefined;
+    if (deletingCurrent && !next) throw new Error('至少需要保留一个工作区');
+    this.db.transaction(() => {
+      this.db.prepare('DELETE FROM workspace_root_instances WHERE workspace_id=?').run(id);
+      this.db.prepare('DELETE FROM root_retirements WHERE workspace_id=?').run(id);
+      this.db.prepare('DELETE FROM workspace_items WHERE workspace_id=?').run(id);
+      this.db.prepare('DELETE FROM workspace_roots WHERE workspace_id=?').run(id);
+      this.db.prepare('DELETE FROM workspaces WHERE id=?').run(id);
+      this.db.prepare('DELETE FROM layout WHERE key=?').run(WS_REFS_KEY(id));
+      this.db.prepare('DELETE FROM layout WHERE key=?').run(AGENT_PINNED_LAYOUT_PREFIX + id);
+      this.dropWorkspaceFallback(id);
+      if (next) this.setLayout(CURRENT_WS_KEY, next.id);
+    }).immediate();
+    if (next) this.emit('vfolders-change');
+  }
+
+  /** 清掉「归到这个工作区」的说明。不删根、不改路径。 */
+  private dropWorkspaceFallback(workspaceId: string) {
+    const current = workspaceRootFallbacks(this.db);
+    const next = current.filter((row) => row.workspaceId !== workspaceId);
+    if (next.length === current.length) return;
+    if (!next.length) {
+      this.db.prepare('DELETE FROM layout WHERE key = ?').run(WORKSPACE_ROOT_FALLBACK_KEY);
+      return;
     }
+    this.db
+      .prepare(
+        `INSERT INTO layout(key, json, updated_at) VALUES (?, ?, ?)
+         ON CONFLICT(key) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at`,
+      )
+      .run(WORKSPACE_ROOT_FALLBACK_KEY, JSON.stringify(next), Date.now());
   }
 
   /** 当前工作区；第一次运行时创建“默认工作区”，并把第二轮之前保存的单一布局迁入 */
@@ -2785,10 +3076,11 @@ export class WorkbenchService extends EventEmitter {
     if (!id) {
       const legacy = this.getLayout(LEGACY_DOCK_KEY);
       const ui = (this.getLayout('ui') ?? {}) as { sidebarWidth?: number };
-      // 旧格式原样存入（schema 1/2），由渲染进程打开时迁移；sidebarWidth 补进 shell
-      let layout: unknown = { schema: LAYOUT_SCHEMA_VERSION, dock: null, shell: { sidebarWidth: ui.sidebarWidth ?? 280 } };
+      // 没有旧 dock 时才是新布局：已存 ui.sidebarWidth 原样用，否则 240。
+      let layout: unknown = { schema: LAYOUT_SCHEMA_VERSION, dock: null, shell: { sidebarWidth: newLayoutSidebarWidth(ui.sidebarWidth) } };
       if (legacy && typeof legacy === 'object') {
         const l = legacy as Record<string, unknown>;
+        // 已有 dock 的补宽仍是 280。不要改成 240，避免改写迁移前的布局。
         layout = typeof l.schema === 'number' ? { ...l, shell: { sidebarWidth: ui.sidebarWidth ?? 280 } } : { schema: 1, ...l };
       }
       id = this.createWorkspace('默认工作区', '', layout).id;

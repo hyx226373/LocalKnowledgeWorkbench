@@ -309,7 +309,8 @@ export class PanelManager implements PanelManagerApi {
     this.changed();
   }
 
-  resize(id: string, size: Partial<Size>) {
+  resize(id: string, size: Partial<Size>, opts?: { commit?: boolean }) {
+    const commit = opts?.commit !== false;
     if (this.isCollapsed(id)) this.restoreFromBubble(id);
     const w = this.windowFor(id);
     if (w) {
@@ -318,16 +319,34 @@ export class PanelManager implements PanelManagerApi {
       this.clearMax(id, w);
       w.overlay.setBounds(next);
       if (id === SIDEBAR_ID) this.sidebar = { ...this.sidebar, bounds: next };
-      return this.changed();
+      if (commit) this.changed();
+      return;
     }
     if (id === SIDEBAR_ID) {
       if (size.width && this.host.setSidebarWidth) this.host.setSidebarWidth(size.width);
-      return this.changed();
+      if (commit) this.changed();
+      return;
     }
     const p = this.panel(id);
     if (!p) return;
     p.group.api.setSize({ ...(size.width ? { width: size.width } : {}), ...(size.height ? { height: size.height } : {}) });
-    this.changed();
+    if (commit) this.changed();
+  }
+
+  /** 浮动窗口宿主。resize-grip 挂到现有 overlay，不另建窗口状态。 */
+  floatingFrames(): { id: string; element: HTMLElement }[] {
+    if (!this.api || !this.br) return [];
+    const out: { id: string; element: HTMLElement }[] = [];
+    const seen = new Set<HTMLElement>();
+    for (const w of this.br.floats()) {
+      const el = w.overlay.element;
+      if (!el || seen.has(el) || !w.overlay.isVisible || el.hasAttribute('data-pm-collapsed')) continue;
+      const id = this.firstPanelId(w);
+      if (!id || this.isCollapsed(id)) continue;
+      seen.add(el);
+      out.push({ id, element: el });
+    }
+    return out;
   }
 
   bringToFront(id: string) {

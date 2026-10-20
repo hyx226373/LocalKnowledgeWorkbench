@@ -1,5 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import type { WriteChannelSnapshot } from '../../../shared/aiWriteChannel';
+import { isPlaybookDelivery, isPlaybookMount, isPlaybookRelation, type PlaybookEntryBlock, type PlaybookRelation, type PlaybookSnapshot } from '../../../shared/ctxPlaybook';
+import { normalizeSkillSnapshot, type SkillSnapshotEntry } from '../../../shared/skillLibrary';
+import type { AttentionSignal } from '../../../shared/agentMarks';
 import type { AgentMaterial, LiveEntryWriter, LivePanel, LiveReading } from '../../../shared/agentLive/types';
 import { atomicWriteFile, promoteCurrentEntry, promoteEntryFiles, readJson } from './atomic';
 import { contentAbs, finishExtract, prepareMaterial, type IndexedExcerpt, type PreparedMaterial } from './content';
@@ -14,8 +18,11 @@ import {
   type EntryRelation,
   type EntryTreeNode,
   type ManifestAction,
+  type StructureNote,
 } from './docs';
+import type { LibraryTreeNode, LibraryTreeSnapshot } from './libraryTree';
 import { buildSnapshot, snapshotJson } from './snapshot';
+import { isContentBodyIndexEnabled } from '../../../shared/contentIndexScope';
 import { EntryError, assertSafeId, isSecretPath, oneLine } from './text';
 
 export interface EntryScene {
@@ -24,8 +31,20 @@ export interface EntryScene {
   panels?: LivePanel[];
   reading?: LiveReading | null;
   materials?: AgentMaterial[];
-  /** 已经在内存里的资料树。loadScene 不得为了填它去遍历根目录。 */
+  /** 调用方交来的资料树。入口写入器不为此遍历磁盘。 */
   structure?: EntryTreeNode[];
+  /** 资料根目录快照。原样追加进 snapshot.json，schemaVersion 保持 1。 */
+  libraryTree?: LibraryTreeSnapshot;
+  /** 特别关注。空则快照和入口都不写这一段。 */
+  attention?: AttentionSignal[];
+  /** AI 写入通道。空则快照和入口都不写这一段。高档去掉绝对路径。 */
+  writeChannel?: WriteChannelSnapshot;
+  /** 仅为 true 时写入快照和 ENTRY。 */
+  skillDistill?: boolean;
+  /** 已就绪 skill。空则不写入。调用方不要带路径。 */
+  skills?: SkillSnapshotEntry[];
+  /** 仅开启时由调用方放入。快照和 ENTRY 都用它，不含路径。 */
+  playbook?: { snapshot: PlaybookSnapshot; entry: PlaybookEntryBlock };
   relations?: EntryRelation[];
 }
 
@@ -87,7 +106,25 @@ function normalizeMaterial(raw: AgentMaterial): AgentMaterial | null {
     estTokens: typeof raw.estTokens === 'number' && Number.isFinite(raw.estTokens) ? raw.estTokens : null,
     ...(typeof raw.hasText === 'boolean' ? { hasText: raw.hasText } : {}),
     ...(typeof raw.pages === 'number' && Number.isFinite(raw.pages) ? { pages: raw.pages } : {}),
+    ...placeFields(raw),
   };
+}
+
+function placeFields(raw: AgentMaterial): Pick<AgentMaterial, 'slotId' | 'mount' | 'delivery' | 'summary' | 'relations'> {
+  const out: Pick<AgentMaterial, 'slotId' | 'mount' | 'delivery' | 'summary' | 'relations'> = {};
+  if (typeof raw.slotId === 'string' && raw.slotId.trim()) out.slotId = raw.slotId.trim();
+  if (isPlaybookMount(raw.mount)) out.mount = raw.mount;
+  if (isPlaybookDelivery(raw.delivery)) out.delivery = raw.delivery;
+  if (typeof raw.summary === 'string' && raw.summary.trim()) out.summary = raw.summary.trim();
+  if (Array.isArray(raw.relations)) {
+    const relations: PlaybookRelation[] = [];
+    for (const row of raw.relations) {
+      if (!row || !isPlaybookRelation(row.type) || typeof row.targetId !== 'string' || !row.targetId.trim()) continue;
+      relations.push({ type: row.type, targetId: row.targetId.trim() });
+    }
+    if (relations.length) out.relations = relations;
+  }
+  return out;
 }
 
 function byOrder(a: PreparedMaterial, b: PreparedMaterial): number {
@@ -96,17 +133,40 @@ function byOrder(a: PreparedMaterial, b: PreparedMaterial): number {
   return a.source.materialId < b.source.materialId ? -1 : a.source.materialId > b.source.materialId ? 1 : 0;
 }
 
+function directoryOverview(absPath: string): { text: string; fileCount: number } | undefined {
+  try {
+    const st = fs.statSync(absPath);
+    if (!st.isDirectory()) return undefined;
+  } catch {
+    return undefined;
+  }
+  try {
+    const names = fs.readdirSync(absPath);
+    const fileCount = names.length;
+    const sample = names.slice(0, 8).join(', ');
+    const more = fileCount > 8 ? ` 等共 ${fileCount} 项` : `（${fileCount} 项）`;
+    const text = sample ? `${sample}${more}` : '空目录';
+    return { text, fileCount };
+  } catch {
+    return { text: '未知', fileCount: -1 };
+  }
+}
+
 function toDocItem(item: PreparedMaterial): EntryDocItem {
+  const absPath = item.hidden ? '' : item.source.absPath;
+  const overview = absPath ? directoryOverview(absPath) : undefined;
   return {
     materialId: item.source.materialId,
     name: item.hidden ? '（已隐藏）' : item.source.name,
-    absPath: item.hidden ? '' : item.source.absPath,
+    absPath,
     purpose: item.hidden ? null : item.source.purpose,
     status: item.source.status,
-    readableLabel: item.readableLabel,
+    readableLabel: overview ? '目录概览' : item.readableLabel,
     tier: item.tier,
     bytes: item.hidden ? null : (item.source.bytes ?? null),
     estTokens: item.hidden ? null : (item.source.estTokens ?? null),
+    ...(overview ? { dirOverview: overview.text } : {}),
+    ...(overview && overview.fileCount >= 0 ? { fileCount: overview.fileCount } : {}),
   };
 }
 
@@ -120,10 +180,58 @@ function scrubTree(nodes: EntryTreeNode[] | undefined): EntryTreeNode[] | undefi
   if (!nodes) return undefined;
   const out: EntryTreeNode[] = [];
   for (const node of nodes) {
-    if (isSecretPath(node.name) || isSecretPath(node.relPath)) continue;
+    if (isSecretPath(node.name) || isSecretPath(node.relPath) || isSecretPath(node.path)) continue;
     out.push({ ...node, ...(node.children ? { children: scrubTree(node.children) } : {}) });
   }
   return out;
+}
+
+function scrubLibraryNodes(nodes: LibraryTreeNode[]): LibraryTreeNode[] {
+  const out: LibraryTreeNode[] = [];
+  for (const node of nodes) {
+    if (isSecretPath(node.name) || isSecretPath(node.relPath) || isSecretPath(node.path)) continue;
+    out.push({ ...node, ...(node.children ? { children: scrubLibraryNodes(node.children) } : {}) });
+  }
+  return out;
+}
+
+function scrubWriteChannel(channel: WriteChannelSnapshot | undefined): WriteChannelSnapshot | undefined {
+  if (!channel) return undefined;
+  const inboxPath = channel.inboxPath?.trim();
+  return {
+    defaultTier: channel.defaultTier,
+    folders: channel.folders.map((folder) => {
+      if (folder.tier === 'high' || isSecretPath(folder.absPath)) {
+        return { id: folder.id, name: folder.name, tier: folder.tier, virtualPath: folder.virtualPath, ...(folder.kind ? { kind: folder.kind } : {}) };
+      }
+      return folder;
+    }),
+    ...(inboxPath && !isSecretPath(inboxPath) ? { inboxPath } : {}),
+  };
+}
+
+function scrubSkills(skills: SkillSnapshotEntry[] | undefined): SkillSnapshotEntry[] | undefined {
+  const out = normalizeSkillSnapshot(skills);
+  return out.length ? out : undefined;
+}
+
+function scrubAttention(marks: AttentionSignal[] | undefined): AttentionSignal[] | undefined {
+  if (!marks?.length) return undefined;
+  const out = marks.filter((mark) => mark && !isSecretPath(mark.absPath) && mark.text);
+  return out.length ? out : undefined;
+}
+
+function scrubLibrary(tree: LibraryTreeSnapshot | undefined): LibraryTreeSnapshot | undefined {
+  if (!tree) return undefined;
+  return { ...tree, roots: scrubLibraryNodes(tree.roots) };
+}
+
+function treeNoteOf(tree: LibraryTreeSnapshot | undefined): StructureNote | undefined {
+  if (!tree?.truncatedReason && !tree?.errors?.length) return undefined;
+  return {
+    ...(tree.truncatedReason ? { truncatedReason: tree.truncatedReason } : {}),
+    ...(tree.errors?.length ? { errors: tree.errors } : {}),
+  };
 }
 
 function buildDoc(
@@ -163,6 +271,11 @@ function buildDoc(
     pinnedAll: pinned.map(toDocItem),
     omitted: session.length + pinned.length - shown.length,
     pathStyle,
+    ...(scene.attention?.length ? { attention: scene.attention } : {}),
+    ...(scene.writeChannel ? { writeChannel: scene.writeChannel } : {}),
+    ...(scene.skillDistill === true ? { skillDistill: true as const } : {}),
+    ...(scene.playbook?.snapshot.enabled ? { playbook: scene.playbook.entry } : {}),
+    ...(isContentBodyIndexEnabled() ? {} : { contentSearch: 'none' as const }),
   };
 }
 
@@ -312,7 +425,21 @@ class EntryWriter implements LiveEntryController {
     const loaded = await this.opts.loadScene(workspaceId, rev);
     const scene: EntryScene = loaded ?? {};
     const panels = scrubPanels(Array.isArray(scene.panels) ? scene.panels : []);
-    const safeScene: EntryScene = { ...scene, panels, structure: scrubTree(scene.structure) };
+    const libraryTree = scrubLibrary(scene.libraryTree);
+    const attention = scrubAttention(scene.attention);
+    const writeChannel = scrubWriteChannel(scene.writeChannel);
+    const skills = scrubSkills(scene.skills);
+    const skillDistill = scene.skillDistill === true;
+    const safeScene: EntryScene = {
+      ...scene,
+      panels,
+      structure: scrubTree(scene.structure),
+      ...(libraryTree ? { libraryTree } : { libraryTree: undefined }),
+      ...(attention ? { attention } : { attention: undefined }),
+      ...(writeChannel ? { writeChannel } : { writeChannel: undefined }),
+      ...(skillDistill ? { skillDistill: true } : { skillDistill: undefined }),
+      ...(skills ? { skills } : { skills: undefined }),
+    };
     const materials = (Array.isArray(scene.materials) ? scene.materials : [])
       .map((item) => normalizeMaterial(item))
       .filter((item): item is AgentMaterial => item !== null);
@@ -336,6 +463,7 @@ class EntryWriter implements LiveEntryController {
     const visible = prepared.filter((item) => !item.hidden);
     const nav = navFiles({
       nodes: safeScene.structure,
+      treeNote: treeNoteOf(safeScene.libraryTree),
       materials: visible.map((item) => ({
         name: item.source.name,
         relPath: item.source.relPath,
@@ -365,6 +493,12 @@ class EntryWriter implements LiveEntryController {
       reading: scene.reading ?? null,
       items: prepared,
       hidden: (value) => isSecretPath(value),
+      ...(safeScene.libraryTree ? { libraryTree: safeScene.libraryTree } : {}),
+      ...(safeScene.attention?.length ? { attention: safeScene.attention } : {}),
+      ...(safeScene.writeChannel ? { writeChannel: safeScene.writeChannel } : {}),
+      ...(safeScene.skillDistill ? { skillDistill: true } : {}),
+      ...(safeScene.skills?.length ? { skills: safeScene.skills } : {}),
+      ...(safeScene.playbook?.snapshot.enabled ? { playbook: safeScene.playbook.snapshot } : {}),
     });
     await atomicWriteFile(this.snapshotPath(workspaceId), snapshotJson(snapshot));
     this.opts.trace?.('snapshot');

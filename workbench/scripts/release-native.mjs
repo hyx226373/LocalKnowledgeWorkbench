@@ -54,13 +54,24 @@ function copyPhysical(src, dest, seen = new Set()) {
 }
 
 // 索引器工作区里还没提交的 6 个文件。不进安装包，也不参与 staging 编译。
-const UNTRACKED_INDEXER = new Set([
-  'dualDb.ts', 'electronHost.ts', 'host.ts', 'indexBoundary.ts', 'indexHealthText.ts', 'r11-host.test.ts',
-]);
+const UNTRACKED_INDEXER = new Set(['disk.ts', 'resolveBatch.ts', 'segmentGate.ts', 'disk.js', 'resolveBatch.js', 'segmentGate.js']); // D3: fork/host tracked modules@7631af3; skip unused orphans
 
 function skipUntrackedIndexer(abs) {
   const norm = abs.replaceAll('/', '\\');
   return norm.includes('\\indexer\\') && UNTRACKED_INDEXER.has(path.basename(abs));
+}
+/** D3: App requires @kb/indexer/fork (setIndexerFork). Fail fast if staging copy lacks it. */
+function assertIndexerForkExport(vendorDir) {
+  const pkgPath = path.join(vendorDir, 'package.json');
+  const forkSrc = path.join(vendorDir, 'src', 'fork.ts');
+  if (!fs.existsSync(pkgPath)) throw new Error(`D3: missing ${pkgPath}`);
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  if (!pkg?.exports?.['./fork']) {
+    throw new Error('D3: @kb/indexer package.json missing exports["./fork"] (need modules tip with fork tracked)');
+  }
+  if (!fs.existsSync(forkSrc)) {
+    throw new Error(`D3: missing ${forkSrc} — commit indexer/src/fork.ts in modules before release`);
+  }
 }
 
 // @kb 包自带的 node_modules 不进安装包。运行时依赖走上面这一份 node_modules。
@@ -390,6 +401,7 @@ async function main() {
   }
   // Compile the authorized indexer source in staging; never write source dist or junctions.
   const idx = deps.find(d => d.name === '@kb/indexer');
+  if (idx) assertIndexerForkExport(idx.vendor);
   if (idx) {
     const r = spawnSync(process.execPath, [path.join(nmDest, 'typescript', 'bin', 'tsc'), '-p', path.join(idx.vendor, 'tsconfig.json')], { cwd: idx.vendor, stdio: 'inherit' });
     if (r.status !== 0) throw new Error('staged indexer build failed');

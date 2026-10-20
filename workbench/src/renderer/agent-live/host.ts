@@ -16,8 +16,17 @@ export interface AgentLiveHost {
   writeClipboard(text: string): Promise<void>;
   bridgeEntryPath(): Promise<string>;
   workspaceEntryPath(workspaceId: string): Promise<string>;
-  pickFile(): Promise<string | null>;
-  /** 集成组接到 webContents.startDrag。deleteSource 固定为 false。 */
+  /**
+   * 已选 activeAgent 时返回常驻规则全文。
+   * 未选或接口未接上时返回 null，复制入口仍写入原来的路径。
+   */
+  residentRules?(entryPath: string): Promise<string | null>;
+  /** dialogKey 区分入口。选择文件加入资料、重新定位各用各的键，不和注册来源混用。 */
+  pickFile(dialogKey?: string): Promise<string | null>;
+  /**
+   * 文件模式拖出真实文件。deleteSource 固定为 false。
+   * 调用方已在 dragstart 里 preventDefault，并记下应用内会话。这里只发异步 IPC。
+   */
   startDragCopy?(request: NativeCopyDrag): void;
   /** 目录拖拽通常只有 resourceId。集成组补上真实路径。补不上就不要加入。 */
   resolve?(ref: MaterialRef): Promise<MaterialRef | null>;

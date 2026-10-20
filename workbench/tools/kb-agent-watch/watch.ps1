@@ -650,17 +650,11 @@ $ready['pollOnly'] = [bool]$PollOnly
 $ready['message'] = 'Watching the live directory. After an atomic replace, wait 300ms before reading marker, and poll as a fallback.'
 Emit-Obj $ready
 
-Load-Cursor
-$ok = $false
-for ($i = 0; $i -lt 6; $i++) {
-  try { $ok = Invoke-Sync } catch { Warn-Line ("watch-error " + $_.Exception.Message); $ok = $false }
-  if ($ok) { break }
-  if ($i -lt 5) { Start-Sleep -Milliseconds $RetryMs[[Math]::Min($i, $RetryMs.Count - 1)] }
-}
-if ($Once) { exit 0 }
-
+# Arm directory watch before first sync/bootstrap (match watch.mjs). e2e commits as soon as
+# it sees bootstrap; if FSW starts after that, the change is only seen on the ~7s poll.
 $gate = [hashtable]::Synchronized(@{ dirty = $false })
 $watcher = $null
+$script:watcherSubs = @()
 function Start-DirWatch {
   if ($PollOnly) { return }
   if ($script:watcher) { return }
@@ -671,17 +665,37 @@ function Start-DirWatch {
   $fsw.IncludeSubdirectories = $false
   $fsw.NotifyFilter = [System.IO.NotifyFilters]'FileName, LastWrite, DirectoryName, Size, CreationTime'
   $fsw.EnableRaisingEvents = $true
-  $action = { $Event.MessageData.dirty = $true }
-  Register-ObjectEvent -InputObject $fsw -EventName Changed -MessageData $gate -Action $action | Out-Null
-  Register-ObjectEvent -InputObject $fsw -EventName Created -MessageData $gate -Action $action | Out-Null
-  Register-ObjectEvent -InputObject $fsw -EventName Renamed -MessageData $gate -Action $action | Out-Null
-  Register-ObjectEvent -InputObject $fsw -EventName Deleted -MessageData $gate -Action $action | Out-Null
+  foreach ($ev in @('Changed', 'Created', 'Renamed', 'Deleted')) {
+    $sid = "KBWatch$ev"
+    Unregister-Event -SourceIdentifier $sid -ErrorAction SilentlyContinue
+    # No -Action: drain with Wait-Event on the main runspace (pipes + Start-Sleep alone do not pump).
+    $script:watcherSubs += Register-ObjectEvent -InputObject $fsw -EventName $ev -SourceIdentifier $sid
+  }
   $script:watcher = $fsw
 }
-Start-DirWatch
+if (-not $Once) { Start-DirWatch }
+
+Load-Cursor
+$ok = $false
+for ($i = 0; $i -lt 6; $i++) {
+  try { $ok = Invoke-Sync } catch { Warn-Line ("watch-error " + $_.Exception.Message); $ok = $false }
+  if ($ok) { break }
+  if ($i -lt 5) { Start-Sleep -Milliseconds $RetryMs[[Math]::Min($i, $RetryMs.Count - 1)] }
+}
+if ($Once) { exit 0 }
+
 $debounceUntil = [datetime]::MaxValue
 $nextPoll = (Get-Date).AddMilliseconds($PollMs)
 while ($true) {
+  # Wait-Event pumps the engine; Timeout is whole seconds on Windows PowerShell 5.1.
+  $null = Wait-Event -Timeout 1
+  $pending = @(Get-Event -ErrorAction SilentlyContinue)
+  if ($pending.Count -gt 0) {
+    foreach ($one in $pending) {
+      Remove-Event -EventIdentifier $one.EventIdentifier -ErrorAction SilentlyContinue
+    }
+    $gate.dirty = $true
+  }
   if ($gate.dirty) {
     $gate.dirty = $false
     $debounceUntil = (Get-Date).AddMilliseconds($DebounceMs)
@@ -696,5 +710,4 @@ while ($true) {
     Start-DirWatch
     try { Load-Cursor; [void](Invoke-Sync) } catch { Warn-Line ("watch-error " + $_.Exception.Message) }
   }
-  Start-Sleep -Milliseconds 40
 }

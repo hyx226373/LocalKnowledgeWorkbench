@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { dialog } from 'electron';
+import { dialog, shell } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { setAppUpdateChecker } from '../../shared/actions/packages/appUpdate';
@@ -115,6 +115,7 @@ export async function attachAutoUpdate(opts: {
     noRelaunch: process.env.KB_UPDATE_NO_RELAUNCH === '1',
     helperDone,
     relaunchPath: opts.relaunchPath,
+    openExternal: (url) => shell.openExternal(url),
   };
   const service = new UpdateService(hooks);
   await service.init();

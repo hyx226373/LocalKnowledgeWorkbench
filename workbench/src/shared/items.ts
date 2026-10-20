@@ -238,6 +238,17 @@ export function pruneDock(dock: SerializedDock | null, keep: (itemId: string) =>
  *  3 = { schema, items, dock, shell }（条目内联在布局里）；4 = { schema, dock, shell } + 项目表 workspace_items */
 export const LAYOUT_SCHEMA_VERSION = 4;
 
+/**
+ * 没有保存过布局时的侧栏宽。
+ * 已保存的 shell.sidebarWidth 原样读取，不迁到这个数。
+ */
+export const NEW_LAYOUT_SIDEBAR_WIDTH = 240;
+
+/** 已保存宽度原样返回；没有保存过才用 240。不夹取值，避免改写旧数据。 */
+export function newLayoutSidebarWidth(saved: unknown): number {
+  return typeof saved === 'number' && Number.isFinite(saved) ? saved : NEW_LAYOUT_SIDEBAR_WIDTH;
+}
+
 export interface StoredLayout {
   schema: number;
   dock: SerializedDock | null;

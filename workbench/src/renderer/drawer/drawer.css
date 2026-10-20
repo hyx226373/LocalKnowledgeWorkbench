@@ -31,12 +31,35 @@
   height: 100%;
 }
 
-.kb-drawer-cards {
+.kb-drawer-cats {
   flex: none;
+  padding: 14px 14px 8px;
+}
+
+.kb-drawer-cats-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.kb-drawer-cats-head span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-drawer-cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* 最少 2 列：列下限不超过半宽。小档最多 6 列：列下限不低于六分之一宽。 */
+  --kb-card-col-floor: 0px;
+  grid-template-columns: repeat(auto-fill, minmax(max(min(var(--kb-card-min-w, 104px), calc((100% - 8px) / 2)), var(--kb-card-col-floor)), 1fr));
   gap: 8px;
-  padding: var(--kb-space-3);
+}
+
+.kb-drawer-cards[data-card-size="sm"] {
+  --kb-card-col-floor: calc((100% - 40px) / 6);
 }
 
 .kb-drawer-card {
@@ -46,7 +69,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 112px;
+  min-height: var(--kb-card-min-h, 112px);
   margin: 0;
   padding: 8px 4px;
   border: 0;
@@ -61,19 +84,33 @@
 .kb-drawer-card-mark {
   display: grid;
   place-items: center;
+  width: var(--kb-card-icon, 58px);
+  height: var(--kb-card-icon, 58px);
   transform-origin: center;
   transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.kb-drawer-card > svg {
-  width: 58px;
-  height: 58px;
-  transform-origin: center;
-  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+.kb-drawer-card-mark svg {
+  width: var(--kb-card-icon, 58px);
+  height: var(--kb-card-icon, 58px);
+}
+
+.kb-drawer-card-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--kb-color-accent);
+  color: var(--kb-color-accent-fg, #fff);
+  display: grid;
+  place-items: center;
 }
 
 .kb-drawer-card-name {
-  font-size: 12.5px;
+  font-size: var(--kb-card-title-size, 13px);
   font-weight: 500;
   line-height: 1.2;
   text-align: center;
@@ -101,16 +138,9 @@
   animation: kb-icon-pop 380ms cubic-bezier(0.2, 0.85, 0.2, 1);
 }
 
-.kb-drawer-card[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 5px;
-  height: 9px;
-  border: solid currentColor;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+.kb-drawer-card[data-drop-active="true"] {
+  background: var(--kb-color-drag-over);
+  box-shadow: inset 0 0 0 1px var(--kb-color-accent);
 }
 
 .kb-drawer-card:focus-visible,
@@ -129,7 +159,7 @@
 
 .kb-drawer-module {
   min-width: 0;
-  animation: kb-emerge 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: kb-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .kb-drawer-pending {
@@ -176,7 +206,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .kb-drawer,
-  .kb-drawer-card > svg {
+  .kb-drawer-card-mark,
+  .kb-chev {
     transition: none;
   }
   .kb-drawer-card,
@@ -189,3 +220,85 @@
     transition: none;
   }
 }
+
+.kb-category-drawer { display: grid; grid-template-rows: 1fr; opacity: 1; translate: 0 0; transition: grid-template-rows 320ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 320ms, translate 320ms; }
+.kb-category-drawer[data-collapsed="true"] { grid-template-rows: 0fr; opacity: 0; translate: 0 8px; }
+.kb-category-drawer-inner { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .kb-category-drawer { transition: none; } }
+.app[data-motion="reduce"] .kb-category-drawer { transition: none; }
+/* Ribbon occupies its own full-height column beside the stacked sections. */
+.kb-drawer-cards[data-layout="list"] { grid-template-columns: 32px; width: 40px; box-sizing: border-box; padding: 4px; gap: 2px; justify-content: start; }
+.kb-drawer-cards[data-layout="list"] .kb-drawer-card { width: 32px; height: 32px; min-height: 32px; padding: 0; border-radius: 6px; gap: 0; }
+.kb-drawer-cards[data-layout="list"] .kb-drawer-card-mark { width: 20px; height: 20px; }
+.kb-drawer-cards[data-layout="list"] .kb-drawer-card-mark svg { width: 18px; height: 18px; }
+
+.kb-category-drawer[data-collapsed="false"] .kb-drawer-cards {
+  animation: kb-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.kb-category-toggle svg {
+  transition: transform 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.kb-category-toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .kb-category-toggle svg { transition: none; }
+  .kb-category-drawer[data-collapsed="false"] .kb-drawer-cards { animation: none; }
+}
+.app[data-motion="reduce"] .kb-category-toggle svg { transition: none; }
+.app[data-motion="reduce"] .kb-category-drawer .kb-drawer-cards,
+.app[data-motion="reduce"] .kb-drawer-card,
+.app[data-motion="reduce"] .kb-drawer-card[aria-pressed="true"] .kb-drawer-card-mark { animation: none; }
+
+.kb-drawer[data-layout="list"] .kb-drawer-body { flex-direction: row; }
+.kb-drawer-cats[data-layout="list"] { display: flex; flex-direction: column; position: relative; z-index: 2; width: 43px; height: 100%; box-sizing: border-box; padding: 4px 1px; border-right: 1px solid var(--kb-color-border); overflow-y: auto; flex: none; }
+.kb-ribbon-panel-toggle { flex: none; align-self: center; width: 32px; height: 32px; min-height: 32px; margin: 0; padding: 0; border-radius: 6px; gap: 0; animation: none; }
+.kb-ribbon-panel-toggle .kb-drawer-card-mark,
+.kb-ribbon-panel-toggle .kb-drawer-card-mark svg { width: 18px; height: 18px; }
+.kb-ribbon-panel-toggle[aria-pressed="true"] { background: color-mix(in srgb, var(--kb-color-surface) 72%, transparent); color: var(--kb-color-text); }
+.kb-ribbon-panel-toggle[aria-pressed="true"] .kb-drawer-card-mark { animation: none; }
+.kb-ribbon-sep { flex: none; align-self: center; width: 18px; height: 1px; margin: 4px 0; background: var(--kb-color-border); }
+.kb-drawer-cats[data-layout="list"] .kb-category-drawer { flex: none; }
+.kb-ribbon-layout { flex: none; margin-top: auto; justify-content: center; width: 40px; min-height: 32px; padding: 0; }
+.kb-drawer[data-layout="list"] .kb-drawer-modules { min-width: 0; border-top: 0; }
+.kb-drawer-modules[hidden] { display: none; }
+/* list 的宽度由状态直接写成像素。flex 子项上的 width 过渡在离开 44px 锁时会停在 0ms，展开后用宽仍是 44 或工具条内容宽。 */
+.kb-drawer[data-layout="list"] { transition: none; }
+.kb-sidebar:has(.kb-drawer[data-layout="list"]) { transition: none; }
+/* list 收起只留 ribbon：竖条保持可点，不跟着整栏缩成边框宽度。 */
+.kb-drawer[data-layout="list"][data-open="true"][data-panel-collapsed="true"] { flex: 1 1 0; min-height: 0; min-width: 44px; max-width: 44px; }
+.kb-sidebar:has(.kb-drawer[data-layout="list"][data-open="true"][data-panel-collapsed="true"]) { width: 44px; min-width: 44px; max-width: 44px; }
+/* 展开至少是最小内容宽，不能停在竖条或工具条的内容宽上。 */
+.kb-drawer[data-layout="list"][data-open="true"][data-panel-collapsed="false"] { flex: 1 1 0; min-height: 0; min-width: 300px; }
+.kb-sidebar:has(.kb-drawer[data-layout="list"][data-open="true"][data-panel-collapsed="false"]) { min-width: 300px; }
+.kb-drawer-module[data-ribbon-highlight="true"] { outline: 1px solid var(--kb-color-accent); outline-offset: -1px; background: var(--kb-color-selected); }
+.kb-sidebar:has(.kb-drawer[data-panel-collapsed="true"]) > .pm-sidebar-bar { display: none; }
+/* 侧栏分区收起（与 ribbon / 网格分类共存：只收模块内容，不动左侧图标条） */
+.kb-sbb-bar { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 18px; margin: 2px 6px 0; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--kb-color-text-muted, #888); font-size: 11px; line-height: 18px; cursor: pointer; -webkit-app-region: no-drag; opacity: .7; }
+.kb-sbb-bar:hover { opacity: 1; background: rgba(127, 127, 127, .12); }
+.kb-sbb-chev { display: inline-block; transition: transform .12s; }
+html.sbc-root .kb-drawer-module[data-module='root'] > :not(.kb-sbb-bar) { display: none !important; }
+html.sbc-root .kb-drawer-module[data-module='root'] .kb-sbb-chev { transform: rotate(-90deg); }
+html.sbc-fav .kb-drawer-module[data-module='fav'] > :not(.kb-sbb-bar) { display: none !important; }
+html.sbc-fav .kb-drawer-module[data-module='fav'] .kb-sbb-chev { transform: rotate(-90deg); }
+html.sbc-web .kb-drawer-module[data-module='web'] > :not(.kb-sbb-bar) { display: none !important; }
+html.sbc-web .kb-drawer-module[data-module='web'] .kb-sbb-chev { transform: rotate(-90deg); }
+html.sbc-bench .kb-drawer-module[data-module='bench'] > :not(.kb-sbb-bar) { display: none !important; }
+html.sbc-bench .kb-drawer-module[data-module='bench'] .kb-sbb-chev { transform: rotate(-90deg); }
+html.sbc-agent .kb-drawer-module[data-module='agent'] > :not(.kb-sbb-bar) { display: none !important; }
+html.sbc-agent .kb-drawer-module[data-module='agent'] .kb-sbb-chev { transform: rotate(-90deg); }
+html.sbc-plugin .kb-drawer-module[data-module='plugin'] > :not(.kb-sbb-bar) { display: none !important; }
+html.sbc-plugin .kb-drawer-module[data-module='plugin'] .kb-sbb-chev { transform: rotate(-90deg); }
+
+/* r15：侧栏 .kb-sidebar 是纵向 flex。抽屉在主轴上必须吃满剩余高度且允许收缩（min-height:0），
+   否则抽屉按内容长高、被 .kb-sidebar 的 overflow:hidden 裁掉，分区列表永远不出滚动条。
+   上面 list 规则里的 flex 只为宽度锁而写，纵向一律用 1 1 0。 */
+.kb-sidebar > .kb-drawer { flex: 1 1 0; min-height: 0; }
+.kb-drawer-body, .kb-drawer[data-layout="list"] .kb-drawer-body { min-height: 0; }
+.kb-drawer-modules {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--kb-color-scrollbar) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.kb-drawer-modules .kb-tree-row { content-visibility: auto; contain-intrinsic-size: auto var(--kb-size-row); }

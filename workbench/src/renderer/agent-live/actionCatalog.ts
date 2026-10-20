@@ -37,6 +37,7 @@ export const AGENT_LIVE_ACTION_CATALOG: readonly ActionInput[] = [
     argsSchema: args([], {}),
   },
   {
+    // 执行体在数据进程：config.activeAgent 有值时结果带常驻规则全文；未选时仍只返回入口绝对路径。
     actionId: AGENT_LIVE_ACTIONS.copyWorkspaceLink,
     title: '复制当前工作区入口',
     category: 'agent',

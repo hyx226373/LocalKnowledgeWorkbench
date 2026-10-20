@@ -476,6 +476,8 @@ await win.click('[data-testid="web-banner-close"]');
 await win.waitForTimeout(800);
 const plainFile = path.join(TMP, 'web-plain.png');
 if (hasX()) await grabWindow(app, plainFile);
+// 外观弹层已迁入「更多」；保持阅读面板挂载，沿用弹层断言。
+await win.click('[data-testid="top-more"]');
 await win.click('[data-testid="appearance-button"]');
 await win.waitForSelector('[data-testid="appearance-menu"]');
 await frames(win, 4);
@@ -499,7 +501,7 @@ if (hasX()) {
 check('外观菜单与网页面板重叠时：网页视图隐藏、菜单完整显示在最上层（屏幕像素与 DOM 一致）', overlap && covMenu === 'true' && vMenu.visible === false && (menuDiff === null || menuDiff < 6), JSON.stringify({ overlap, covMenu, visible: vMenu.visible, menuPixelDiff: menuDiff === null ? 'n/a' : +menuDiff.toFixed(2) }));
 const snap = await win.locator('[data-testid="web-snapshot"]').count();
 check('网页被隐藏期间在原位置显示最近一帧截图（页面不“消失”）', snap === 1);
-await win.click('[data-testid="appearance-button"]');
+await win.click('[data-testid="top-more"]');
 await win.waitForSelector('[data-testid="appearance-menu"]', { state: 'detached' });
 const afterMenu = await boundsDev(app, win);
 check('菜单关闭后网页视图立即恢复', afterMenu.dev <= 1, JSON.stringify(afterMenu.r));

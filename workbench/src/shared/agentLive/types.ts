@@ -3,6 +3,9 @@
  * 本文件由组 4 先提交，组 1、组 2、组 3、组 5 以此为准。
  * 工作台写出的桥文件见 0.1：先写 *.tmp，再原子替换；marker.json 最后写。
  */
+import type { AttentionSignal } from '../agentMarks';
+import type { WriteChannelSnapshot } from '../aiWriteChannel';
+import type { PlaybookDelivery, PlaybookMount, PlaybookRelation, PlaybookSnapshot } from '../ctxPlaybook';
 
 export const AGENT_LIVE_SCHEMA_VERSION = 1 as const;
 
@@ -55,6 +58,12 @@ export interface AgentMaterial {
   hasText?: boolean;
   /** 只有 PDF 有。 */
   pages?: number | null;
+  /** 上下文剧本。缺省表示未分槽，不进粘贴。 */
+  slotId?: string;
+  mount?: PlaybookMount;
+  delivery?: PlaybookDelivery;
+  summary?: string;
+  relations?: PlaybookRelation[];
 }
 
 export interface MaterialRef {
@@ -202,6 +211,28 @@ export interface LiveSnapshot {
   reading: LiveReading | null;
   materials: AgentMaterial[];
   nav: { [K in keyof typeof LIVE_NAV]: string };
+  /**
+   * 特别关注。可缺省。schemaVersion 仍是 1，只追加这个字段。
+   * 路径、行号、字符偏移和原文。不写用户源文件。
+   */
+  attention?: AttentionSignal[];
+  /**
+   * AI 写入通道。可缺省。schemaVersion 仍是 1，只追加这个字段。
+   * 高档文件夹不写 absPath。
+   */
+  writeChannel?: WriteChannelSnapshot;
+  /**
+   * skill 蒸馏开关。仅为 true 时写入。schemaVersion 仍是 1。
+   */
+  skillDistill?: boolean;
+  /**
+   * 已就绪的 skill。非空才写入，不含路径。schemaVersion 仍是 1。
+   */
+  skills?: { name: string; description: string; whenToUse: string }[];
+  /**
+   * 上下文剧本。仅开启时写入，不含路径。schemaVersion 仍是 1。
+   */
+  playbook?: PlaybookSnapshot;
 }
 
 /**

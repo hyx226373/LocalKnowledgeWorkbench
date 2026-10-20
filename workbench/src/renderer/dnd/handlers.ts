@@ -1,8 +1,9 @@
 import type React from 'react';
-import { beginDrag, endDrag, hasOurDrag, modifiersOf, peekDrag, readDrag } from './drag';
+import { beginDrag, endDrag, hasOurDrag, modifiersOf, readDrag, readKbPayload } from './drag';
 import { setLiveHint } from './hint';
 import { runDrop } from './session';
 import { onDropTarget } from './resolve';
+import { stopDragAutoScroll, updateDragAutoScroll } from './autoScroll';
 import type { DragPayload, DropTarget, Modifiers } from './types';
 
 const expandTimers = new Map<string, number>();
@@ -33,6 +34,7 @@ export function dragStartProps(payload: DragPayload) {
       e.stopPropagation();
     },
     onDragEnd: () => {
+      stopDragAutoScroll();
       endDrag();
       window.setTimeout(() => setLiveHint(''), 800);
     },
@@ -50,7 +52,7 @@ export function dropTargetProps(opts: {
       if (!hasOurDrag(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
-      const payload = peekDrag();
+      const payload = readKbPayload(e.dataTransfer);
       const mods = modifiersOf(e);
       const decision = onDropTarget(opts.target(mods, payload), payload, mods);
       e.dataTransfer.dropEffect = decision.dropEffect === 'none' ? 'none' : decision.dropEffect;
@@ -59,8 +61,7 @@ export function dropTargetProps(opts: {
       el.dataset.dndHint = decision.hint;
       setLiveHint(decision.hint);
       if (opts.onExpand) armExpand(opts.hintKey, !!opts.expanded, opts.onExpand);
-      const scroller = el.closest('.kb-sidebar, .kb-section');
-      if (scroller instanceof HTMLElement) autoScroll(scroller, e.clientY);
+      updateDragAutoScroll(e.clientX, e.clientY, el);
     },
     onDragLeave: (e: React.DragEvent) => {
       clearExpandTimer(opts.hintKey);
@@ -69,6 +70,7 @@ export function dropTargetProps(opts: {
       delete el.dataset.dndHint;
     },
     onDrop: (e: React.DragEvent) => {
+      stopDragAutoScroll();
       if (!hasOurDrag(e.dataTransfer)) return;
       e.preventDefault();
       e.stopPropagation();
@@ -87,9 +89,6 @@ export function dropTargetProps(opts: {
   };
 }
 
-function autoScroll(el: HTMLElement, clientY: number) {
-  const r = el.getBoundingClientRect();
-  const edge = 28;
-  if (clientY < r.top + edge) el.scrollTop -= 12;
-  else if (clientY > r.bottom - edge) el.scrollTop += 12;
+export function autoScroll(el: HTMLElement, clientY: number, clientX: number = 0) {
+  updateDragAutoScroll(clientX, clientY, el);
 }

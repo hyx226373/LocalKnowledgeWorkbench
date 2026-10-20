@@ -118,7 +118,7 @@ function PendingList({ initial, onClose }: { initial: PendingPlanDto[]; onClose:
   return (
     <>
       <div className="kb-dialog-body" data-testid="pending-plans-body">
-        {plans.length === 0 && <div className="meta">当前没有待批准的计划。</div>}
+        {plans.length === 0 && <div className="meta kb-pending-empty">当前没有待批准的计划。</div>}
         <div style={{ display: 'flex', gap: 12, minHeight: 240 }}>
           <ul className="kb-plan-steps" style={{ flex: '0 0 220px', margin: 0, padding: 0, listStyle: 'none' }} data-testid="pending-plan-list">
             {plans.map((p) => (

@@ -1,5 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { HINT_ALREADY, HINT_BAD_ENTRY, HINT_CLASSIFY, HINT_CLASSIFY_ALT, HINT_CLASSIFY_COPY, HINT_DIR_OPEN, HINT_FLOAT, HINT_INVALID, HINT_NO_ORIGIN, HINT_SELF, HINT_SPLIT, HINT_TAB, HINT_VFOLDER_NODE, HINT_WEB_DISK, WILL_MOVE_FILE } from '../src/renderer/dnd/copy';
+import {
+  HINT_ADD_ROOT,
+  HINT_AGENT_REF,
+  HINT_AGENT_REPO,
+  HINT_ALREADY,
+  HINT_BAD_ENTRY,
+  HINT_CATEGORY_ADD,
+  HINT_CATEGORY_ALREADY,
+  HINT_CATEGORY_DENY,
+  HINT_CLASSIFY,
+  HINT_CLASSIFY_ALT,
+  HINT_CLASSIFY_COPY,
+  HINT_COPY_REVIEW,
+  HINT_DIR_OPEN,
+  HINT_FLOAT,
+  HINT_INVALID,
+  HINT_NO_ORIGIN,
+  HINT_OPEN_RO,
+  HINT_REF,
+  HINT_REORDER,
+  HINT_REORDER_REFS,
+  HINT_SELF,
+  HINT_SPLIT,
+  HINT_TAB,
+  HINT_VFOLDER_NODE,
+  HINT_WEB_DISK,
+  WILL_MOVE_FILE,
+} from '../src/renderer/dnd/copy';
 import { performDrop, removeFromFolderFlow, removeFromWorkspaceFlow, type FlowPorts } from '../src/renderer/dnd/flow';
 import { readerZone } from '../src/renderer/dnd/geometry';
 import { interpretDirTarget } from '../src/renderer/dnd/interpret';
@@ -453,4 +480,171 @@ describe('两种移除文案', () => {
     expect(membershipTouched).toBe(0);
     expect(layouts).not.toContain('library.vfolderRefs');
   });
+
+  describe('Agent 仓库禁入与内部整理', () => {
+    it('其它区或资源管理器 → Agent 仓库：一律拒绝，光标禁止，提示只能往外拖', () => {
+      // 来自左侧树
+      const fromTree = onDropTarget({ kind: 'agent-repo' }, file({ from: { kind: 'root', rootId: 'A', relPath: 'a.md' } }));
+      expect(fromTree.action).toEqual({ type: 'reject', reason: HINT_AGENT_REPO });
+      expect(fromTree.dropEffect).toBe('none');
+      expect(fromTree.hint).toBe(HINT_AGENT_REPO);
+
+      // 来自工作台资料
+      const fromBench = onDropTarget({ kind: 'agent-repo' }, file({ from: { kind: 'workspace-refs', workspaceId: 'ws' } }));
+      expect(fromBench.action).toEqual({ type: 'reject', reason: HINT_AGENT_REPO });
+      expect(fromBench.dropEffect).toBe('none');
+
+      // 来自资源管理器（含 .json）
+      const fromExplorer = onDropTarget(
+        { kind: 'agent-repo' },
+        file({ from: { kind: 'explorer' }, name: 'card.json', ext: '.json' }),
+      );
+      expect(fromExplorer.action).toEqual({ type: 'reject', reason: HINT_AGENT_REPO });
+      expect(fromExplorer.dropEffect).toBe('none');
+    });
+
+    it('Agent 仓库内部整理：真移动，dropEffect 为 move', () => {
+      const internal = onDropTarget(
+        { kind: 'agent-repo', to: 'subfolder' },
+        file({ from: { kind: 'agent-repo' } }),
+      );
+      expect(internal.action).toEqual({ type: 'agent-repo-move', to: 'subfolder' });
+      expect(internal.dropEffect).toBe('move');
+    });
+  });
+
+  describe('同区移动与跨区复制审核', () => {
+    it('左侧树同区目录之间拖：真移动，dropEffect 为 move', () => {
+      const d = onDropTarget(disk('target'), file({ from: { kind: 'root', rootId: 'A', relPath: 'source/a.md' } }));
+      expect(d.action.type).toBe('move');
+      expect(d.dropEffect).toBe('move');
+      expect(d.hint).toContain(WILL_MOVE_FILE);
+    });
+
+    it('跨区写进真实文件夹：无论带什么修饰键，都是复制审核计划，dropEffect 为 copy，绝不 move', () => {
+      // 工作台资料 → 真实文件夹
+      const fromBench = onDropTarget(
+        disk('target'),
+        file({ from: { kind: 'workspace-refs', workspaceId: 'ws' }, rootId: 'A', relPath: 'a.md', name: 'a.md' }),
+        { ctrl: true },
+      );
+      expect(fromBench.action.type).toBe('copy-review');
+      expect(fromBench.dropEffect).toBe('copy');
+      expect(fromBench.hint).toContain(HINT_COPY_REVIEW);
+
+      // Agent 资料 → 真实文件夹
+      const fromAgent = onDropTarget(
+        disk('target'),
+        file({ from: { kind: 'agent-materials' }, name: 'm.md' }),
+      );
+      expect(fromAgent.action.type).toBe('copy-review');
+      expect(fromAgent.dropEffect).toBe('copy');
+
+      // 资源管理器 → 真实文件夹
+      const fromExplorer = onDropTarget(
+        disk('target'),
+        file({ from: { kind: 'explorer' }, name: 'ext.pdf', absPath: '/tmp/ext.pdf' }),
+      );
+      expect(fromExplorer.action.type).toBe('copy-review');
+      expect(fromExplorer.dropEffect).toBe('copy');
+    });
+
+    it('左侧树 → 工作台资料 / Agent 资料：跨区加引用，dropEffect 为 link', () => {
+      const bench = onDropTarget({ kind: 'workspace-refs', workspaceId: 'ws' }, file());
+      expect(bench.action.type).toBe('add-ref');
+      expect(bench.dropEffect).toBe('link');
+
+      const agent = onDropTarget({ kind: 'agent-materials', workspaceId: 'ws' }, file());
+      expect(agent.action.type).toBe('add-agent');
+      expect(agent.dropEffect).toBe('link');
+      expect(agent.hint).toBe(HINT_AGENT_REF);
+    });
+  });
+
+  describe('补全跨区落点', () => {
+    it('左侧树 → 抽屉卡片（工作台、Agent）：接受资源 MIME，加引用', () => {
+      const benchCard = onDropTarget({ kind: 'drawer-card', module: 'bench', workspaceId: 'ws' }, file());
+      expect(benchCard.action.type).toBe('add-ref');
+      expect(benchCard.dropEffect).toBe('link');
+
+      const agentCard = onDropTarget({ kind: 'drawer-card', module: 'agent', workspaceId: 'ws' }, file());
+      expect(agentCard.action.type).toBe('add-agent');
+      expect(agentCard.dropEffect).toBe('link');
+    });
+
+    it('任意资料 → 分类页工作区卡片：加进该工作区资料', () => {
+      const d = onDropTarget({ kind: 'category-card', workspaceId: 'ws-target' }, file());
+      expect(d.action).toMatchObject({ type: 'add-ref', workspaceId: 'ws-target', resourceIds: ['r1'] });
+      expect(d.dropEffect).toBe('link');
+    });
+
+    it('分类页卡片 → 左侧分类：未在加入，已在此分类提示，非卡片拒绝', () => {
+      const cardPayload: DragPayload = {
+        v: 1,
+        items: [{
+          resourceId: 'ws-1',
+          sourceKind: 'file',
+          from: { kind: 'category-card', workspaceId: 'ws-1' },
+          entry: 'file',
+        }],
+      };
+      // 未在
+      const add = onDropTarget({ kind: 'category', categoryId: 'cat-a', workspaceIds: ['ws-other'] }, cardPayload);
+      expect(add.action).toMatchObject({ type: 'add-category', categoryId: 'cat-a', workspaceId: 'ws-1', already: false });
+      expect(add.hint).toBe(HINT_CATEGORY_ADD);
+      expect(add.dropEffect).toBe('link');
+
+      // 已在此分类
+      const already = onDropTarget({ kind: 'category', categoryId: 'cat-a', workspaceIds: ['ws-1'] }, cardPayload);
+      expect(already.action).toMatchObject({ type: 'add-category', categoryId: 'cat-a', workspaceId: 'ws-1', already: true });
+      expect(already.hint).toBe(HINT_CATEGORY_ALREADY);
+
+      // 非卡片拒绝
+      const invalid = onDropTarget({ kind: 'category', categoryId: 'cat-a', workspaceIds: [] }, file());
+      expect(invalid.action).toMatchObject({ type: 'reject', reason: HINT_CATEGORY_DENY });
+    });
+
+    it('资源管理器 → 工作台资料：根内加引用，根外拒绝并提示先加根', () => {
+      // 根内
+      const inside = onDropTarget(
+        { kind: 'workspace-refs', workspaceId: 'ws' },
+        file({ from: { kind: 'explorer' }, rootId: 'A', absPath: '/rootA/file.txt' }),
+      );
+      expect(inside.action.type).toBe('add-ref');
+      expect(inside.dropEffect).toBe('link');
+
+      // 根外
+      const outside = onDropTarget(
+        { kind: 'workspace-refs', workspaceId: 'ws' },
+        file({ from: { kind: 'explorer' }, rootId: undefined, absPath: '/external/file.txt' }),
+      );
+      expect(outside.action).toEqual({ type: 'reject', reason: HINT_ADD_ROOT });
+      expect(outside.dropEffect).toBe('none');
+    });
+
+    it('资源管理器 → 阅读区：只读打开，dropEffect 为 copy', () => {
+      const ro = onDropTarget(
+        { kind: 'reader', zone: 'center' },
+        file({ from: { kind: 'explorer' }, resourceId: '', absPath: '/tmp/test.md' }),
+      );
+      expect(ro.action).toEqual({ type: 'open-readonly', paths: ['/tmp/test.md'] });
+      expect(ro.dropEffect).toBe('copy');
+      expect(ro.hint).toBe(HINT_OPEN_RO);
+    });
+
+    it('工作台资料内部排序：reorder-materials，dropEffect 为 move', () => {
+      const reorder = onDropTarget(
+        { kind: 'workbench-order', workspaceId: 'ws', ids: ['r1', 'r2', 'r3'], index: 2 },
+        file({ resourceId: 'r1' }),
+      );
+      expect(reorder.action).toMatchObject({
+        type: 'reorder-materials',
+        workspaceId: 'ws',
+        ids: ['r2', 'r3', 'r1'],
+      });
+      expect(reorder.dropEffect).toBe('move');
+      expect(reorder.hint).toBe(HINT_REORDER_REFS);
+    });
+  });
 });
+

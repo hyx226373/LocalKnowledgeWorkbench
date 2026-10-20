@@ -17,7 +17,7 @@ describe('资料抽屉选择顺序', () => {
       '收藏',
       '网络资料',
       '工作台资料',
-      'Agent资料',
+      'Agent 资料',
       '插件',
     ]);
     expect(Object.values(DRAWER_MODULE_LABEL)).not.toContain('布局');
@@ -64,13 +64,13 @@ describe('资料抽屉选择顺序', () => {
 });
 
 describe('资料抽屉宽度', () => {
-  it('默认 360，夹在 300–440', () => {
+  it('默认 360，夹在 240–480', () => {
     expect(DRAWER_WIDTH_DEFAULT).toBe(360);
     expect(clampDrawerWidth(360)).toBe(360);
     expect(clampDrawerWidth(300)).toBe(300);
     expect(clampDrawerWidth(440)).toBe(440);
-    expect(clampDrawerWidth(299)).toBe(300);
-    expect(clampDrawerWidth(441)).toBe(440);
+    expect(clampDrawerWidth(239)).toBe(240);
+    expect(clampDrawerWidth(481)).toBe(480);
     expect(clampDrawerWidth(Number.NaN)).toBe(360);
     expect(clampDrawerWidth(Number.POSITIVE_INFINITY)).toBe(360);
   });

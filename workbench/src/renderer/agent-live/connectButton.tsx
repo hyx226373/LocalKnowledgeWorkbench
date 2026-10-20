@@ -26,7 +26,7 @@ export function ConnectAgentButton({ defaultOpen = false, compact = false }: { d
       </button>
       <button
         type="button"
-        className="kb-button kb-button--secondary kb-button--small kb-no-drag"
+        className="kb-icon-hit kb-no-drag"
         data-testid="connect-agent-menu"
         aria-label="入口菜单"
         aria-expanded={open}

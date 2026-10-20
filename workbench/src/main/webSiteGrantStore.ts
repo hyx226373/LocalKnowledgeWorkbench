@@ -21,6 +21,8 @@ import {
 
 export class WebSiteGrantStore {
   private globalNeverBlock = false;
+  private allowOpenExternal = true;
+  private trustInsecureLinks = false;
   private readonly live = new Map<string, SiteGrant>();
   private readonly persisted = new Map<string, SiteGrant>();
   private tail: Promise<void> = Promise.resolve();
@@ -47,6 +49,8 @@ export class WebSiteGrantStore {
     const doc = parseWebSiteGrantDocument(text);
     if (!doc) return;
     this.globalNeverBlock = doc.globalNeverBlock;
+    this.allowOpenExternal = doc.allowOpenExternal !== false;
+    this.trustInsecureLinks = doc.trustInsecureLinks === true;
     this.persisted.clear();
     for (const [site, row] of [...this.live]) {
       if (row.persistence === 'always') this.live.delete(site);
@@ -59,7 +63,12 @@ export class WebSiteGrantStore {
   }
 
   snapshot(): GrantSnapshot {
-    return { globalNeverBlock: this.globalNeverBlock, sites: this.live };
+    return {
+      globalNeverBlock: this.globalNeverBlock,
+      sites: this.live,
+      allowOpenExternal: this.allowOpenExternal,
+      trustInsecureLinks: this.trustInsecureLinks,
+    };
   }
 
   /** 请求路径：微任务后查内存表，不读盘。 */
@@ -76,14 +85,27 @@ export class WebSiteGrantStore {
   document(): WebSiteGrantDocument {
     const sites: WebSiteGrantDocument['sites'] = {};
     for (const [site, row] of this.persisted) sites[site] = { decision: row.decision, source: row.source, at: row.at };
-    return { version: 1, globalNeverBlock: this.globalNeverBlock, sites };
+    return {
+      version: 1,
+      globalNeverBlock: this.globalNeverBlock,
+      sites,
+      allowOpenExternal: this.allowOpenExternal,
+      trustInsecureLinks: this.trustInsecureLinks,
+    };
   }
 
-  list(): { version: 1; file: string; globalNeverBlock: boolean; sites: WebSiteGrantRow[] } {
+  list(): { version: 1; file: string; globalNeverBlock: boolean; allowOpenExternal: boolean; trustInsecureLinks: boolean; sites: WebSiteGrantRow[] } {
     const sites = [...this.live.entries()]
       .map(([site, row]) => ({ site, ...row }))
       .sort((a, b) => a.site.localeCompare(b.site));
-    return { version: 1, file: this.file, globalNeverBlock: this.globalNeverBlock, sites };
+    return {
+      version: 1,
+      file: this.file,
+      globalNeverBlock: this.globalNeverBlock,
+      allowOpenExternal: this.allowOpenExternal,
+      trustInsecureLinks: this.trustInsecureLinks,
+      sites,
+    };
   }
 
   async allow(site: string, choice: SiteChoice, source: SiteSource): Promise<void> {
@@ -124,6 +146,16 @@ export class WebSiteGrantStore {
 
   async setGlobalNeverBlock(enabled: boolean): Promise<void> {
     this.globalNeverBlock = enabled;
+    await this.scheduleWrite();
+  }
+
+  async setAllowOpenExternal(enabled: boolean): Promise<void> {
+    this.allowOpenExternal = enabled;
+    await this.scheduleWrite();
+  }
+
+  async setTrustInsecureLinks(enabled: boolean): Promise<void> {
+    this.trustInsecureLinks = enabled;
     await this.scheduleWrite();
   }
 

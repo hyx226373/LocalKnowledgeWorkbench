@@ -1,6 +1,6 @@
 /**
  * 插件管理（H3 撤销 / H7 卸载 / D7 开发者模式安装）。
- * 第三方插件只有一种来源：开启开发者模式后从本地文件夹安装（未签名，无市场）。
+ * 来源：① 插件清单点一下安装（fixture/远程 URL）；② 开发者模式本地文件夹（未签名）。
  */
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { kb } from '../kb';
@@ -8,6 +8,7 @@ import { pluginHost, type PluginRecord } from '../plugin-host/host';
 import { describePermission, displayModeLabel } from '../../shared/adapter-sdk/policy';
 import { findGrant, grantDecision } from '../../shared/grants';
 import type { AdapterPluginDto, AuditEntry, AuditKind, PluginProcessInfo } from '../../shared/pluginIpc';
+import { PLUGIN_CATALOG_LAYOUT_KEY, type PluginCatalogView } from '../../shared/pluginCatalog';
 import type { Root } from '../../shared/types';
 import { KbToggle } from '../settings/KbToggle';
 import { PluginEnableSwitch } from '../settings/PluginEnableSwitch';
@@ -158,6 +159,13 @@ export function PluginManager({ focus, onClose, onUninstall, embedded = false }:
   const devWriting = useRef(false);
   const [roots, setRoots] = useState<Root[]>([]);
   const [busy, setBusy] = useState(false);
+  const [catalog, setCatalog] = useState<PluginCatalogView | null>(null);
+  const [catalogErr, setCatalogErr] = useState<string | null>(null);
+  const [catalogUrlDraft, setCatalogUrlDraft] = useState('');
+  const [catalogUrlSaved, setCatalogUrlSaved] = useState<string | null>(null);
+  const [catalogUrlBusy, setCatalogUrlBusy] = useState(false);
+  const [catalogUrlMsg, setCatalogUrlMsg] = useState<string | null>(null);
+  const [installingId, setInstallingId] = useState<string | null>(null);
   const [procs, setProcs] = useState<PluginProcessInfo[]>([]);
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -174,7 +182,67 @@ export function PluginManager({ focus, onClose, onUninstall, embedded = false }:
     void kb.getDevMode().then(setDev);
     void kb.listRoots().then(setRoots);
     void pluginHost.reloadSandboxed();
+    void refreshCatalog();
   }, []);
+  const refreshCatalog = async () => {
+    setCatalogErr(null);
+    try {
+      const saved = await kb.getLayout(PLUGIN_CATALOG_LAYOUT_KEY);
+      const url = typeof saved === 'string' && saved.trim() ? saved.trim() : null;
+      setCatalogUrlSaved(url);
+      setCatalogUrlDraft(url ?? '');
+      setCatalog(await kb.listPluginCatalog());
+    } catch (e) {
+      setCatalog(null);
+      setCatalogErr(String((e as Error).message ?? e).replace(/^Error invoking remote method 'kb': (Error: )?/, ''));
+    }
+  };
+  const saveCatalogUrl = async () => {
+    setCatalogUrlBusy(true);
+    setCatalogUrlMsg(null);
+    try {
+      const v = catalogUrlDraft.trim() === '' ? null : catalogUrlDraft.trim();
+      const saved = await kb.setPluginCatalogUrl(v);
+      setCatalogUrlSaved(saved);
+      setCatalogUrlDraft(saved ?? '');
+      setCatalogUrlMsg(saved ? '已保存清单 URL，将按此地址刷新。' : '已清空，改用内置 fixture（仅测试）或环境变量。');
+      await refreshCatalog();
+    } catch (e) {
+      setCatalogUrlMsg(String((e as Error).message ?? e).replace(/^Error invoking remote method 'kb': (Error: )?/, ''));
+    } finally {
+      setCatalogUrlBusy(false);
+    }
+  };
+  const clearCatalogUrl = async () => {
+    setCatalogUrlDraft('');
+    setCatalogUrlBusy(true);
+    setCatalogUrlMsg(null);
+    try {
+      await kb.setPluginCatalogUrl(null);
+      setCatalogUrlSaved(null);
+      setCatalogUrlMsg('已恢复默认（内置 fixture 仅测试 / 或 KB_PLUGIN_CATALOG）。');
+      await refreshCatalog();
+    } catch (e) {
+      setCatalogUrlMsg(String((e as Error).message ?? e).replace(/^Error invoking remote method 'kb': (Error: )?/, ''));
+    } finally {
+      setCatalogUrlBusy(false);
+    }
+  };
+  const installFromCatalog = async (entryId: string) => {
+    setInstallingId(entryId);
+    setBusy(true);
+    try {
+      const d = await kb.installPluginFromCatalog(entryId);
+      await pluginHost.reloadSandboxed();
+      await refreshCatalog();
+      if (d.errors.length) await dialogs.alert({ title: '插件已安装，但不兼容', body: d.errors.slice(0, 8).join('\n') });
+    } catch (e) {
+      await dialogs.alert({ title: '安装失败', body: String((e as Error).message ?? e).replace(/^Error invoking remote method 'kb': (Error: )?/, '') });
+    } finally {
+      setInstallingId(null);
+      setBusy(false);
+    }
+  };
   useEffect(() => {
     if (focus) document.querySelector(`[data-testid="pm-plugin-${CSS.escape(focus)}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [focus, list]);
@@ -221,8 +289,96 @@ export function PluginManager({ focus, onClose, onUninstall, embedded = false }:
       <div className={embedded ? 'kb-plugin-manager' : 'kb-dialog kb-dialog--wide kb-plugin-manager'} role={embedded ? 'region' : 'dialog'} aria-modal={embedded ? undefined : true} aria-label="插件管理" data-testid="plugin-manager" onMouseDown={(e) => e.stopPropagation()} onKeyDown={(e) => !embedded && e.key === 'Escape' && onClose()}>
         <div className="kb-dialog-title">插件管理</div>
         <div className="kb-dialog-body kb-pm-body">
-          <section>
+          <section className="kb-set-card" data-testid="pm-catalog">
+            <h3>获取插件</h3>
+            <div className="meta">从清单一键下载、校验（sha256 + 可选签名）并安装（不改用户知识库；缓存位于应用数据目录 plugin-download-cache）。</div>
+            <div className="kb-pm-catalog-url" data-testid="pm-catalog-url">
+              <label className="meta" htmlFor="pm-catalog-url-input">
+                清单 URL（自定义；留空则用内置 fixture 仅测试，或环境变量 KB_PLUGIN_CATALOG）
+              </label>
+              <div className="kb-pm-actions kb-pm-catalog-bar">
+                <input
+                  id="pm-catalog-url-input"
+                  data-testid="pm-catalog-url-input"
+                  className="kb-input"
+                  placeholder="https://example.com/plugin-catalog.json 或本地绝对路径"
+                  value={catalogUrlDraft}
+                  disabled={busy || catalogUrlBusy}
+                  onChange={(e) => setCatalogUrlDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void saveCatalogUrl();
+                    }
+                  }}
+                />
+                <button className="kb-button kb-button--small" data-testid="pm-catalog-url-save" disabled={busy || catalogUrlBusy} onClick={() => void saveCatalogUrl()}>
+                  {catalogUrlBusy ? '保存中…' : '保存'}
+                </button>
+                <button
+                  className="kb-button kb-button--secondary kb-button--small"
+                  data-testid="pm-catalog-url-clear"
+                  disabled={busy || catalogUrlBusy || (!catalogUrlSaved && !catalogUrlDraft)}
+                  onClick={() => void clearCatalogUrl()}
+                >
+                  清空/恢复默认
+                </button>
+                <button className="kb-button kb-button--secondary kb-button--small" data-testid="pm-catalog-refresh" disabled={busy || catalogUrlBusy} onClick={() => void refreshCatalog()}>
+                  刷新清单
+                </button>
+              </div>
+              {catalogUrlMsg && (
+                <div className="meta" data-testid="pm-catalog-url-msg">
+                  {catalogUrlMsg}
+                </div>
+              )}
+            </div>
+            {catalogErr && (
+              <div className="kb-plan-conflict" data-testid="pm-catalog-error">
+                {catalogErr}
+              </div>
+            )}
+            {catalog && (
+              <div className="meta" data-testid="pm-catalog-meta">
+                {catalog.name}
+                {catalog.testOnly ? ' · 【仅测试】' : ''}
+                {catalog.updatedAt ? ` · ${catalog.updatedAt}` : ''} · {catalog.sourceKind} · 来源 {catalog.source}
+                {catalog.configuredUrl ? ` · 已配置 URL` : ''}
+              </div>
+            )}
+            {catalog?.plugins.map((p) => {
+              const installedGuess =
+                catalog.installedIds.includes(p.id) ||
+                (p.packageUrl.replace(/\\/g, '/').includes('catalog.hello') && catalog.installedIds.includes('catalog.hello'));
+              return (
+                <div key={p.id} className="kb-pm-plugin" data-testid={`pm-catalog-item-${p.id}`}>
+                  <div className="kb-pm-head">
+                    <span className="name">
+                      <b>{p.name}</b> <span className="faint">{p.version}</span>
+                      {p.signature ? <span className="faint">已签名</span> : null}{' '}
+                      <span className="meta">
+                        {p.id}
+                        {p.sha256 ? ' · sha256' : ''}
+                      </span>
+                    </span>
+                    <button
+                      className={'kb-button kb-button--small' + (installingId === p.id ? ' kb-pm-installing' : '')}
+                      data-testid={`pm-catalog-install-${p.id}`}
+                      disabled={busy || installingId === p.id}
+                      onClick={() => void installFromCatalog(p.id)}
+                    >
+                      {installingId === p.id ? '安装中…' : installedGuess ? '重新安装' : '获取/安装'}
+                    </button>
+                  </div>
+                  {p.description && <div className="meta">{p.description}</div>}
+                </div>
+              );
+            })}
+            {catalog && catalog.plugins.length === 0 && <div className="meta">清单为空。</div>}
+          </section>
+          <section className="kb-set-card kb-pm-dev">
             <h3>第三方适配器插件</h3>
+            <div className="kb-pm-dev-head">
             <KbToggle
               testId="dev-mode-toggle"
               checked={dev}
@@ -245,10 +401,9 @@ export function PluginManager({ focus, onClose, onUninstall, embedded = false }:
             >
               开发者模式：允许从本地文件夹安装未签名的插件
             </KbToggle>
-            <div>
-              <button className="kb-button" data-testid="dev-install" disabled={!dev || busy} onClick={() => void install()}>
-                安装本地插件文件夹（开发者模式）…
-              </button>
+            <button className="kb-button kb-button--secondary" data-testid="dev-install" disabled={!dev || busy} onClick={() => void install()}>
+              安装本地插件文件夹（开发者模式）…
+            </button>
             </div>
             <div className="meta">插件在隔离的沙箱中运行：只能通过授权读取你允许的文件夹，不能联网，不能改动应用界面。</div>
             {sandboxed.filter((d) => d.source !== 'builtin').length === 0 && <div className="meta">尚未安装第三方插件。</div>}
@@ -299,7 +454,7 @@ export function PluginManager({ focus, onClose, onUninstall, embedded = false }:
               );
             })}
           </section>
-          <section>
+          <section className="kb-set-card kb-pm-builtin">
             <h3>内置插件与主题包</h3>
             {builtin.map(row)}
           </section>

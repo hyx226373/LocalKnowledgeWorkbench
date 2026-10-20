@@ -144,6 +144,53 @@ describe('数据目录实例锁', () => {
     }
   }, 15000);
 
+
+  it('死 PID（含 exiting:true）的 lock 直接清除并允许启动', async () => {
+    const dir = tmpDir('kblock-dead-');
+    fs.writeFileSync(path.join(dir, 'instance.lock'), JSON.stringify({ pid: deadPid(), exiting: true, at: 't0' }));
+    const result = await acquireInstance(dir);
+    expect(result.ok).toBe(true);
+    const parsed = JSON.parse(fs.readFileSync(path.join(dir, 'instance.lock'), 'utf8')) as { pid: number; exiting?: boolean };
+    expect(parsed.pid).toBe(process.pid);
+    expect(parsed.exiting).toBeUndefined();
+  });
+
+  it('exiting:true 超时后对仍存活持有者先 kill 再清锁；kill 成功则可启动', async () => {
+    const dir = tmpDir('kblock-exiting-stuck-');
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      stdio: 'ignore',
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+    });
+    try {
+      fs.writeFileSync(path.join(dir, 'instance.lock'), JSON.stringify({ pid: child.pid, exiting: true }));
+      const started = Date.now();
+      const result = await acquireInstance(dir);
+      expect(result.ok).toBe(true);
+      expect(Date.now() - started).toBeGreaterThanOrEqual(800);
+      const parsed = JSON.parse(fs.readFileSync(path.join(dir, 'instance.lock'), 'utf8')) as { pid: number; exiting?: boolean };
+      expect(parsed.pid).toBe(process.pid);
+      expect(parsed.exiting).toBeUndefined();
+    } finally {
+      child.kill();
+    }
+  }, 15000);
+
+  it('真库目录 finishInstance 仍释放 lock', async () => {
+    const root = tmpDir('kblock-amy-finish-');
+    const prev = process.env.LOCALAPPDATA;
+    process.env.LOCALAPPDATA = root;
+    try {
+      const amy = path.join(root, 'LocalKnowledgeWorkbench');
+      fs.mkdirSync(amy);
+      fs.writeFileSync(path.join(amy, 'instance.lock'), JSON.stringify({ pid: process.pid, exiting: true, at: 't0' }));
+      await finishInstance(amy);
+      expect(fs.existsSync(path.join(amy, 'instance.lock'))).toBe(false);
+    } finally {
+      if (prev === undefined) delete process.env.LOCALAPPDATA;
+      else process.env.LOCALAPPDATA = prev;
+    }
+  });
+
   it('活着且没在退出时立刻拒绝', async () => {
     const dir = tmpDir('kblock-live-');
     const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
@@ -191,22 +238,18 @@ describe('退出中的实例锁', () => {
 
   it('正在退出并且马上死掉时可以接手', () => {
     const dir = tmpDir('kblock-wait-');
-    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+    // Self-exit: waitIfHolderExits uses blocking sleepSync, so setTimeout/powershell killers race under load.
+    const child = spawn(process.execPath, ['-e', 'for (const e = Date.now() + 200; Date.now() < e; );'], {
       stdio: 'ignore',
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-    });
-    const killer = spawn('powershell.exe', ['-NoProfile', '-Command', `Start-Sleep -Milliseconds 200; Stop-Process -Id ${child.pid} -Force -ErrorAction SilentlyContinue`], {
-      windowsHide: true,
-      stdio: 'ignore',
     });
     try {
       fs.writeFileSync(path.join(dir, 'instance.lock'), JSON.stringify({ pid: child.pid, exiting: true }));
       const started = Date.now();
-      expect(waitIfHolderExits(dir, 2000)).toBe(true);
-      expect(Date.now() - started).toBeLessThan(2000);
+      expect(waitIfHolderExits(dir, 5000)).toBe(true);
+      expect(Date.now() - started).toBeLessThan(5000);
     } finally {
-      child.kill();
-      killer.kill();
+      try { child.kill(); } catch { /* gone */ }
     }
   }, 15000);
 

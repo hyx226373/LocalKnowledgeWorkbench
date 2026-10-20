@@ -10,6 +10,9 @@ import type { FileOps } from '@kb/fileops';
 import type { PlanService } from '@kb/plan';
 import type { SyncController } from '@kb/sync';
 import type { GroupedSearchResult, IndexJob } from '@kb/indexer';
+import { parseContentIndexScope } from '../../shared/contentIndexScope';
+import { serializeContentScope } from './contentScope';
+import type { ContentScope } from '@kb/indexer';
 
 export interface KbStackDeps {
   Database: typeof import('better-sqlite3');
@@ -19,7 +22,7 @@ export interface KbStackDeps {
   resolveInsideRoot: (db: Database.Database, rootId: string, relPath: string) => { rootId: string; relPath: string; absPath: string; resourceId: string | null };
   ensureResource: (db: Database.Database, rootId: string, relPath: string) => string;
   migrateIndexer: (db: Database.Database) => void;
-  searchGrouped: (db: Database.Database, query: string, opts?: { limit?: number; rootIds?: string[] }) => GroupedSearchResult;
+  searchGrouped: (db: Database.Database, query: string, opts?: { limit?: number; rootIds?: string[]; scope?: 'name' | 'content' | 'all' }) => GroupedSearchResult;
   startIndex: (opts: {
     rootId: string;
     localPath: string;
@@ -27,8 +30,12 @@ export interface KbStackDeps {
     resolveResourceId: (rootId: string, relPath: string) => string;
     resolveResourceIds?: (rootId: string, relPaths: string[]) => string[];
     mode?: 'full' | 'incremental';
+    /** 旧 indexer 不认识时忽略。应用侧对 live 路径仍按同一规则过滤。 */
+    contentScope?: ContentScope;
   }) => IndexJob;
   indexOne?: typeof import('@kb/indexer').indexOne;
+  /** 旧 indexer 没有时，实时索引退回 indexOne。 */
+  indexMany?: typeof import('@kb/indexer').indexMany;
   removeOne?: typeof import('@kb/indexer').removeOne;
   closeIndexer: () => Promise<void>;
   createFileOps: (deps: {
@@ -49,7 +56,7 @@ export interface KbStack {
   fileOps: FileOps;
   plans: PlanService;
   sync: SyncController;
-  searchGrouped: (query: string, o?: { limit?: number; rootIds?: string[] }) => GroupedSearchResult;
+  searchGrouped: (query: string, o?: { limit?: number; rootIds?: string[]; scope?: 'name' | 'content' | 'all' }) => GroupedSearchResult;
   mirrorRoot(rootId: string, name: string, localPath: string): void;
   removeRoot(rootId: string): void;
   resolveLocalPath(rootId: string): string;
@@ -157,7 +164,10 @@ export function ensureWorkbenchContentIndex(
   localPath: string,
   resolveResourceId: (rootId: string, relPath: string) => string,
   resolveResourceIds?: (rootId: string, relPaths: string[]) => string[],
+  scope?: unknown,
+  contentScope?: ContentScope,
 ) {
+  const parsed = parseContentIndexScope(scope ?? null);
   deps.migrateIndexer(db);
   return deps.startIndex({
     rootId,
@@ -166,5 +176,6 @@ export function ensureWorkbenchContentIndex(
     resolveResourceId,
     resolveResourceIds,
     mode: 'incremental',
+    contentScope: contentScope ?? serializeContentScope(parsed),
   });
 }

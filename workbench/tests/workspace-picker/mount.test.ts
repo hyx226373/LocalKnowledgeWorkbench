@@ -50,7 +50,7 @@ describe('工作区总览挂载', () => {
 
   it('挂载文件不把进入动作放进白名单，也不接宿主', () => {
     const mount = readFileSync(path.join(process.cwd(), 'src/renderer/workspace-picker/mount.ts'), 'utf8');
-    const app = readFileSync(path.join(process.cwd(), 'src/renderer/App.tsx'), 'utf8');
+    const app = readFileSync(path.join(process.cwd(), 'src/renderer/MainShell.tsx'), 'utf8');
     for (const word of ['catalog_id', 'host.attach', 'createWin32Helper', 'setVisible', 'INVOKE_WHITELIST', 'workspace.enter']) {
       expect(mount, word).not.toContain(word);
       expect(app, word).not.toContain(word);

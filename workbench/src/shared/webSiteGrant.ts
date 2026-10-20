@@ -11,7 +11,9 @@ export const GLOBAL_NEVER_BLOCK_WARNING = '所有网页面板将不再拦截外�
 export const WEB_SITE_GRANT_FILE = 'web-site-grants.json';
 
 export const WEB_SITE_ACTIONS = ['web.allowSite', 'web.allowAllBlocked', 'web.neverBlock', 'web.revokeSite'] as const;
-export type WebSiteActionId = (typeof WEB_SITE_ACTIONS)[number];
+/** 设置页上的两个外链开关。不进桥的动作目录，只由设置页调用。 */
+export type WebSiteBrowseActionId = 'web.allowOpenExternal' | 'web.trustInsecureLinks';
+export type WebSiteActionId = (typeof WEB_SITE_ACTIONS)[number] | WebSiteBrowseActionId;
 
 export type SiteDecision = 'allow' | 'deny' | 'never-block';
 export type SiteSource = 'manual' | 'allow-all';
@@ -29,6 +31,10 @@ export interface GrantSnapshot {
   globalNeverBlock: boolean;
   /** 键是可注册域名。调用方持有的就是内存表，判断时不得复制。 */
   sites: ReadonlyMap<string, SiteGrant>;
+  /** 缺省开。允许在主窗口内容区打开外链。旧快照可以没有这一项。 */
+  allowOpenExternal?: boolean;
+  /** 缺省关。放行 file: 等非 http(s)。javascript: 仍然拒绝。 */
+  trustInsecureLinks?: boolean;
 }
 
 export const EMPTY_GRANTS: GrantSnapshot = { globalNeverBlock: false, sites: new Map() };
@@ -38,6 +44,10 @@ export interface WebSiteGrantDocument {
   version: 1;
   globalNeverBlock: boolean;
   sites: Record<string, { decision: SiteDecision; source: SiteSource; at: string }>;
+  /** 允许在主窗口内容区打开外链。旧文件没有这一项时当作开。 */
+  allowOpenExternal: boolean;
+  /** 信任 file: 等非 http(s)。旧文件没有这一项时当作关。 */
+  trustInsecureLinks: boolean;
 }
 
 export interface WebSiteGrantRow extends SiteGrant {
@@ -90,13 +100,19 @@ export function registrableDomain(host: string): string | null {
 }
 
 export function emptyDocument(): WebSiteGrantDocument {
-  return { version: 1, globalNeverBlock: false, sites: {} };
+  return { version: 1, globalNeverBlock: false, sites: {}, allowOpenExternal: true, trustInsecureLinks: false };
 }
 
 export function serializeWebSiteGrantDocument(doc: WebSiteGrantDocument): string {
   const sites: WebSiteGrantDocument['sites'] = {};
   for (const site of Object.keys(doc.sites).sort()) sites[site] = doc.sites[site]!;
-  return JSON.stringify({ version: 1, globalNeverBlock: doc.globalNeverBlock === true, sites }, null, 2) + '\n';
+  return JSON.stringify({
+    version: 1,
+    globalNeverBlock: doc.globalNeverBlock === true,
+    sites,
+    allowOpenExternal: doc.allowOpenExternal !== false,
+    trustInsecureLinks: doc.trustInsecureLinks === true,
+  }, null, 2) + '\n';
 }
 
 function isDecision(v: unknown): v is SiteDecision {
@@ -116,7 +132,7 @@ export function parseWebSiteGrantDocument(text: string): WebSiteGrantDocument | 
     return null;
   }
   if (!raw || typeof raw !== 'object') return null;
-  const body = raw as { version?: unknown; globalNeverBlock?: unknown; sites?: unknown };
+  const body = raw as { version?: unknown; globalNeverBlock?: unknown; sites?: unknown; allowOpenExternal?: unknown; trustInsecureLinks?: unknown };
   if (body.version !== 1 || !body.sites || typeof body.sites !== 'object' || Array.isArray(body.sites)) return null;
   const sites: WebSiteGrantDocument['sites'] = {};
   for (const [key, value] of Object.entries(body.sites as Record<string, unknown>)) {
@@ -128,7 +144,13 @@ export function parseWebSiteGrantDocument(text: string): WebSiteGrantDocument | 
     const at = typeof row.at === 'string' && row.at ? row.at : '';
     sites[site] = { decision: row.decision, source, at };
   }
-  return { version: 1, globalNeverBlock: body.globalNeverBlock === true, sites };
+  return {
+    version: 1,
+    globalNeverBlock: body.globalNeverBlock === true,
+    sites,
+    allowOpenExternal: body.allowOpenExternal !== false,
+    trustInsecureLinks: body.trustInsecureLinks === true,
+  };
 }
 
 /**
@@ -194,6 +216,8 @@ export interface WebSiteGrantWriter {
   allowAll(sites: readonly string[]): Promise<void>;
   neverBlockSite(site: string): Promise<void>;
   setGlobalNeverBlock(enabled: boolean): Promise<void>;
+  setAllowOpenExternal(enabled: boolean): Promise<void>;
+  setTrustInsecureLinks(enabled: boolean): Promise<void>;
   revoke(site: string): Promise<void>;
 }
 
@@ -251,6 +275,14 @@ export async function runWebSiteApply(store: WebSiteGrantWriter, req: WebSiteApp
     }
     await store.neverBlockSite(site);
     return { status: 'success', actionId, executed: true, reload: 'view', sites: [site] };
+  }
+  if (actionId === 'web.allowOpenExternal') {
+    await store.setAllowOpenExternal(req.enabled === true);
+    return { status: 'success', actionId, executed: true, reload: 'none' };
+  }
+  if (actionId === 'web.trustInsecureLinks') {
+    await store.setTrustInsecureLinks(req.enabled === true);
+    return { status: 'success', actionId, executed: true, reload: 'none' };
   }
   if (actionId === 'web.revokeSite') {
     const site = oneSite(req.site);

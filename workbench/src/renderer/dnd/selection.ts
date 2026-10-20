@@ -40,3 +40,33 @@ export function payloadFor(item: DragItem): DragPayload {
     .filter((x): x is DragItem => !!x && (x.entry ?? '') === (item.entry ?? ''));
   return { v: 1, items: items.length ? items : [item] };
 }
+
+export function clearSelection() {
+  if (selected.size === 0) {
+    known.clear();
+    return;
+  }
+  selected.clear();
+  known.clear();
+  emit();
+}
+
+function isDiskDragItem(item: DragItem): boolean {
+  return item.sourceKind !== 'web' && (item.entry === 'file' || item.entry === 'dir-entry');
+}
+
+/**
+ * 拖到的那一项已多选时，带上所有已记住的文件和文件夹，被拖的那一项排在最前。
+ * 未选中则只拖这一项。虚拟目录和网络资料不进 startDrag 的 files。
+ */
+export function selectedDiskItems(anchor: DragItem): DragItem[] {
+  if (!isDiskDragItem(anchor)) return [];
+  if (!selected.has(anchor.resourceId)) return [anchor];
+  const rest = selectedIds()
+    .filter((id) => id !== anchor.resourceId)
+    .map((id) => known.get(id))
+    .filter((item): item is DragItem => !!item && isDiskDragItem(item));
+  const stored = known.get(anchor.resourceId);
+  const head = stored && isDiskDragItem(stored) ? stored : anchor;
+  return [head, ...rest];
+}

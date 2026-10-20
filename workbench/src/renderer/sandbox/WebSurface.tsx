@@ -32,6 +32,11 @@ function intersects(a: DOMRect, b: DOMRect) {
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 }
 
+/** 拖放、对话框或更高的浮动窗口挡住了这块网页区域。 */
+export function webSlotCovered(el: Element, r: DOMRect): boolean {
+  return dragging || coveringOverlays(r).length > 0 || [...coverProbes].some((f) => f(el, r));
+}
+
 /** 当前与 r 相交的工作台浮层（e2e 也用它判断） */
 export function coveringOverlays(r: DOMRect): Element[] {
   const out: Element[] = [];
@@ -103,7 +108,7 @@ export function WebSurface(p: {
         const r = el.getBoundingClientRect();
         const visible = r.width >= 2 && r.height >= 2 && (el.checkVisibility?.({ visibilityProperty: true } as never) ?? true);
         if (visible) {
-          cover = dragging || coveringOverlays(r).length > 0 || [...coverProbes].some((f) => f(el, r));
+          cover = webSlotCovered(el, r);
           if (!cover) {
             const x = Math.round(r.left);
             const y = Math.round(r.top);

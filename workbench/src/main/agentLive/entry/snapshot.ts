@@ -1,5 +1,10 @@
+import type { WriteChannelSnapshot } from '../../../shared/aiWriteChannel';
+import type { PlaybookSnapshot } from '../../../shared/ctxPlaybook';
+import { normalizeSkillSnapshot, type SkillSnapshotEntry } from '../../../shared/skillLibrary';
+import type { AttentionSignal } from '../../../shared/agentMarks';
 import { LIVE_NAV, type AgentMaterial, type LivePanel, type LiveReading, type LiveSnapshot } from '../../../shared/agentLive/types';
 import type { ContentStatus, PreparedMaterial } from './content';
+import type { LibraryTreeSnapshot } from './libraryTree';
 
 export interface SnapshotMaterial extends AgentMaterial {
   tier: 'session' | 'pinned';
@@ -9,6 +14,8 @@ export interface SnapshotMaterial extends AgentMaterial {
 export interface BuiltSnapshot extends LiveSnapshot {
   sessionMaterials: SnapshotMaterial[];
   pinnedMaterials: SnapshotMaterial[];
+  /** 资料根目录文件名树。schemaVersion 仍是 1，只追加这个字段。 */
+  libraryTree?: LibraryTreeSnapshot;
 }
 
 function redactPanel(panel: LivePanel, hidden: (value: string | undefined) => boolean): LivePanel {
@@ -59,6 +66,11 @@ function toMaterial(item: PreparedMaterial): SnapshotMaterial {
   else if (typeof source.hasText === 'boolean') out.hasText = source.hasText;
   if (item.pages !== null && item.pages !== undefined) out.pages = item.pages;
   else if (!item.hidden && typeof source.pages === 'number') out.pages = source.pages;
+  if (source.slotId) out.slotId = source.slotId;
+  if (source.mount) out.mount = source.mount;
+  if (source.delivery) out.delivery = source.delivery;
+  if (source.summary) out.summary = source.summary;
+  if (source.relations?.length) out.relations = source.relations.map((row) => ({ type: row.type, targetId: row.targetId }));
   return out;
 }
 
@@ -73,6 +85,17 @@ export function buildSnapshot(input: {
   reading: LiveReading | null;
   items: PreparedMaterial[];
   hidden: (value: string | undefined) => boolean;
+  libraryTree?: LibraryTreeSnapshot;
+  /** 特别关注。空数组不写入，避免改已有快照的 sections。 */
+  attention?: AttentionSignal[];
+  /** AI 写入通道。缺省不写入，避免改已有快照的 sections。 */
+  writeChannel?: WriteChannelSnapshot;
+  /** 仅为 true 时写入。缺省不改已有快照。 */
+  skillDistill?: boolean;
+  /** 非空才写入，并且排在 writeChannel 之后。条目不含路径。 */
+  skills?: readonly SkillSnapshotEntry[];
+  /** 仅开启时写入，排在 skills 之后。不含路径。 */
+  playbook?: PlaybookSnapshot;
 }): BuiltSnapshot {
   const materials = input.items.map(toMaterial);
   const sessionMaterials = materials.filter((item) => item.tier !== 'pinned');
@@ -80,6 +103,14 @@ export function buildSnapshot(input: {
   const sections = ['workspace'];
   if (input.purpose) sections.push('purpose');
   sections.push('panels', 'reading', 'materials', 'sessionMaterials', 'pinnedMaterials', 'nav');
+  if (input.libraryTree) sections.push('libraryTree');
+  const attention = (input.attention ?? []).filter((mark) => (mark.absPath || mark.rebirth) && mark.text);
+  if (attention.length) sections.push('attention');
+  const writeChannel = input.writeChannel?.folders?.length || input.writeChannel?.defaultTier ? input.writeChannel : undefined;
+  if (writeChannel) sections.push('writeChannel');
+  const skills = normalizeSkillSnapshot(input.skills);
+  if (skills.length) sections.push('skills');
+  if (input.playbook?.enabled) sections.push('playbook');
   const snapshot: BuiltSnapshot = {
     schemaVersion: 1,
     appVersion: input.appVersion,
@@ -94,6 +125,12 @@ export function buildSnapshot(input: {
     sessionMaterials,
     pinnedMaterials,
     nav: { ...LIVE_NAV },
+    ...(input.libraryTree ? { libraryTree: input.libraryTree } : {}),
+    ...(attention.length ? { attention } : {}),
+    ...(writeChannel ? { writeChannel } : {}),
+    ...(input.skillDistill === true ? { skillDistill: true } : {}),
+    ...(skills.length ? { skills } : {}),
+    ...(input.playbook?.enabled ? { playbook: input.playbook } : {}),
   };
   if (input.purpose) snapshot.purpose = input.purpose;
   return snapshot;

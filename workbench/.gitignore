@@ -5,3 +5,4 @@ release/
 .vite/
 *.log
 e2e/.tmp/
+.tmp-format-worker-*/

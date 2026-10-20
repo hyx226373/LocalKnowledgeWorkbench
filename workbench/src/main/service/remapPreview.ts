@@ -309,9 +309,13 @@ function uniq(xs: string[]): string[] {
 
 function setFts(db: DB, id: string, rootId: string, rel: string, name: string) {
   db.prepare('DELETE FROM resources_fts WHERE resource_id=?').run(id);
-  if (rel !== '' && !rel.startsWith('.kb-remap-hold/')) {
-    db.prepare('INSERT INTO resources_fts(resource_id, root_id, rel_path, name) VALUES (?,?,?,?)').run(id, rootId, rel, name);
+  if (rel.startsWith('.kb-remap-hold/')) return;
+  // 与 indexer.setFts 一致：单文件来源 rel 为空时仍按文件名入库。
+  if (rel === '') {
+    const row = db.prepare('SELECT kind FROM resources WHERE id=?').get(id) as { kind?: string } | undefined;
+    if (row?.kind !== 'file' || !name) return;
   }
+  db.prepare('INSERT INTO resources_fts(resource_id, root_id, rel_path, name) VALUES (?,?,?,?)').run(id, rootId, rel, name);
 }
 
 function hashForStat(abs: string, st: SeenStat, prev: { size: number; mtime_ms: number; content_hash: string | null } | undefined): string | null {

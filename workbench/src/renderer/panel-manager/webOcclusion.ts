@@ -40,6 +40,8 @@ function hasSelector(root: ParentNode | Document, sel: string): boolean {
 export function dragShieldActive(root: ParentNode = document): boolean {
   if (hasSelector(root, '.dv-resize-container-dragging')) return true;
   if (hasSelector(root, '.dv-drop-target-selection')) return true;
+  if (hasSelector(root, '.dv-drop-target-anchor')) return true;
+  if (hasSelector(root, '.dv-sash[data-pm-dragging="true"]')) return true;
   return false;
 }
 

@@ -1,0 +1,20 @@
+{
+  "name": "native-app-helper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Win32 product helper for Electron native-app-host (host-r1). Documented OS APIs only.",
+  "main": "index.js",
+  "type": "commonjs",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "postinstall-note": "echo Install koffi on Windows: npm install koffi"
+  },
+  "optionalDependencies": {
+    "koffi": "^2.11.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

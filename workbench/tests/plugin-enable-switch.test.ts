@@ -6,7 +6,7 @@ const root = join(__dirname, '..');
 
 describe('r41-BC 插件胶囊开关与设置齿轮', () => {
   it('侧栏与插件管理页用 PluginEnableSwitch，无「已启用+禁用按钮」双占位', () => {
-    const app = readFileSync(join(root, 'src/renderer/App.tsx'), 'utf8');
+    const app = readFileSync(join(root, 'src/renderer/MainShell.tsx'), 'utf8');
     expect(app).toContain("from './settings/PluginEnableSwitch'");
     expect(app).toContain('<PluginEnableSwitch');
     expect(app).not.toMatch(/已启用[\s\S]{0,120}禁用/);
@@ -28,23 +28,20 @@ describe('r41-BC 插件胶囊开关与设置齿轮', () => {
     expect(src).toContain('内置核心插件，不可禁用');
   });
 
-  it('设置齿轮为 lucide settings 路径，不是太阳射线', () => {
+  it('设置齿轮为 lucide settings，不是太阳射线', () => {
     const marks = readFileSync(join(root, 'src/renderer/ui/shellMarks.tsx'), 'utf8');
-    expect(marks).toContain('M12.22 2h-.44a2 2 0 0 0-2 2v.18');
-    expect(marks).toContain('width="16"');
-    expect(marks).toContain('strokeWidth={sw}');
-    // SettingsIcon 不得再用太阳射线短路径
-    const settingsFn = marks.slice(marks.indexOf('export function SettingsIcon'), marks.indexOf('export function SunIcon'));
-    expect(settingsFn).not.toContain('M12 2v2M12 20v2M4.9');
+    expect(marks).toContain("from 'lucide-react'");
+    const settingsLine = marks.split('\n').find((line) => line.includes('export const SettingsIcon')) ?? '';
+    expect(settingsLine).toContain('lucideIcon(Settings, 16, 1.5)');
+    expect(settingsLine).not.toContain('Sun');
+    expect(settingsLine).not.toContain('M12 2v2M12 20v2M4.9');
   });
 
   it('太阳胶囊 knob 对齐 switch-sun 切片；开关规格 52×30 / travel22 / opacity0.42', () => {
-    const toggle = readFileSync(join(root, 'src/renderer/settings/KbToggle.tsx'), 'utf8');
-    expect(toggle).toContain('m4.93 4.93 1.41 1.41');
-    expect(toggle).toContain('width="13"');
-    expect(toggle).toContain('strokeWidth="1.75"');
-    const css = readFileSync(join(root, 'src/renderer/settings/kb-toggle.css'), 'utf8');
-    expect(css).toContain('--kb-toggle-travel: 22px');
+    const toggle = readFileSync(join(root, 'src/renderer/ui/Switch.tsx'), 'utf8');
+    expect(toggle).toContain('<Sun size={13} strokeWidth={1.75} />');
+    const css = readFileSync(join(root, 'src/renderer/ui/settings-preview.css'), 'utf8');
+    expect(css).toContain('translateX(22px)');
     expect(css).toContain('width: 52px');
     expect(css).toContain('height: 30px');
     expect(css).toContain('opacity: 0.42');

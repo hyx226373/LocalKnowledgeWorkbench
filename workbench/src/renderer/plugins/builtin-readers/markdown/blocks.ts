@@ -1,6 +1,6 @@
 /** 普通块的上限。围栏代码和跨行公式整段保留，不从中间切开。 */
 export const MAX_BLOCK_CHARS = 32 * 1024;
-export const LARGE_MD_CHARS = 256 * 1024;
+export const LARGE_MD_CHARS = 32 * 1024; // P0: force slices earlier; sync renderMarkdown while blocks renderer
 /** 每一片同步工作的时间预算。长任务门槛是 200ms，这里留出余量。 */
 export const SLICE_BUDGET_MS = 32;
 export const LONG_TASK_LIMIT_MS = 200;

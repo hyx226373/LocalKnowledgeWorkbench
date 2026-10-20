@@ -109,6 +109,8 @@ export function SandboxPanel(p: SandboxPanelProps) {
   );
   const [session, setSession] = useState(0);
   const [fatal, setFatal] = useState<string | null>(null);
+  /** 这次询问被取消（没写入拒绝）。面板还挂着时不再自动弹，下次打开或点「重新询问」还会问。 */
+  const [deferPrompt, setDeferPrompt] = useState(false);
   const siteVersion = useSyncExternalStore(siteAccess.subscribe, siteAccess.getVersion); // r11-A
   const gate = useMemo(
     () => computeGate(sb.pluginId, sb.decl, p.resource, p.item.sourceKind, p.item.ref),
@@ -116,8 +118,19 @@ export function SandboxPanel(p: SandboxPanelProps) {
     [version, siteVersion, sb.pluginId, sb.decl, p.resource, p.item.sourceKind, p.item.ref],
   );
   useEffect(() => {
-    if (gate.kind === 'prompt') void pluginHost.ensurePermission(sb.pluginId, sb.decl, gate.perm, false, p.resource?.rootId);
-  }, [gate, sb, p.resource?.rootId]);
+    if (gate.kind !== 'prompt') {
+      setDeferPrompt(false);
+      return;
+    }
+    if (deferPrompt) return;
+    let alive = true;
+    void pluginHost.ensurePermission(sb.pluginId, sb.decl, gate.perm, false, p.resource?.rootId).then((d) => {
+      if (alive && d === 'prompt') setDeferPrompt(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [gate, sb, p.resource?.rootId, deferPrompt]);
   // ---- r11-A：条目所在网站尚未批准 → 首次打开时询问（本次运行已拒绝的不再自动询问）
   const siteHost = gate.kind === 'site' && !gate.denied ? gate.host : null;
   useEffect(() => {
@@ -129,6 +142,15 @@ export function SandboxPanel(p: SandboxPanelProps) {
     setSession((n) => n + 1);
   }, []);
 
+  if (gate.kind === 'prompt' && deferPrompt)
+    return (
+      <div className="kb-notice" data-testid="sandbox-permission-deferred">
+        这次没有授予「{sb.pluginName}」权限。下次打开还会再询问。
+        <button className="kb-button kb-button--small" data-testid="sandbox-permission-ask-again" onClick={() => setDeferPrompt(false)}>
+          重新询问…
+        </button>
+      </div>
+    );
   if (gate.kind === 'prompt')
     return (
       <div className="kb-notice" data-testid="sandbox-waiting-permission">
@@ -242,7 +264,7 @@ function SandboxFrame(p: SandboxPanelProps & { perms: Record<string, GrantDecisi
   const openedRef = useRef(false);
   // ---- 网页面板（H9）：主进程 WebContentsView，由本面板创建与销毁
   const isWeb = p.item.sourceKind === 'web';
-  const viewId = useMemo(() => `wv-${p.item.itemId}-${Math.random().toString(36).slice(2, 10)}`, [p.item.itemId]);
+  const viewId = useMemo(() => `wv-${p.item.itemId}`, [p.item.itemId]);
   const [webInfo, setWebInfo] = useState<WebViewInfo | undefined>(undefined);
   const [webUi, setWebUi] = useState<WebUiState>(initialWebUi);
   useEffect(() => {

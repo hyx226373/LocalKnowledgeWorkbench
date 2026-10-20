@@ -19,6 +19,15 @@ export const HINT_SPLIT = '在阅读区分屏打开';
 export const HINT_FLOAT = '在工作台打开为浮动窗口';
 export const HINT_REORDER = '调整根的显示顺序';
 export const HINT_NOT_ROOT = '只有已登记的根可以在这里排序';
+export const HINT_COPY_REVIEW = '将复制到此文件夹。批准后才写入，同名不会自动覆盖';
+export const HINT_AGENT_REPO = 'Agent 仓库只能往外拖。要把全局库里的文件加入本仓库，请点标题旁的「+」。';
+export const HINT_ADD_ROOT = '这个文件不在已登记的根里，请先把所在文件夹加为根';
+export const HINT_OPEN_RO = '在阅读区只读打开';
+export const HINT_REORDER_REFS = '调整工作台资料的顺序';
+export const HINT_CATEGORY_ADD = '加入此分类（不移出其它分类）';
+export const HINT_CATEGORY_ALREADY = '已在此分类';
+export const HINT_CATEGORY_DENY = '不能把工作区加进这个分类';
+export const HINT_AGENT_REF = '加入 Agent 资料（不移动原文件）';
 
 export const MENU_REMOVE_FOLDER = '从该目录移除';
 export const MENU_REMOVE_WORKSPACE = '从本工作区移除';

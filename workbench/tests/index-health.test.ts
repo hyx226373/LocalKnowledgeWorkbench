@@ -77,7 +77,7 @@ it('空间满提示不改 contentSearch，也不换掉降级文案', () => {
   });
   expect(label).toBe('笔记：已扫描 4 个文件 · 正文索引 3 个');
   expect(FALLBACK_BANNER).toBe('全文索引不可用 · 仅文件名/路径搜索');
-  const app = fs.readFileSync(path.join(process.cwd(), 'src/renderer/App.tsx'), 'utf8');
+  const app = fs.readFileSync(path.join(process.cwd(), 'src/renderer/MainShell.tsx'), 'utf8');
   expect(app).toContain('data-testid="index-full-notice"');
   expect(app).toContain('全文索引空间已满，已尝试压实');
   expect(app).toContain('全文索引不可用 · 仅文件名/路径搜索');

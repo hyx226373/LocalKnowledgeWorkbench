@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import type { PlaybookDelivery, PlaybookMount } from '../../../shared/ctxPlaybook';
+import { isPlaybookDelivery, isPlaybookMount } from '../../../shared/ctxPlaybook';
 import type {
   AddResult,
   AgentMaterial,
@@ -51,6 +53,7 @@ export type MaterialsChange = MaterialEvent | SessionClearedEvent;
 
 export type StatResult =
   | { kind: 'file'; size: number; mtimeMs: number }
+  | { kind: 'dir' }
   | { kind: 'missing' }
   | { kind: 'unreadable' }
   | { kind: 'other' };
@@ -76,7 +79,16 @@ export interface CreateMaterialsOptions {
   readFile?: (absPath: string) => Promise<Buffer>;
 }
 
+export interface MaterialPlacePatch {
+  slotId?: string | null;
+  mount?: PlaybookMount | null;
+  delivery?: PlaybookDelivery | null;
+  summary?: string | null;
+}
+
 export interface AgentMaterialsApi extends AgentMaterialsStore {
+  /** 分槽、挂载、给法。不发新事件；调用方自己刷新快照。自取且没有为什么时拒绝。 */
+  setPlace(workspaceId: string, materialId: string, patch: MaterialPlacePatch): boolean;
   pin(workspaceId: string, materialId: string): void;
   unpin(workspaceId: string, materialId: string): void;
   clearSession(workspaceId: string): string[];
@@ -98,6 +110,7 @@ export function statPath(absPath: string): StatResult {
   try {
     const st = fs.statSync(absPath);
     if (st.isFile()) return { kind: 'file', size: st.size, mtimeMs: Math.trunc(st.mtimeMs) };
+    if (st.isDirectory()) return { kind: 'dir' };
     return { kind: 'other' };
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
@@ -163,7 +176,7 @@ class MaterialsStore implements AgentMaterialsApi {
     this.rejectRef(ref);
     const absPath = displayPath(ref.absPath);
     const st = this.stat(absPath);
-    if (st.kind === 'other') throw new MaterialStoreError('not_a_file', '只接收文件，不接收目录');
+    if (st.kind === 'other') throw new MaterialStoreError('not_a_file', '只接收文件或文件夹');
     const bound = this.bindIdentity(ref, absPath);
     const existing = this.findIdentity(workspaceId, bound.resourceId, absPath);
     if (existing) {
@@ -237,6 +250,7 @@ class MaterialsStore implements AgentMaterialsApi {
     if (!row) return;
     const next = cleanPurpose(purpose);
     if (row.purpose === next) return;
+    if (!next && row.mount === 'agent') throw new Error('自取必须填写为什么');
     row.purpose = next;
     this.markDirty(workspaceId);
     this.emit({
@@ -244,6 +258,57 @@ class MaterialsStore implements AgentMaterialsApi {
       ...this.identityOf(row),
       purpose: next,
     });
+  }
+
+  setPlace(workspaceId: string, materialId: string, patch: MaterialPlacePatch): boolean {
+    assertWorkspaceId(workspaceId);
+    const row = this.rowById(workspaceId, materialId);
+    if (!row || !patch) return false;
+    const nextMount = 'mount' in patch
+      ? patch.mount == null
+        ? undefined
+        : isPlaybookMount(patch.mount)
+          ? patch.mount
+          : row.mount
+      : row.mount;
+    if (nextMount === 'agent' && !cleanPurpose(row.purpose)) throw new Error('自取必须填写为什么');
+    let changed = false;
+    if ('slotId' in patch) {
+      const next = typeof patch.slotId === 'string' && patch.slotId.trim() ? patch.slotId.trim() : undefined;
+      if (row.slotId !== next) {
+        if (next) row.slotId = next;
+        else delete row.slotId;
+        changed = true;
+      }
+    }
+    if ('mount' in patch) {
+      const next = patch.mount == null ? undefined : isPlaybookMount(patch.mount) ? patch.mount : row.mount;
+      if (row.mount !== next) {
+        if (next) row.mount = next;
+        else delete row.mount;
+        changed = true;
+      }
+    }
+    if ('delivery' in patch) {
+      const next = patch.delivery == null ? undefined : isPlaybookDelivery(patch.delivery) ? patch.delivery : row.delivery;
+      if (row.delivery !== next) {
+        if (next) row.delivery = next;
+        else delete row.delivery;
+        changed = true;
+      }
+    }
+    if ('summary' in patch) {
+      const text = typeof patch.summary === 'string' ? patch.summary.replace(/\u0000/g, '').trim().slice(0, 4000) : '';
+      const next = text || undefined;
+      if (row.summary !== next) {
+        if (next) row.summary = next;
+        else delete row.summary;
+        changed = true;
+      }
+    }
+    if (!changed) return false;
+    this.markDirty(workspaceId);
+    return true;
   }
 
   pin(workspaceId: string, materialId: string): void {
@@ -292,7 +357,7 @@ class MaterialsStore implements AgentMaterialsApi {
     row.hasText = false;
     row.pages = null;
     row.mtimeMs = st.kind === 'file' ? st.mtimeMs : null;
-    row.status = st.kind === 'file' ? 'ok' : st.kind === 'unreadable' ? 'unreadable' : 'missing';
+    row.status = st.kind === 'file' || st.kind === 'dir' ? 'ok' : st.kind === 'unreadable' ? 'unreadable' : 'missing';
     this.disarmIfUnused(prevAbsPath);
     if (row.status === 'ok') {
       this.arm(row);
@@ -443,6 +508,7 @@ class MaterialsStore implements AgentMaterialsApi {
     st: StatResult,
   ): LiveRow {
     const file = st.kind === 'file';
+    const dir = st.kind === 'dir';
     return {
       workspaceId,
       materialId: `m-${crypto.randomUUID()}`,
@@ -454,7 +520,7 @@ class MaterialsStore implements AgentMaterialsApi {
       name: bound.name,
       purpose,
       order: 0,
-      status: st.kind === 'unreadable' ? 'unreadable' : file ? 'ok' : 'missing',
+      status: st.kind === 'unreadable' ? 'unreadable' : file || dir ? 'ok' : 'missing',
       contentHash: null,
       contentVersion: 0,
       readable: null,
@@ -588,6 +654,14 @@ class MaterialsStore implements AgentMaterialsApi {
     const st = this.stat(row.absPath);
     if (st.kind === 'unreadable') {
       this.markUnreadable(row);
+      return;
+    }
+    if (st.kind === 'dir') {
+      if (row.status !== 'ok') {
+        row.status = 'ok';
+        this.markDirty(row.workspaceId);
+        this.emit({ type: 'material.restored', ...this.identityOf(row) });
+      }
       return;
     }
     if (st.kind !== 'file') {
@@ -780,6 +854,11 @@ class MaterialsStore implements AgentMaterialsApi {
       estTokens: row.estTokens,
       hasText: row.hasText,
       pages: row.pages,
+      ...(row.slotId ? { slotId: row.slotId } : {}),
+      ...(row.mount ? { mount: row.mount } : {}),
+      ...(row.delivery ? { delivery: row.delivery } : {}),
+      ...(row.summary ? { summary: row.summary } : {}),
+      ...(row.relations?.length ? { relations: row.relations.map((item) => ({ type: item.type, targetId: item.targetId })) } : {}),
     };
   }
 

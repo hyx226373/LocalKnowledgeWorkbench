@@ -55,8 +55,9 @@ async function writeFeed(dir: string, version: string, body: Buffer, sha = creat
   return { name, sha, blockSize: block.length };
 }
 
-function hooks(dir: string, extra: Partial<UpdateHooks> = {}): { hooks: UpdateHooks; spawned: { file: string; args: string[]; env: NodeJS.ProcessEnv }[]; exited: boolean } {
+function hooks(dir: string, extra: Partial<UpdateHooks> = {}): { hooks: UpdateHooks; spawned: { file: string; args: string[]; env: NodeJS.ProcessEnv }[]; exited: boolean; opened: string[] } {
   const spawned: { file: string; args: string[]; env: NodeJS.ProcessEnv }[] = [];
+  const opened: string[] = [];
   const state = { exited: false };
   const base: UpdateHooks = {
     currentVersion: '0.2.0',
@@ -80,9 +81,27 @@ function hooks(dir: string, extra: Partial<UpdateHooks> = {}): { hooks: UpdateHo
     noRelaunch: true,
     helperDone: path.join(dir, 'helper-done.txt'),
     relaunchPath: null,
+    openExternal: async (url) => {
+      opened.push(url);
+    },
     ...extra,
   };
-  return { hooks: base, spawned, get exited() { return state.exited; } } as { hooks: UpdateHooks; spawned: typeof spawned; exited: boolean };
+  return { hooks: base, spawned, opened, get exited() { return state.exited; } } as { hooks: UpdateHooks; spawned: typeof spawned; exited: boolean; opened: string[] };
+}
+
+async function writeHttpsFeed(dir: string, version: string, downloadUrl: string) {
+  await fs.mkdir(dir, { recursive: true });
+  const yml = [
+    `version: ${version}`,
+    'files:',
+    `  - url: ${downloadUrl}`,
+    `    sha512: 'dGVzdA=='`,
+    `    size: 1`,
+    `path: ${downloadUrl}`,
+    `sha512: 'dGVzdA=='`,
+    '',
+  ].join('\n');
+  await fs.writeFile(path.join(dir, 'latest.yml'), yml, 'utf8');
 }
 
 async function seedUser(dir: string) {
@@ -98,45 +117,52 @@ async function seedUser(dir: string) {
   await fs.writeFile(path.join(install, 'version.txt'), '0.2.0', 'utf8');
 }
 
-async function readyInstall(dir: string, extra: Partial<UpdateHooks> = {}) {
-  await fs.mkdir(dir, { recursive: true });
-  await seedUser(dir);
-  await writeFeed(path.join(dir, 'feed'), '0.2.1-test', Buffer.alloc(32 * 1024, 9));
-  const box = hooks(dir, extra);
-  const svc = new UpdateService(box.hooks);
-  await svc.init();
-  const snap = await svc.check();
-  expect(snap.phase).toBe('ready');
-  expect(snap.downloaded).toBe(true);
-  return { box, svc };
-}
-
 describe('nsis 升级拉起', () => {
-  it('默认参数正好是 --updated', async () => {
+  it('本地相对路径不拉起安装程序', async () => {
     const dir = tmp();
     delete process.env.KB_UPDATE_INSTALL_SILENT;
     delete process.env.KB_UPDATE_INSTALL_LOG;
     try {
-      const { box, svc } = await readyInstall(dir);
-      await svc.installNow();
-      expect(box.spawned).toHaveLength(1);
-      expect(box.spawned[0]?.args).toEqual(['--updated']);
-      expect(box.exited).toBe(true);
+      await fs.mkdir(dir, { recursive: true });
+      await seedUser(dir);
+      await writeFeed(path.join(dir, 'feed'), '0.2.1-test', Buffer.alloc(32 * 1024, 9));
+      const box = hooks(dir);
+      const svc = new UpdateService(box.hooks);
+      await svc.init();
+      const snap = await svc.check();
+      expect(snap.phase).toBe('failed');
+      expect(snap.error).toMatch(/公开 https/);
+      expect(snap.downloaded).toBe(false);
+      await expect(svc.installNow()).rejects.toThrow(/没有可打开的下载链接/);
+      expect(box.spawned).toEqual([]);
+      expect(box.opened).toEqual([]);
+      expect(box.exited).toBe(false);
     } finally {
       restoreEnv();
     }
   });
 
-  it('KB_UPDATE_INSTALL_SILENT=1 时参数正好是 /S 和 --updated', async () => {
+  it('有公开 https 时只打开链接，静默开关也不再拼安装参数', async () => {
     const dir = tmp();
     delete process.env.KB_UPDATE_INSTALL_LOG;
     process.env.KB_UPDATE_INSTALL_SILENT = '1';
     try {
-      const { box, svc } = await readyInstall(dir);
+      await fs.mkdir(dir, { recursive: true });
+      await seedUser(dir);
+      const url = 'https://example.com/releases/LocalKnowledgeWorkbench-0.2.1-test-win-x64-setup.exe';
+      await writeHttpsFeed(path.join(dir, 'feed'), '0.2.1-test', url);
+      const box = hooks(dir);
+      const svc = new UpdateService(box.hooks);
+      await svc.init();
+      const snap = await svc.check();
+      expect(snap.phase).toBe('ready');
+      expect(snap.downloaded).toBe(true);
+      expect(snap.available?.downloadUrl).toBe(url);
       await svc.installNow();
-      expect(box.spawned).toHaveLength(1);
-      expect(box.spawned[0]?.args).toEqual(['/S', '--updated']);
-      expect(box.exited).toBe(true);
+      expect(box.opened).toEqual([url]);
+      expect(box.spawned).toEqual([]);
+      expect(box.exited).toBe(false);
+      expect(svc.snapshot().info).toMatch(/浏览器打开下载链接/);
     } finally {
       restoreEnv();
     }
@@ -147,10 +173,24 @@ describe('nsis 升级拉起', () => {
     delete process.env.KB_UPDATE_INSTALL_SILENT;
     delete process.env.KB_UPDATE_INSTALL_LOG;
     try {
-      const { box, svc } = await readyInstall(dir, {
-        confirmQuit: async () => false,
+      await fs.mkdir(dir, { recursive: true });
+      await seedUser(dir);
+      const url = 'https://example.com/releases/LocalKnowledgeWorkbench-0.2.1-test-win-x64-setup.exe';
+      await writeHttpsFeed(path.join(dir, 'feed'), '0.2.1-test', url);
+      let asked = false;
+      const box = hooks(dir, {
+        confirmQuit: async () => {
+          asked = true;
+          return false;
+        },
       });
+      const svc = new UpdateService(box.hooks);
+      await svc.init();
+      const snap = await svc.check();
+      expect(snap.phase).toBe('ready');
       await svc.installNow();
+      expect(asked).toBe(false);
+      expect(box.opened).toEqual([url]);
       expect(box.spawned).toEqual([]);
       expect(box.exited).toBe(false);
       expect(svc.snapshot().phase).toBe('ready');

@@ -3,6 +3,7 @@
  */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import DOMPurify from 'dompurify';
+import { dataReadyNow, scheduleEarlyRetry, withCacheBust, type ReadyApi } from '../../kbfileRetry';
 import { READER_PURIFY } from './markdown/assets';
 import { LARGE_MD_CHARS, SLICE_BUDGET_MS } from './markdown/blocks';
 import { loadKatex } from './markdown/load-katex';
@@ -19,10 +20,12 @@ import type { ResourceInfo } from '../../../shared/types';
 import { APPEARANCE_CHANGED_EVENT } from '../../theme/contract';
 import { useFocusMode } from '../../theme/focus';
 import { EditorBar, EditorTextarea, showPendingChanges, useEditableDoc } from './editor';
+import { DocTools } from '../../ui/DocTools';
 import { isConsoleDocument } from '../../../shared/consoleSchema';
 import { ConsoleScreen } from '../../console/ConsoleScreen';
 import { useConsoleFileActions } from '../../console/useConsoleFileActions';
 import { registerConsoleAdapter } from '../../console/registerAdapter';
+import { registerDesktopPanel } from '../../desktop-panel';
 import { ZoomBadge, ZoomControls } from '../../zoom/ZoomBadge';
 import { ZOOM_COMMIT_IDLE_MS } from '../../zoom/coalesce';
 import {
@@ -60,6 +63,9 @@ import {
   type ScrollState,
 } from '../../zoom/state';
 import { ensureWheelTrigger } from '../../zoom/wheelTrigger';
+import type { AttentionMark } from '../../../shared/agentMarks';
+import { MarkedText, domExcerpts, usePreviewContextMenu } from '../../agent-marks/menu';
+import { applyDomMarks } from '../../agent-marks/domApply';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -393,6 +399,12 @@ function TextView({ item, resource, api, state, setState, reportReady }: ViewPro
   const doc = useEditableDoc(api, resource.resourceId, notify);
   const ref = useRef<HTMLDivElement>(null);
   const hold = useRef(false);
+  const markUi = usePreviewContextMenu({
+    active: mode !== 'edit',
+    source: doc.draft,
+    resourceId: resource.resourceId,
+    rootRef: ref,
+  });
   const loaded = !!doc.snap;
   const zoom = useReflowZoom(item.itemId, ref, state?.zoom, setZoom, hold);
   useScrollState(ref, loaded && mode === 'read', state, setScroll, hold);
@@ -401,20 +413,21 @@ function TextView({ item, resource, api, state, setState, reportReady }: ViewPro
   if (!doc.snap) return <div className="kb-notice">加载中…</div>;
   return (
     <div className="kb-editor" data-testid="text-editor" data-mode={mode} data-dirty={doc.dirty ? 'true' : undefined} data-conflict={doc.external ? 'true' : undefined} data-saves={doc.saveCount}>
-      <EditorBar doc={doc} modes={[{ id: 'read', label: '阅读' }, { id: 'edit', label: '编辑' }]} mode={mode} setMode={setMode} onPreviewChanges={() => void showPendingChanges(doc)} crumb={docCrumb(resource.relPath)} />
+      <EditorBar doc={doc} modes={[{ id: 'read', label: '阅读' }, { id: 'edit', label: '编辑' }]} mode={mode} setMode={setMode} onPreviewChanges={() => void showPendingChanges(doc)} crumb={docCrumb(resource.relPath)} marks={{ absPath: markUi.absPath, count: markUi.ranges.length }} />
       {msg && <div className="kb-banner kb-editor-banner" data-testid="editor-flash" data-tone="info">{msg}</div>}
-      <div className="kb-editor-body">
+      <div className="kb-editor-body paper">
         {mode === 'edit' ? (
           <EditorTextarea doc={doc} />
         ) : (
           <div className="kb-zoom-host">
-            <div className="kb-reading reader text" data-testid="reader-text" data-focus={focus ? 'on' : undefined} ref={ref} style={readingZoomStyle(zoom)}>
-              <pre>{doc.draft}</pre>
+            <div className="kb-reading reader text" data-testid="reader-text" data-focus={focus ? 'on' : undefined} ref={ref} style={readingZoomStyle(zoom)} onContextMenu={markUi.onContextMenu}>
+              <MarkedText text={doc.draft} ranges={markUi.ranges} />
             </div>
             <ZoomControls itemId={item.itemId} scale={zoom} />
           </div>
         )}
       </div>
+      {markUi.menu}
     </div>
   );
 }
@@ -457,6 +470,7 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
   const bodyRef = useRef<HTMLDivElement>(null);
   const hold = useRef(false);
   const streamGen = useRef(0);
+  const markRangesRef = useRef<AttentionMark[]>([]);
   const source = doc.snap ? doc.draft : null;
   const [katex, setKatex] = useState<KatexLike | null>(null);
   const [chunkReady, setChunkReady] = useState(false);
@@ -484,6 +498,7 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
     }),
     [katex, relDir, resource.rootId, api],
   );
+  // P0: sync renderMarkdown while can block; prefer slices at LARGE_MD_CHARS (32KiB).
   const large = (source?.length ?? 0) >= LARGE_MD_CHARS;
   const consoleDoc = source != null && isConsoleDocument({ name: resource.name, text: source });
   const syncDoc = useMemo(() => {
@@ -525,7 +540,12 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
       toc.innerHTML = purify(stream.toc());
       setStreamCount(stream.headings().length);
       if (!painted) setChunkReady(true);
-      void paintMermaid(body);
+      void paintMermaid(body).then(() => {
+        if (streamGen.current !== token) return;
+        const host = ref.current;
+        if (!host) return;
+        applyDomMarks(host, domExcerpts(source, markRangesRef.current));
+      });
     };
     pump();
     return () => {
@@ -536,8 +556,11 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
     if (large || mode === 'edit' || !syncHtml) return;
     const root = ref.current;
     if (!root) return;
-    void paintMermaid(root);
-  }, [syncHtml, large, mode]);
+    void paintMermaid(root).then(() => {
+      if (!ref.current) return;
+      applyDomMarks(ref.current, domExcerpts(source ?? '', markRangesRef.current));
+    });
+  }, [syncHtml, large, mode, source]);
   const zoom = useReflowZoom(item.itemId, ref, state?.zoom, setZoom, hold);
   const previewReady = source != null && mode !== 'edit' && (!large || chunkReady);
   useScrollState(ref, previewReady, state, setScroll, hold);
@@ -653,6 +676,20 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
     saved.active = false;
     setShowReturn(false);
   };
+  const markUi = usePreviewContextMenu({
+    active: mode !== 'edit' && !consoleDoc,
+    source: source ?? '',
+    resourceId: resource.resourceId,
+    rootRef: ref,
+    markdownFile: resource.ext === 'md' || resource.ext === 'markdown',
+  });
+  markRangesRef.current = markUi.ranges;
+  useEffect(() => {
+    if (mode === 'edit' || consoleDoc) return;
+    const root = ref.current;
+    if (!root) return;
+    applyDomMarks(root, domExcerpts(source ?? '', markUi.ranges));
+  }, [mode, consoleDoc, source, syncHtml, streamCount, markUi.ranges]);
   const consoleActions = useConsoleFileActions(api, doc, notify);
   if (source != null && isConsoleDocument({ name: resource.name, text: source })) {
     return (
@@ -684,13 +721,14 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
         setMode={setMode}
         onPreviewChanges={() => void showPendingChanges(doc)}
         crumb={docCrumb(resource.relPath)}
+        marks={{ absPath: markUi.absPath, count: markUi.ranges.length }}
       />
       {msg && <div className="kb-banner kb-editor-banner" data-testid="editor-flash" data-tone="info">{msg}</div>}
-      <div className="kb-editor-body">
+      <div className="kb-editor-body paper">
         {mode !== 'preview' && <EditorTextarea doc={doc} />}
         {mode !== 'edit' && (
           <div className="kb-zoom-host">
-            <div className="kb-reading reader kb-editor-preview" data-testid="reader-markdown" data-focus={focus ? 'on' : undefined} ref={ref} style={readingZoomStyle(zoom)} onClick={onMarkdownClick}>
+            <div className="kb-reading reader kb-editor-preview" data-testid="reader-markdown" data-focus={focus ? 'on' : undefined} ref={ref} style={readingZoomStyle(zoom)} onClick={onMarkdownClick} onContextMenu={markUi.onContextMenu}>
               {large ? (
                 <article ref={articleRef} className="kb-md md" data-backtoc={showBack ? 'on' : undefined}>
                   <nav className="kb-md-toc" data-testid="md-toc" aria-label="目录" ref={tocRef} />
@@ -711,6 +749,7 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
           </div>
         )}
       </div>
+      {markUi.menu}
     </div>
   );
 }
@@ -719,6 +758,10 @@ function MarkdownView({ item, resource, api, state, setState, reportReady }: Vie
 
 function ImageView({ item, resource, api, state, setState, reportReady }: ViewProps<ImageState>) {
   const [err, setErr] = useState(false);
+  // imgfix: an image requested before the data plane is ready gets 503; reload once ready (cache-busted).
+  const [bust, setBust] = useState(0);
+  const kbApi = (window as unknown as { kb?: ReadyApi & { startupMark?: (n: string) => void } }).kb;
+  const startedBeforeReady = useRef(!dataReadyNow(kbApi));
   const [natural, setNatural] = useState({ w: 0, h: 0 });
   const [scale, setScale] = useState(1);
   const [off, setOff] = useState({ x: 0, y: 0 });
@@ -932,7 +975,7 @@ function ImageView({ item, resource, api, state, setState, reportReady }: ViewPr
       }}
     >
       <img
-        src={api.workspace.fileUrl(resource)}
+        src={withCacheBust(api.workspace.fileUrl(resource), bust)}
         alt={resource.name}
         draggable={false}
         width={natural.w || undefined}
@@ -941,8 +984,18 @@ function ImageView({ item, resource, api, state, setState, reportReady }: ViewPr
         onLoad={(e) => {
           const img = e.currentTarget;
           setNatural({ w: img.naturalWidth, h: img.naturalHeight });
+          if (bust) kbApi?.startupMark?.('image-retry-loaded');
+          else kbApi?.startupMark?.('image-loaded');
         }}
-        onError={() => setErr(true)}
+        onError={(event) => {
+          event.currentTarget.setAttribute('data-kb-retry', 'kbImgRetry');
+          if (scheduleEarlyRetry(kbApi, startedBeforeReady.current, bust, () => setBust((b) => b + 1))) {
+            kbApi?.startupMark?.('image-retry');
+            return;
+          }
+          kbApi?.startupMark?.('image-error');
+          setErr(true);
+        }}
         onDragStart={(e) => e.preventDefault()}
       />
       <ZoomControls itemId={item.itemId} scale={scale} />
@@ -1216,32 +1269,36 @@ function PdfView({ item, resource, api, state, setState, reportReady }: ViewProp
     );
   return (
     <div className="kb-reading reader pdf" data-testid="reader-pdf" data-page={page} data-scale={viewScale} data-dark-filter={dark ? 'on' : undefined} ref={scroller}>
-      <div className="kb-view-toolbar pdf-toolbar">
-        <span className="pdf-pageno">
-          第 {page} / {doc.numPages} 页
+      <div className="kb-view-toolbar pdf-toolbar pane-bar" role="toolbar" aria-label="PDF">
+        <DocTools
+          lead={<span className="pdf-pageno">第 {page} / {doc.numPages} 页</span>}
+          crumb={docCrumb(resource.relPath)}
+        />
+        <span className="kb-doc-actions">
+          <button type="button" className="kb-button kb-button--secondary" data-testid="pdf-zoom-out" onClick={() => runContentZoom(item.itemId, 'out')}>
+            −
+          </button>
+          <ZoomBadge scale={viewScale} />
+          <button type="button" className="kb-button kb-button--secondary" data-testid="pdf-zoom-in" onClick={() => runContentZoom(item.itemId, 'in')}>
+            ＋
+          </button>
+          <button type="button" className="kb-button kb-button--secondary" data-testid="content-zoom-reset" title="重置为 100%" onClick={() => runContentZoom(item.itemId, 'reset')}>
+            重置
+          </button>
+          <button type="button" className="kb-button kb-button--secondary" data-testid="content-zoom-fit" title="适合宽度" onClick={() => runContentZoom(item.itemId, 'fit')}>
+            适应
+          </button>
+          <button
+            type="button"
+            className="kb-button kb-button--secondary"
+            data-testid="pdf-dark-filter"
+            aria-pressed={dark ? 'true' : 'false'}
+            title="深色滤镜：只影响这个 PDF 面板，保存在面板阅读状态里；滤镜参数由阅读区主题提供"
+            onClick={() => setDark((d) => !d)}
+          >
+            深色滤镜
+          </button>
         </span>
-        <button className="kb-button kb-button--secondary" data-testid="pdf-zoom-out" onClick={() => runContentZoom(item.itemId, 'out')}>
-          −
-        </button>
-        <ZoomBadge scale={viewScale} />
-        <button className="kb-button kb-button--secondary" data-testid="pdf-zoom-in" onClick={() => runContentZoom(item.itemId, 'in')}>
-          ＋
-        </button>
-        <button className="kb-button kb-button--secondary" data-testid="content-zoom-reset" title="重置为 100%" onClick={() => runContentZoom(item.itemId, 'reset')}>
-          重置
-        </button>
-        <button className="kb-button kb-button--secondary" data-testid="content-zoom-fit" title="适合宽度" onClick={() => runContentZoom(item.itemId, 'fit')}>
-          适应
-        </button>
-        <button
-          className="kb-button kb-button--secondary"
-          data-testid="pdf-dark-filter"
-          aria-pressed={dark ? 'true' : 'false'}
-          title="深色滤镜：只影响这个 PDF 面板，保存在面板阅读状态里；滤镜参数由阅读区主题提供"
-          onClick={() => setDark((d) => !d)}
-        >
-          深色滤镜
-        </button>
       </div>
       {Array.from({ length: doc.numPages }, (_, i) => (
         <PdfPage key={i} doc={doc} n={i + 1} scale={renderScale} size={size} onRendered={firstPage ? undefined : onRendered} />
@@ -1286,28 +1343,42 @@ function TexView({ item, resource, api, state, setState, reportReady }: ViewProp
   const zoom = useReflowZoom(item.itemId, ref, state?.zoom, setZoom, hold);
   useScrollState(ref, text != null, state, setScroll, hold);
   useReportReady(text != null || !!(s && 'error' in s), reportReady);
+  const markUi = usePreviewContextMenu({
+    active: text != null,
+    source: text ?? '',
+    resourceId: resource.resourceId,
+    rootRef: ref,
+  });
+  useEffect(() => {
+    if (text == null) return;
+    const root = ref.current;
+    if (!root) return;
+    applyDomMarks(root, domExcerpts(text, markUi.ranges));
+  }, [text, rendered, mode, markUi.ranges]);
   if (s && 'error' in s) return <div className="kb-notice">读取失败：{s.error}</div>;
   if (!s || !rendered) return <div className="kb-notice">加载中…</div>;
   return (
     <div className="kb-editor" data-testid="tex-reader" data-mode={mode}>
-      <div className="kb-view-toolbar" data-testid="tex-toolbar">
-        <span className="kb-mode">
-          {([
-            ['source', '源码'],
-            ['math', '公式'],
-            ['split', '分栏'],
-          ] as const).map(([id, label]) => (
-            <button key={id} className="kb-button kb-button--secondary" data-testid={`tex-mode-${id}`} aria-pressed={mode === id ? 'true' : 'false'} onClick={() => setMode(id)}>
-              {label}
-            </button>
-          ))}
+      <div className="kb-view-toolbar pane-bar" data-testid="tex-toolbar" role="toolbar" aria-label="TeX">
+        <DocTools
+          modes={[
+            { id: 'source', label: '源码' },
+            { id: 'math', label: '公式' },
+            { id: 'split', label: '分栏' },
+          ]}
+          mode={mode}
+          setMode={setMode}
+          crumb={docCrumb(resource.relPath)}
+          testIdPrefix="tex-mode"
+        />
+        <span className="kb-doc-actions">
+          <span className="state">只读</span>
         </span>
-        <span className="state">只读</span>
       </div>
       {s.truncated && <div className="kb-banner kb-editor-banner" data-tone="info">文件超过读取上限，只显示前面一部分。</div>}
-      <div className="kb-editor-body">
+      <div className="kb-editor-body paper">
         <div className="kb-zoom-host">
-          <div className="kb-reading reader" data-testid="reader-tex" data-focus={focus ? 'on' : undefined} ref={ref} style={readingZoomStyle(zoom)}>
+          <div className="kb-reading reader" data-testid="reader-tex" data-focus={focus ? 'on' : undefined} ref={ref} style={readingZoomStyle(zoom)} onContextMenu={markUi.onContextMenu}>
             <article className="kb-tex">
               {mode !== 'math' && <div className="kb-tex-code" dangerouslySetInnerHTML={{ __html: purify(rendered.sourceHtml) }} />}
               {mode !== 'source' && <div className="kb-tex-preview" dangerouslySetInnerHTML={{ __html: purify(rendered.mathHtml) }} />}
@@ -1316,6 +1387,7 @@ function TexView({ item, resource, api, state, setState, reportReady }: ViewProp
           <ZoomControls itemId={item.itemId} scale={zoom} />
         </div>
       </div>
+      {markUi.menu}
     </div>
   );
 }
@@ -1360,6 +1432,7 @@ const plugin: PluginModule = {
   activate(api) {
     ensureWheelTrigger();
     registerConsoleAdapter(api);
+    registerDesktopPanel(api);
     api.commands.register({ ...BACK_TOC_COMMAND, run: () => runFocusedBackToc() });
     const F = { sourceKinds: ['file'] as const, displayMode: 'in-app-reader' as const };
     api.adapters.register<ScrollState>({

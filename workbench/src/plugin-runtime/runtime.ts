@@ -33,6 +33,8 @@ import type {
   WebPanelHandle,
   WorkspaceItem,
 } from '../shared/adapter-sdk/types';
+import type { SearchProviderContribution, SearchProviderRegistration } from '../shared/searchProvider';
+import { registerDeclaredSearchProvider } from './searchProviders';
 
 const FRAME = 'kb-frame';
 const HOST = 'kb-host';
@@ -125,6 +127,7 @@ let theme: ThemeSnapshot = { id: '', colorScheme: 'light', tokens: {} };
 const themeEm = new Emitter<ThemeSnapshot>();
 const fileEm = new Emitter<{ resourceId: string; change: 'modified' | 'deleted' | 'moved' }>();
 const impls = new Map<string, AdapterImplementation<any>>();
+const searchImpls = new Map<string, SearchProviderRegistration>();
 let manifest: AdapterPluginModule['manifest'] | null = null;
 let instance: AdapterInstance<any> | null = null;
 const actionHandlers = new Set<(a: string, p: JsonValue | undefined) => void>();
@@ -140,7 +143,10 @@ function applyTheme(t: ThemeSnapshot) {
 async function init(m: { pluginId: string; hostVersion: string; adapterApiVersion: string; phase: 1 | 2 | 3; manifest: AdapterPluginModule['manifest']; mainUrl: string; theme: ThemeSnapshot }) {
   manifest = m.manifest;
   applyTheme(m.theme);
-  const api: AdapterHostApi = {
+  const declaredSearch = (manifest?.contributes as { searchProviders?: SearchProviderContribution[] } | undefined)?.searchProviders;
+  const api: AdapterHostApi & {
+    search: { registerProvider(reg: SearchProviderRegistration): { dispose(): void } };
+  } = {
     pluginId: m.pluginId,
     hostVersion: m.hostVersion,
     adapterApiVersion: m.adapterApiVersion,
@@ -150,6 +156,11 @@ async function init(m: { pluginId: string; hostVersion: string; adapterApiVersio
         if (!manifest?.contributes.adapters.some((a) => a.id === impl.id)) throw new Error(`适配器 ${impl.id} 未在 manifest 中声明`);
         impls.set(impl.id, impl);
         return { dispose: () => void impls.delete(impl.id) };
+      },
+    },
+    search: {
+      registerProvider(reg) {
+        return registerDeclaredSearchProvider(declaredSearch, reg, searchImpls);
       },
     },
     storage: {

@@ -1,4 +1,4 @@
-/* 工作区总览。按预览 ov-* 结构：左大图标筛选 + 右大图卡。只用已有 --kb-* 令牌。 */
+/* 工作区总览。左侧分类栏 + 右侧流式卡片。只用已有 --kb-* 令牌，不写预览紫。 */
 
 .kb-ws-overview {
   box-sizing: border-box;
@@ -10,9 +10,16 @@
   padding: 0;
   background: var(--kb-color-bg);
   color: var(--kb-color-text);
-  font-family: var(--kb-font-ui);
+  font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei UI", "Noto Sans CJK SC", "Segoe UI Symbol", "Cambria Math", sans-serif;
   font-size: var(--kb-fs-md);
-  line-height: 1.45;
+  line-height: 1.5;
+}
+
+.kb-ws-overview[data-kb-scheme="light"] {
+  --kb-color-accent: #2563EB;
+  --kb-color-accent-soft: #EFF4FF;
+  --kb-color-focus-ring: #2563EB;
+  --r23c-accent-hover: #1D4ED8;
 }
 
 .kb-ws-overview-presets-section {
@@ -42,7 +49,7 @@
 
 .kb-ws-overview-screen {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 224px minmax(0, 1fr);
   grid-auto-rows: auto;
   align-items: stretch;
   flex: 1 1 auto;
@@ -51,7 +58,9 @@
 
 .kb-ws-overview-side {
   box-sizing: border-box;
-  width: 280px;
+  display: flex;
+  flex-direction: column;
+  width: 224px;
   align-self: stretch;
   padding: 16px 14px 20px;
   background: var(--kb-color-surface-sunken, var(--kb-color-surface));
@@ -87,28 +96,29 @@
 .kb-ws-overview-nav-item {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
-  padding: 14px 8px 12px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--kb-color-surface) 55%, transparent);
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: transparent;
   color: var(--kb-color-text);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 }
 
-.kb-ws-overview-nav-item input {
+.kb-ws-overview-nav-item input[type="radio"] {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
 .kb-ws-overview-nav-item.on {
-  background: color-mix(in srgb, var(--kb-color-accent) 28%, var(--kb-color-surface));
-  color: var(--kb-color-accent-ink, var(--kb-color-text));
+  background: var(--kb-color-accent-soft);
+  color: var(--kb-color-accent);
   font-weight: 600;
 }
 
@@ -141,27 +151,30 @@
   gap: 16px;
   margin-bottom: 22px;
   min-width: 0;
+  position: relative;
+  z-index: 6;
 }
 
 .kb-ws-overview-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
 .kb-ws-overview-search-wrap {
   margin-left: auto;
-  width: min(360px, 36vw);
-  height: 36px;
+  width: min(280px, 36vw);
+  height: 28px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
-  border-radius: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 6px;
   background: var(--kb-color-surface);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+  box-shadow: none;
   color: var(--kb-color-text-faint);
 }
 
@@ -179,27 +192,21 @@
   color: var(--kb-color-text-faint);
 }
 
-.kb-ws-overview-head > .kb-ws-overview-name {
-  width: 9rem;
-  flex: 0 1 9rem;
-  height: 36px;
-  padding: 0 10px;
-  border-radius: 10px;
-  border: 0;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kb-color-text) 6%, transparent);
-  background: var(--kb-color-surface);
+.kb-ws-overview-create {
+  position: relative;
+  flex: none;
 }
 
 .kb-ws-overview-new {
-  height: 36px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 6px;
   background: var(--kb-color-accent);
-  color: #fff;
+  color: var(--kb-color-accent-fg, #fff);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -209,14 +216,16 @@
   filter: brightness(0.92);
 }
 
+.kb-ws-overview[data-kb-scheme="light"] .kb-ws-overview-new:hover,
+.kb-ws-overview[data-kb-scheme="light"] button.ov-new:hover:not(:disabled) {
+  background: var(--r23c-accent-hover, #1D4ED8);
+  filter: none;
+}
+
+/* 详情不再占右侧一列。复制、导出、重命名、删除在卡片菜单。 */
 .kb-ws-overview-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 18rem);
-  grid-auto-rows: auto;
-  gap: var(--kb-space-5);
-  align-items: start;
-  align-content: start;
-  flex: 1 1 auto;
+  display: block;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -238,11 +247,11 @@
 
 .kb-ws-overview-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   grid-auto-rows: auto;
   align-items: stretch;
   align-content: start;
-  gap: 18px;
+  gap: 16px;
 }
 
 .kb-ws-overview-group {
@@ -255,7 +264,7 @@
   font-size: var(--kb-fs-sm);
 }
 
-/* 大图卡：去掉旧紧凑表单感 */
+/* 大图卡：去掉旧紧凑表单感。overflow 可见，卡片菜单才能弹出；缩略图自己裁圆角。 */
 .kb-ws-overview .kb-ws-card {
   display: flex;
   flex-direction: column;
@@ -264,20 +273,29 @@
   min-width: 0;
   min-height: 0;
   padding: 0;
-  overflow: hidden;
-  border-radius: 16px;
+  overflow: visible;
+  border-radius: 8px;
   background: var(--kb-color-surface);
-  border: 0;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kb-color-text) 7%, transparent);
+  border: 1px solid var(--kb-color-border);
+  box-shadow: none;
   cursor: pointer;
-  animation: kb-ws-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .kb-ws-overview .kb-ws-card:hover {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--kb-color-accent) 35%, transparent),
-    0 10px 28px color-mix(in srgb, var(--kb-color-text) 5%, transparent);
+  border-color: var(--kb-color-accent);
+  box-shadow: inset 0 0 0 1px var(--kb-color-accent);
   background-image: none;
+  transform: none;
+}
+
+.kb-ws-overview .kb-ws-card.is-selected,
+.kb-ws-overview .kb-ws-card.is-selected:hover {
+  background-color: var(--kb-color-surface);
+  background-image: none;
+  color: inherit;
+  border-color: var(--kb-color-accent);
+  box-shadow: inset 0 0 0 1px var(--kb-color-accent);
+  transform: none;
 }
 
 .kb-ws-overview .kb-ws-card-visual {
@@ -286,6 +304,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
 }
 
 .kb-ws-overview .kb-ws-card-preview {
@@ -352,7 +372,7 @@
   border: 0;
   background: transparent;
   text-align: start;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: inherit;
   overflow: hidden;
@@ -493,29 +513,33 @@
 
 @media (max-width: 1100px) {
   .kb-ws-overview-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
 
-@media (max-width: 900px) {
-  .kb-ws-overview-screen {
-    grid-template-columns: auto minmax(0, 1fr);
+@media (max-width: 720px) {
+  .kb-ws-overview-grid {
+    grid-template-columns: 1fr;
   }
 
-  .kb-ws-overview-layout {
+  .kb-ws-overview-screen {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .kb-ws-overview-title {
-    font-size: 18px;
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .kb-ws-overview,
-  .kb-ws-overview * {
-    transition: none !important;
-    animation: none !important;
+  .kb-ws-overview-nav-item svg,
+  .kb-ws-overview-side {
+    transition: none;
+  }
+
+  .kb-ws-overview .kb-ws-card,
+  .kb-ws-overview-nav-item.on svg {
+    animation: none;
   }
 }
 
@@ -524,19 +548,466 @@
   animation: none;
 }
 
-/* ui美术: large card radius 16 + emerge (preview-aligned) */
-.kb-ws-overview .kb-ws-card {
-  border-radius: 16px;
-  animation: kb-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+/* 添加框是网格最后一格，随 auto-fill 换行，不再横排滚动。 */
+.kb-ws-overview .ov-grid > button.ov-add {
+  width: 100%;
+  min-height: 168px;
+  height: auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--kb-color-border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kb-color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
 }
-.kb-ws-overview .kb-ws-card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--kb-color-text) 8%, transparent),
-    0 10px 24px color-mix(in srgb, var(--kb-color-text) 10%, transparent);
+
+.kb-ws-overview .ov-grid > button.ov-add:hover {
+  background: var(--kb-color-accent-soft);
 }
-.kb-ws-overview[data-motion='reduce'] .kb-ws-card,
-.kb-ws-overview[data-reduce-motion='true'] .kb-ws-card {
-  animation: none;
+
+.kb-ws-overview .ov-title-count {
+  margin-left: 8px;
+  color: var(--kb-color-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.kb-ws-overview .ov-cat-divider {
+  display: block;
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--kb-color-border);
+}
+
+.kb-ws-overview .ov-item-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-ws-overview .ov-item-count {
+  flex: none;
+  margin-left: auto;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+  color: var(--kb-color-text-faint);
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.kb-ws-overview label.ov-item.on .ov-item-count,
+.kb-ws-overview .kb-ws-overview-nav-item.on .ov-item-count {
+  background: var(--kb-color-accent-soft);
+  color: var(--kb-color-accent);
+}
+
+.kb-ws-overview .ov-cat-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 24px;
+  margin: 0;
+  padding: 0 6px;
+  border: 1px solid var(--kb-color-accent);
+  border-radius: 6px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.kb-ws-overview button.ov-new-category {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  margin: auto 12px 12px;
+  border: 1px dashed var(--kb-color-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kb-color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kb-ws-overview button.ov-new-category:hover {
+  color: var(--kb-color-accent);
+  border-color: var(--kb-color-accent);
+  background: var(--kb-color-accent-soft);
+}
+
+.kb-ws-overview .ov-cat-menu {
+  position: fixed;
+  z-index: 90;
+  min-width: 168px;
+  margin: 0;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  border: 1px solid var(--kb-color-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kb-ws-overview button.ov-cat-menu-line {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--kb-color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kb-ws-overview button.ov-cat-menu-line:hover:not(:disabled) {
+  background: var(--kb-color-accent-soft);
+}
+
+.kb-ws-overview button.ov-cat-menu-line[data-action='delete-category'] {
+  color: var(--kb-color-danger);
+}
+
+.kb-ws-overview button.ov-cat-menu-line:disabled {
+  color: var(--kb-color-text-faint);
+  cursor: not-allowed;
+}
+
+.kb-ws-overview .ov-cat-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kb-ws-overview .ov-cat-menu-row .ov-cat-menu-line {
+  width: auto;
+  flex: none;
+}
+
+.kb-ws-overview .ov-cat-menu-hint {
+  margin: 0;
+  color: var(--kb-color-text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.kb-ws-overview .ov-pick-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: var(--kb-color-overlay);
+}
+
+.kb-ws-overview .ov-pick {
+  box-sizing: border-box;
+  width: min(760px, calc(100vw - 48px));
+  height: min(520px, calc(100vh - 80px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 10px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  box-shadow: var(--kb-shadow-3);
+}
+
+.kb-ws-overview .ov-pick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kb-ws-overview .ov-pick-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.kb-ws-overview button.ov-pick-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kb-color-text-muted);
+  cursor: pointer;
+}
+
+.kb-ws-overview .ov-pick-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 6px;
+  background: var(--kb-color-bg);
+  color: var(--kb-color-text-muted);
+}
+
+.kb-ws-overview .ov-pick-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--kb-color-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.kb-ws-overview .ov-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+}
+
+.kb-ws-overview button.ov-pick-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 8px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 8px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.kb-ws-overview button.ov-pick-card.on {
+  background: var(--kb-color-surface);
+  border-color: var(--kb-color-accent);
+  box-shadow: inset 0 0 0 1px var(--kb-color-accent);
+}
+
+.kb-ws-overview button.ov-pick-card:disabled,
+.kb-ws-overview button.ov-pick-card[data-added="true"] {
+  cursor: not-allowed;
+  opacity: 0.72;
+  background: var(--kb-color-surface-sunken, var(--kb-color-bg));
+  color: var(--kb-color-text-muted);
+  box-shadow: none;
+}
+
+.kb-ws-overview .ov-pick-thumb {
+  position: relative;
+  display: block;
+  height: 88px;
+  overflow: hidden;
+  background: var(--kb-color-surface-sunken, var(--kb-color-bg));
+}
+
+.kb-ws-overview .ov-pick-thumb img,
+.kb-ws-overview .ov-pick-thumb .kb-ws-thumb-frame,
+.kb-ws-overview .ov-pick-empty {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kb-ws-overview .ov-pick-empty {
+  background-color: var(--kb-color-surface-sunken, var(--kb-color-bg));
+  background-image:
+    linear-gradient(var(--kb-color-border-strong), var(--kb-color-border-strong)),
+    linear-gradient(var(--kb-color-border), var(--kb-color-border)),
+    linear-gradient(var(--kb-color-border), var(--kb-color-border));
+  background-repeat: no-repeat;
+  background-size: 46% 6px, 62% 6px, 34% 6px;
+  background-position: 16% 30%, 16% 48%, 16% 66%;
+}
+
+.kb-ws-overview .kb-ws-card-thumb[data-empty-thumb="true"] {
+  background-color: var(--kb-color-surface-sunken, var(--kb-color-bg));
+  background-image:
+    linear-gradient(var(--kb-color-border-strong), var(--kb-color-border-strong)),
+    linear-gradient(var(--kb-color-border), var(--kb-color-border)),
+    linear-gradient(var(--kb-color-border), var(--kb-color-border));
+  background-repeat: no-repeat;
+  background-size: 42% 8px, 58% 8px, 30% 8px;
+  background-position: 12% 28%, 12% 46%, 12% 64%;
+  border: 0;
+}
+
+.kb-ws-overview .ov-pick-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text-muted);
+  font-size: 11px;
+}
+
+.kb-ws-overview .ov-pick-mark {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--kb-color-border);
+  border-radius: 999px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-accent-fg, #fff);
+}
+
+.kb-ws-overview .ov-pick-mark.on {
+  border-color: var(--kb-color-accent);
+  background: var(--kb-color-accent);
+}
+
+.kb-ws-overview .ov-pick-name {
+  min-width: 0;
+  padding: 4px 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kb-ws-overview .ov-pick-time {
+  padding: 0 8px;
+  color: var(--kb-color-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kb-ws-overview .ov-pick-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--kb-color-border);
+  margin: 0 -16px;
+  padding: 12px 16px 0;
+}
+
+.kb-ws-overview .ov-pick-count {
+  margin-right: auto;
+  color: var(--kb-color-text-muted);
+  font-size: 13px;
+}
+
+.kb-ws-overview .ov-pick-count b {
+  color: var(--kb-color-accent);
+  font-weight: 600;
+}
+
+.kb-ws-overview .ov-pick-foot button[data-action='cancel-add'] {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 6px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.kb-ws-overview .ov-pick-confirm {
+  align-self: auto;
+}
+
+.kb-ws-overview button.ov-pick-confirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* r23-A review-fix：总览标题栏规则从根 styles.css 移来（restore-bar 测试要求 .kb-ws-restore 之后不出现 .kb-ws-overview）。 */
+html[data-kb-scheme="light"][data-kb-chrome="origin"] .kb-ws-overview-title { font-size: 14px; font-weight: 600; }
+html[data-kb-scheme="light"][data-kb-chrome="origin"] .kb-ws-overview-search-wrap { height: 28px; border-radius: 6px; }
+html[data-kb-scheme="light"][data-kb-chrome="origin"] .kb-ws-overview-new { height: 28px; border-radius: 6px; }
+html[data-kb-scheme="light"][data-kb-chrome="origin"] .kb-ws-overview-new:hover { filter: none; background: #1D4ED8; }
+
+/* r23-D：总览暗色。不写进根 styles.css（restore-bar 要求 .kb-ws-restore 之后不出现总览选择器）。 */
+.kb-ws-overview[data-kb-scheme="dark"] {
+  --kb-color-bg: #121316;
+  --kb-color-chrome: #18191E;
+  --kb-color-surface: #1F2026;
+  --kb-color-surface-raised: #252830;
+  --kb-color-surface-sunken: #121316;
+  --kb-color-border: #2E3039;
+  --kb-color-border-strong: #3A3D48;
+  --kb-color-text: #F3F4F6;
+  --kb-color-text-muted: #9CA3AF;
+  --kb-color-text-faint: #78808E;
+  --kb-color-accent: #2563EB;
+  --kb-color-accent-fg: #ffffff;
+  --kb-color-accent-soft: #1C2C4C;
+  --kb-color-hover: #2A2D36;
+  --kb-color-selected: #1C2C4C;
+  --kb-color-selected-fg: #F3F4F6;
+  --kb-color-focus-ring: #3B82F6;
+  --kb-color-input-bg: #121316;
+  --kb-color-input-border: #2E3039;
+  --r23c-accent-hover: #1D4ED8;
+}
+.kb-ws-overview[data-kb-scheme="dark"] .kb-ws-card.is-selected,
+.kb-ws-overview[data-kb-scheme="dark"] .kb-ws-card.is-selected:hover {
+  background-color: var(--kb-color-accent-soft);
+  border-color: #3B82F6;
+  box-shadow: inset 0 0 0 1px #3B82F6;
   transform: none;
 }
+.kb-ws-overview[data-kb-scheme="dark"] .kb-ws-overview-nav-item.on {
+  background: var(--kb-color-accent-soft);
+  color: #60A5FA;
+  box-shadow: inset 0 0 0 1px #3B82F6;
+}
+html[data-kb-scheme="dark"][data-kb-chrome="origin"] .kb-ws-overview-title { font-size: 14px; font-weight: 600; color: #F3F4F6; }
+html[data-kb-scheme="dark"][data-kb-chrome="origin"] .kb-ws-overview-search-wrap { height: 28px; border-radius: 6px; }
+html[data-kb-scheme="dark"][data-kb-chrome="origin"] .kb-ws-overview-new { height: 28px; border-radius: 6px; }
+html[data-kb-scheme="dark"][data-kb-chrome="origin"] .kb-ws-overview-new:hover,
+.kb-ws-overview[data-kb-scheme="dark"] .kb-ws-overview-new:hover,
+.kb-ws-overview[data-kb-scheme="dark"] button.ov-new:hover:not(:disabled) { filter: none; background: #1D4ED8; }

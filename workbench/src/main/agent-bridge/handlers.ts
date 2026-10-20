@@ -42,14 +42,10 @@ function publicMeta(meta: ResourceMeta): ResourceMeta {
 
 function searchHelp(host: BridgeHost): HandlerOutcome {
   const health = host.getIndexHealth?.() ?? null;
-  const degraded = !health || health.engine !== 'kb-indexer' || health.contentSearch !== true;
   const lines = [
     '在工作台顶部搜索框输入关键词。',
-    '文件名和相对路径始终可以搜。',
-    degraded
-      ? '当前不能确认全文索引可用。请用界面搜索；状态栏若写「全文索引不可用 · 仅文件名搜索」，就只有文件名。'
-      : '索引引擎是 kb-indexer，且 contentSearch 为真，正文搜索可用。',
-    '本桥的 search-help 不代替全文搜索，也不会抓网页正文。',
+    '本软件只按文件名搜索。',
+    '本桥的 search-help 不代替搜索，也不会抓网页正文。',
   ];
   return { status: 'success', result: { text: lines.join('\n'), indexHealth: health } };
 }

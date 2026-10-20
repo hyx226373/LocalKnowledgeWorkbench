@@ -1,3 +1,6 @@
+import { RootActionButton } from './RootActionButton';
+import { useReadableFiles } from './readableFiles';
+import { useSidebarPrefs } from '../drawer/sidebarPrefs';
 import React, { useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { kb } from '../kb';
 import { LoadingLabel } from '../ui/LoadingLabel';
@@ -8,30 +11,96 @@ import { editorStatus } from '../editorStatus';
 import type { DirEntry, Favorite, Root, WorkspaceRef } from '../../shared/types';
 import type { RootOpKind } from '../../shared/rootTask';
 import { dirRefreshKey } from '../../shared/fsScope';
-import { AppCtx, PaneCtx } from './context';
-import { beginDrag, bindDrop, endDrag, type KbDragPayload } from './dnd';
+import { AppCtx, PaneCtx, type Ctx } from './context';
+import { NewFileDrawer } from './newFileDrawer';
+import { dispatchTreeKey, hideConfirmSpec, runConfirmedAction, trashConfirmSpec } from './diskActions';
+import { openHiddenItemsDialog } from './hiddenItems';
+import { beginDrag, bindDrop, endDrag, getDragPayload, type KbDragPayload } from './dnd';
+import { commitTreeFileDrag } from '../nativeDrag/commit';
+import { nativeNodePath, nativeTreeDragPath } from '../nativeDrag/paths';
+import { clearTreeMulti, prepareTreeDrag, subscribeTreeMulti, toggleTreeMulti, treeItemSelected } from '../nativeDrag/treeDrag';
+import { RootOverflowMenu } from './RootOverflowMenu';
+import { rootMoreMenuItems } from './rootMoreMenu';
 import { fileMenu, RowMenu } from './RowMenu';
 import { RootTaskDock, hideRoot, revealRoot, rootHideKey, rootIpcMessage, setRootOpError, useHiddenRootIds, useRootOpError } from '../tasks/RootTaskDock';
 import { ModuleHead } from '../drawer/ModuleHead';
-import { ChevronRightIcon, StarIcon } from '../ui/shellMarks';
+import { ChevronRightIcon, FileTextIcon, GripVerticalIcon, MinusIcon, OpenRightIcon, PlusIcon, StarIcon, TreeGlyph } from '../ui/shellMarks';
 import { AgentAddIconButton } from '../agent-live/addIconButton';
+import { useCommitDocTab } from '../dnd/docTabDrop';
+import { handleDocTabDragOver, handleDocTabDrop, hasDocTabMime } from '../dnd/docTabDrag';
+import { runDrop } from '../dnd/session';
 import '../drawer/module.css';
 
 const DETACH_TITLE = '从工作区移除（不删除文件）';
-const DELETE_TITLE = '删除磁盘上的文件夹';
-const ROOT_ACT: React.CSSProperties = {
-  visibility: 'visible',
-  flex: 'none',
-  background: 'transparent',
-  border: 0,
-  padding: '0 3px',
-  margin: 0,
-  color: 'inherit',
-  font: 'inherit',
-  cursor: 'pointer',
-  lineHeight: 'inherit',
-};
+
+function nodePaths(rootId: string, relPath: string, kind: string): string[] {
+  const abs = nativeTreeDragPath(rootId, relPath, kind);
+  return abs ? [abs] : [];
+}
+
+function useTreeMulti(resourceId: string): boolean {
+  return useSyncExternalStore(subscribeTreeMulti, () => treeItemSelected(resourceId), () => false);
+}
+
+/** 文件模式：dragstart 先 preventDefault，再立刻 startDrag。文件夹和多选走同一条通道。路径模式写 text/plain。 */
+function dragTreeFile(e: Parameters<typeof beginDrag>[0], seed: KbDragPayload, paths: readonly string[]) {
+  const prepared = prepareTreeDrag(getDragPayload(seed), paths);
+  commitTreeFileDrag(e, prepared.payload, prepared.paths, () => {
+    if (!e.dataTransfer) return;
+    beginDrag(e, prepared.payload);
+  });
+}
+
+function onTreePrimaryClick(event: React.MouseEvent, seed: KbDragPayload, activate: () => void) {
+  if (event.ctrlKey || event.metaKey) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleTreeMulti(getDragPayload(seed));
+    return;
+  }
+  clearTreeMulti();
+  activate();
+}
+const EMPTY_ENTRIES: DirEntry[] = [];
 const opBusy = new Set<string>();
+
+async function pathForConfirm(resourceId: string, fallback: string): Promise<string> {
+  try {
+    const abs = await kb.resourceAbsPath(resourceId);
+    if (abs) return abs;
+  } catch {
+    /* 确认框仍用调用方给出的路径 */
+  }
+  return fallback;
+}
+
+async function hideTreeEntry(ctx: Ctx, rootId: string, relPath: string, resourceId: string, fallback: string): Promise<void> {
+  const abs = await pathForConfirm(resourceId, fallback);
+  try {
+    const result = await runConfirmedAction((spec) => dialogs.confirm(spec), hideConfirmSpec(abs), () => kb.hideFromRoot(rootId, relPath));
+    if (result === 'done') ctx.notify?.(`已从根目录移除，不删除磁盘文件：${abs}`);
+  } catch (err) {
+    ctx.notify?.(err instanceof Error ? err.message : String(err));
+  }
+}
+
+async function trashTreeEntry(ctx: Ctx, rootId: string, relPath: string, resourceId: string, fallback: string): Promise<void> {
+  const abs = await pathForConfirm(resourceId, fallback);
+  try {
+    const result = await runConfirmedAction((spec) => dialogs.confirm(spec), trashConfirmSpec(abs), () => kb.trashInsideRoot(rootId, relPath));
+    if (result === 'done') ctx.notify?.(`已移到回收站：${abs}`);
+  } catch (err) {
+    ctx.notify?.(err instanceof Error ? err.message : String(err));
+  }
+}
+
+function onTreeKeyDown(event: React.KeyboardEvent, relPath: string, open: () => void, hideFromRoot: () => void) {
+  if (event.key === 'Delete' || event.key === 'Del') {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  dispatchTreeKey(event.key, relPath, { open, hideFromRoot });
+}
 
 async function runRootOp(root: Root, kind: RootOpKind, reload: () => void): Promise<void> {
   const hideKey = rootHideKey(root);
@@ -47,17 +116,15 @@ async function runRootOp(root: Root, kind: RootOpKind, reload: () => void): Prom
           ok: '从工作区移除',
         })
       : await dialogs.confirm({
-          title: `删除磁盘上的文件夹「${name}」？`,
-          body: `这会把「${root.path}」移入应用暂存区，可以从操作记录恢复。界面会马上去掉这一条。其他工作区若也登记了这个文件夹，磁盘上的文件会一起消失，那些工作区里的条目会显示为缺失。`,
-          ok: '删除文件夹',
-          danger: true,
+          ...trashConfirmSpec(root.path),
+          body: `将把「${root.path}」移到回收站。其他工作区若也登记了这个路径，磁盘上的文件会一起移走，那些工作区里的条目会显示为缺失。`,
         });
     if (!ok) return;
     if (dirty) {
       const go = await dialogs.confirm({
         title: '有未保存的修改',
         body: `「${name}」有还没保存的修改。修改会保留为草稿（下次打开这个文件时恢复），但不会写入文件。`,
-        ok: kind === 'detach' ? '从工作区移除' : '删除文件夹',
+        ok: kind === 'detach' ? '从工作区移除' : '移到回收站',
         cancel: kind === 'detach' ? '先不移除' : '先不删除',
         danger: true,
       });
@@ -95,13 +162,14 @@ function useRegistry<T>(reg: { subscribe(cb: () => void): () => void; getVersion
 // ---------------- tree ----------------
 
 // ns：展开状态命名空间。收藏区与目录树中的同一资源各自独立展开
-export function TreeRow({ entry, depth, ns = '' }: { entry: DirEntry; depth: number; ns?: string }) {
+export const TreeRow = React.memo(function TreeRow({ entry, depth, ns = '' }: { entry: DirEntry; depth: number; ns?: string }) {
   const ctx = useContext(AppCtx);
   const pane = useContext(PaneCtx);
   const expanded = pane?.expanded ?? ctx.expanded;
   const setExpanded = pane?.setExpanded ?? ctx.setExpanded;
   const ekey = ns + entry.resourceId;
   const isOpen = expanded.has(ekey);
+  const multi = useTreeMulti(entry.resourceId);
   const fav = ctx.favIds.has(entry.resourceId);
   const [over, setOver] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
@@ -130,14 +198,15 @@ export function TreeRow({ entry, depth, ns = '' }: { entry: DirEntry; depth: num
         data-entry={entry.kind === 'dir' ? 'dir-entry' : 'file'}
         data-resource-id={entry.resourceId}
         data-drag-over={over ? 'true' : undefined}
+        data-multiselect={multi ? 'true' : undefined}
         tabIndex={0}
         draggable
         aria-selected={entry.kind === 'file' && ctx.activeResourceId === entry.resourceId ? 'true' : undefined}
-        style={{ paddingLeft: `calc(var(--kb-space-3) + ${depth} * 14px)` }}
-        onClick={activate}
-        onKeyDown={(e) => e.key === 'Enter' && activate()}
+        style={{ paddingLeft: `calc(var(--kb-space-3) + ${depth} * 16px)` }}
+        onClick={(e) => onTreePrimaryClick(e, payload, activate)}
+        onKeyDown={(e) => onTreeKeyDown(e, entry.relPath, activate, () => void hideTreeEntry(ctx, entry.rootId, entry.relPath, entry.resourceId, entry.relPath))}
         title={entry.relPath}
-        onDragStart={(e) => beginDrag(e, payload)}
+        onDragStart={(e) => dragTreeFile(e, payload, nodePaths(entry.rootId, entry.relPath, entry.kind))}
         onDragEnd={() => { setOver(false); endDrag(); }}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -145,8 +214,8 @@ export function TreeRow({ entry, depth, ns = '' }: { entry: DirEntry; depth: num
         }}
         {...bindDrop({ kind: 'root', rootId: entry.rootId, relPath: entry.relPath }, setOver)}
       >
-        <span className={"kb-chev" + (entry.kind === "dir" && isOpen ? " open" : "")} aria-hidden="true">{entry.kind === "dir" ? <ChevronRightIcon width={14} height={14} /> : null}</span>
-        <span className={'icon ' + (entry.kind === 'dir' ? 'icon-dir' : 'icon-file icon-' + entry.ext)} />
+        <span className={"kb-chev" + (entry.kind === "dir" && isOpen ? " open" : "")} aria-hidden="true">{entry.kind === "dir" ? <ChevronRightIcon width={16} height={16} /> : null}</span>
+        <TreeGlyph kind={entry.kind === 'dir' ? 'dir' : 'file'} open={entry.kind === 'dir' && isOpen} ext={entry.ext} />
         <span className="name">{entry.name}</span>
         {entry.kind === 'file' && (
           <span
@@ -158,7 +227,7 @@ export function TreeRow({ entry, depth, ns = '' }: { entry: DirEntry; depth: num
               ctx.toggleRef(entry.resourceId);
             }}
           >
-            {ctx.refIds.has(entry.resourceId) ? '⊖' : '⊕'}
+            {ctx.refIds.has(entry.resourceId) ? <MinusIcon /> : <PlusIcon />}
           </span>
         )}
         {entry.kind === 'file' && (
@@ -171,12 +240,13 @@ export function TreeRow({ entry, depth, ns = '' }: { entry: DirEntry; depth: num
               ctx.open(entry.resourceId, entry.name, 'right');
             }}
           >
-            ⇥
+            <OpenRightIcon />
           </span>
         )}
-        {entry.kind === 'file' && (
+        {(entry.kind === 'file' || entry.kind === 'dir') && (
           <AgentAddIconButton
             testId="agent-add-tree"
+            kind={entry.kind === 'dir' ? 'dir' : 'file'}
             refs={[{ resourceId: entry.resourceId, absPath: '', name: entry.name, relPath: entry.relPath, sourceId: entry.rootId }]}
           />
         )}
@@ -203,16 +273,19 @@ export function TreeRow({ entry, depth, ns = '' }: { entry: DirEntry; depth: num
             resourceId: entry.resourceId,
             title: entry.name,
             payload,
+            absPath: nativeNodePath(entry.rootId, entry.relPath, entry.kind) ?? undefined,
             inWorkspace: entry.kind === 'file' && ctx.refIds.has(entry.resourceId),
             workspaceId: ctx.workspaceId,
+            onHideFromRoot: () => void hideTreeEntry(ctx, entry.rootId, entry.relPath, entry.resourceId, entry.relPath),
+            onTrash: () => void trashTreeEntry(ctx, entry.rootId, entry.relPath, entry.resourceId, entry.relPath),
           })}
         />
       )}
     </>
   );
-}
+});
 
-export function DirChildren({ rootId, relPath, depth, ns = '' }: { rootId: string; relPath: string; depth: number; ns?: string }) {
+export const DirChildren = React.memo(function DirChildren({ rootId, relPath, depth, ns = '' }: { rootId: string; relPath: string; depth: number; ns?: string }) {
   const { fsVersion, fsEvents } = useContext(AppCtx);
   const refreshKey = dirRefreshKey(rootId, relPath, fsVersion, fsEvents ?? []);
   const [localKey, setLocalKey] = useState(refreshKey);
@@ -229,17 +302,18 @@ export function DirChildren({ rootId, relPath, depth, ns = '' }: { rootId: strin
       (e) => setErr(String(e?.message ?? e)),
     );
   }, [rootId, relPath, localKey]);
+  const visibleItems = useReadableFiles(items ?? EMPTY_ENTRIES);
   if (err) return <div className="kb-error">无法读取：{err}</div>;
   if (!items) return <LoadingLabel testId="dir-loading" />;
-  if (items.length === 0) return <div className="kb-tree-row empty" style={{ paddingLeft: `calc(var(--kb-space-3) + ${depth} * 14px + 16px)` }}>（空）</div>;
+  if (visibleItems.length === 0) return <div className="kb-tree-row empty" style={{ paddingLeft: `calc(var(--kb-space-3) + ${depth} * 16px + 16px)` }}>（空）</div>;
   return (
-    <>
-      {items.map((e) => (
+    <div className="kb-tree-children">
+      {visibleItems.map((e) => (
         <TreeRow key={e.resourceId} entry={e} depth={depth} ns={ns} />
       ))}
-    </>
+    </div>
   );
-}
+});
 
 export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
   const ctx = useContext(AppCtx);
@@ -248,6 +322,7 @@ export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
   const setExpanded = pane?.setExpanded ?? ctx.setExpanded;
   const isFileSource = root.kind === 'file';
   const isOpen = !isFileSource && expanded.has(root.resourceId);
+  const multi = useTreeMulti(root.resourceId);
   const fav = ctx.favIds.has(root.resourceId);
   const [over, setOver] = useState(false);
   const [filterText, setFilterText] = useState('');
@@ -256,6 +331,7 @@ export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
     ? (root.name.includes('.') ? root.name.slice(root.name.lastIndexOf('.') + 1).toLowerCase() : '')
     : '';
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [rootMenu, setRootMenu] = useState<{ x: number; y: number } | null>(null);
   const activate = () => {
     // 单文件来源：按 resourceId 打开阅读器，绝不走目录展开 / listDir。
     if (isFileSource) {
@@ -282,28 +358,33 @@ export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
       <div
         className="kb-tree-row root-row"
         data-testid="root-row"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setRootMenu({ x: e.clientX, y: e.clientY });
+        }}
         data-root-id={root.id}
         data-root-name={root.name}
         data-kind={isFileSource ? 'file' : 'folder'}
         data-entry={isFileSource ? 'file' : 'dir-entry'}
         data-resource-id={root.resourceId}
         data-drag-over={over ? 'true' : undefined}
+        data-multiselect={multi ? 'true' : undefined}
         tabIndex={0}
         draggable
         aria-selected={isFileSource && ctx.activeResourceId === root.resourceId ? 'true' : undefined}
-        onClick={activate}
-        onKeyDown={(e) => e.key === 'Enter' && activate()}
+        onClick={(e) => onTreePrimaryClick(e, payload, activate)}
+        onKeyDown={(e) => onTreeKeyDown(e, '', activate, () => undefined)}
         title={root.path || root.name}
-        onDragStart={(e) => beginDrag(e, payload)}
+        onDragStart={(e) => dragTreeFile(e, payload, root.path ? [root.path] : [])}
         onDragEnd={() => { setOver(false); endDrag(); }}
         {...(isFileSource ? {} : bindDrop({ kind: 'root', rootId: root.id, relPath: '' }, setOver))}
       >
         {isFileSource ? (
           <span className="kb-chev kb-chev-empty" aria-hidden="true" />
         ) : (
-          <span className={"kb-chev" + (isOpen ? " open" : "")} aria-hidden="true"><ChevronRightIcon width={14} height={14} /></span>
+          <span className={"kb-chev" + (isOpen ? " open" : "")} aria-hidden="true"><ChevronRightIcon width={16} height={16} /></span>
         )}
-        <span className={'icon ' + (isFileSource ? 'icon-file' + (fileExt ? ' icon-' + fileExt : '') : 'icon-root')} />
+        <TreeGlyph kind={isFileSource ? 'file' : 'root'} open={!isFileSource && isOpen} ext={fileExt} />
         <span className="name" title={root.name}>
           {root.name}
           {isFileSource && <span className="p kb-file-source-badge" data-testid="file-source-label">单文件来源</span>}
@@ -319,7 +400,7 @@ export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
               ctx.toggleRef(root.resourceId);
             }}
           >
-            {ctx.refIds.has(root.resourceId) ? '⊖' : '⊕'}
+            {ctx.refIds.has(root.resourceId) ? <MinusIcon /> : <PlusIcon />}
           </span>
         )}
         {isFileSource && root.status === 'ok' && (
@@ -332,12 +413,19 @@ export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
               ctx.open(root.resourceId, root.name, 'right');
             }}
           >
-            ⇥
+            <OpenRightIcon />
           </span>
         )}
         {isFileSource && root.status === 'ok' && (
           <AgentAddIconButton
             testId="agent-add-root"
+            refs={[{ resourceId: root.resourceId, absPath: '', name: root.name, relPath: '', sourceId: root.id }]}
+          />
+        )}
+        {!isFileSource && root.status === 'ok' && (
+          <AgentAddIconButton
+            testId="agent-add-root-dir"
+            kind="dir"
             refs={[{ resourceId: root.resourceId, absPath: '', name: root.name, relPath: '', sourceId: root.id }]}
           />
         )}
@@ -352,41 +440,23 @@ export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
         >
           <StarIcon filled={fav} />
         </span>
-        <button
-          type="button"
-          className="kb-linkish"
-          style={ROOT_ACT}
-          data-testid="root-detach"
-          title={DETACH_TITLE}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            void runRootOp(root, 'detach', reload);
+        <RootActionButton kind="detach" title={DETACH_TITLE} onActivate={() => void runRootOp(root, 'detach', reload)} />
+        <RootOverflowMenu
+          rootId={root.id}
+          onRestoreAll={() => {
+            void kb.restoreAllHidden(root.id).then(
+              () => reload(),
+              (err: unknown) => ctx.notify?.(err instanceof Error ? err.message : String(err)),
+            );
           }}
-        >
-          移除
-        </button>
-        <button
-          type="button"
-          className="kb-linkish danger"
-          style={ROOT_ACT}
-          data-testid="root-delete-disk"
-          title={isFileSource ? '删除磁盘上的文件' : DELETE_TITLE}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            void runRootOp(root, 'delete-disk', reload);
-          }}
-        >
-          删除
-        </button>
+          onError={(message) => ctx.notify?.(message)}
+        />
       </div>
       {root.kind !== 'file' && (
         <button
           type="button"
-          className="kb-linkish"
+          className="kb-linkish kb-scope-pill"
           data-testid="source-filter-toggle"
-          style={{ marginLeft: 28 }}
           onClick={(e) => {
             e.stopPropagation();
             setScopeOpen((v) => !v);
@@ -425,20 +495,94 @@ export function RootNode({ root, reload }: { root: Root; reload: () => void }) {
         </div>
       )}
       {isOpen && root.status === 'ok' && root.kind !== 'file' && <DirChildren rootId={root.id} relPath="" depth={1} />}
+      {rootMenu && (
+        <RowMenu
+          x={rootMenu.x}
+          y={rootMenu.y}
+          onClose={() => setRootMenu(null)}
+          items={fileMenu({
+            ctx,
+            resourceId: root.resourceId,
+            title: root.name,
+            payload,
+            absPath: root.path,
+            workspaceId: ctx.workspaceId,
+            onTrash: () => void runRootOp(root, 'delete-disk', reload),
+          })}
+        />
+      )}
     </>
   );
 }
 
 // ---------------- sidebar ----------------
 
+const BENCH_REORDER_MIME = 'application/x-kb-bench-reorder';
+
 /** “本工作的资料”：跨根引用原文件的集合。添加/移除只改引用记录，不移动、不复制原文件 */
 export function WorkspaceRefs({ refs, openRids, onRemove, onOpenAll, workspaceId = '' }: { refs: WorkspaceRef[]; openRids: Set<string>; onRemove: (r: WorkspaceRef) => void; onOpenAll: () => void; workspaceId?: string }) {
   const ctx = useContext(AppCtx);
   const [menu, setMenu] = useState<{ x: number; y: number; resource: WorkspaceRef } | null>(null);
   const [over, setOver] = useState(false);
+  const [overRow, setOverRow] = useState<string | null>(null);
   const ws = workspaceId || ctx.workspaceId || '';
+  const resourceDrop = bindDrop({ kind: 'workspace-refs', workspaceId: ws }, setOver);
+  const commitTab = useCommitDocTab(ws);
+
+  const onReorder = (draggedRid: string, beforeRid: string | null) => {
+    if (!draggedRid || draggedRid === beforeRid) return;
+    const currentIds = refs.map((x) => x.resourceId);
+    const without = currentIds.filter((id) => id !== draggedRid);
+    const targetIndex = beforeRid ? without.indexOf(beforeRid) : without.length;
+    void runDrop(
+      { kind: 'workbench-order', workspaceId: ws, ids: currentIds, index: targetIndex },
+      {
+        v: 1,
+        items: [{
+          resourceId: draggedRid,
+          sourceKind: 'file',
+          entry: 'file',
+          from: { kind: 'workspace-refs', workspaceId: ws },
+        }],
+      },
+    );
+  };
+
   return (
-    <section className="kb-section kb-module" data-testid="ws-refs" data-drag-over={over ? 'true' : undefined} {...bindDrop({ kind: 'workspace-refs', workspaceId: ws }, setOver)}>
+    <section
+      className="kb-section kb-module"
+      data-testid="ws-refs"
+      data-drag-over={over ? 'true' : undefined}
+      onDragEnter={(event) => {
+        if (!hasDocTabMime(event.dataTransfer.types)) return;
+        event.preventDefault();
+      }}
+      onDragOver={(event) => {
+        if (handleDocTabDragOver(event)) {
+          setOver(true);
+          return;
+        }
+        resourceDrop.onDragOver(event);
+      }}
+      onDragLeave={(event) => {
+        if (hasDocTabMime(event.dataTransfer.types)) {
+          if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+          event.currentTarget.removeAttribute('data-drop-active');
+          setOver(false);
+          return;
+        }
+        resourceDrop.onDragLeave(event);
+      }}
+      onDrop={(event) => {
+        const hit = handleDocTabDrop(event);
+        if (hit.claimed) {
+          setOver(false);
+          if (hit.payload) void commitTab('bench', hit.payload);
+          return;
+        }
+        resourceDrop.onDrop(event);
+      }}
+    >
       <ModuleHead
         title="工作台资料"
         testId="bench-module-h"
@@ -453,44 +597,128 @@ export function WorkspaceRefs({ refs, openRids, onRemove, onOpenAll, workspaceId
       {refs.length === 0 ? (
         <p className="kb-module-empty">在目录树中把文件加入本工作</p>
       ) : (
-        <div className="kb-collection" role="listbox" aria-label="本工作的资料">
-          {refs.map((r) => (
-            <div
-              key={r.resourceId}
-              className="kb-collection-row"
-              role="option"
-              data-testid="ws-ref-row"
-              data-resource-id={r.resourceId}
-              data-relpath={r.relPath}
-              data-root-id={r.rootId}
-              data-open={openRids.has(r.resourceId) ? 'true' : undefined}
-              aria-selected={ctx.activeResourceId === r.resourceId ? 'true' : 'false'}
-              aria-disabled={r.missing ? 'true' : undefined}
-              tabIndex={0}
-              draggable
-              data-missing={r.missing ? 'true' : undefined}
-              data-source-kind={r.sourceKind === 'web' ? 'web' : undefined}
-              title={r.sourceKind === 'web' ? (r.url ?? '') : r.missing ? '原文件已不在原处（可能被删除、移出根或根已移除）。引用保留，可点“修复…”重新定位' : `${r.rootName}/${r.relPath}`}
-              onClick={() => !r.missing && ctx.open(r.resourceId, r.name)}
-              onKeyDown={(e) => e.key === 'Enter' && !r.missing && ctx.open(r.resourceId, r.name)}
-              onDragStart={(e) => beginDrag(e, { v: 1, items: [{ resourceId: r.resourceId, sourceKind: r.sourceKind === 'web' ? 'web' : 'file', from: { kind: 'workspace-refs', workspaceId: workspaceId || ctx.workspaceId || '' }, entry: 'file', rootId: r.rootId, relPath: r.relPath, name: r.name }] })}
-              onDragEnd={() => endDrag()}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setMenu({ x: e.clientX, y: e.clientY, resource: r });
-              }}
-            >
-              <span className={r.sourceKind === 'web' ? 'icon icon-file icon-web' : 'icon icon-file icon-' + r.ext} />
-              <span className="name">{r.name || r.relPath || r.resourceId}</span>
-              <span className="p">{r.sourceKind === 'web' ? `网络 · ${(r.url ?? '').replace(/^https?:\/\//, '').split('/')[0]}` : `${r.rootName}${r.relPath.includes('/') ? '/' + r.relPath.slice(0, r.relPath.lastIndexOf('/')) : ''}`}</span>
-              {r.missing && (
-                <span className="act act--text" data-testid="ws-ref-repair" title="失效的引用不会自动清理：打开“修复路径”重新定位原文件（或移除引用）" onClick={(e) => { e.stopPropagation(); void kb.openMigration('repair'); }}>
-                  修复…
-                </span>
-              )}
-              <button type="button" className="kb-linkish danger" data-testid="ws-ref-remove" title="从本工作的资料中移除（不删除、不移动原文件）" onClick={(e) => { e.stopPropagation(); onRemove(r); }}>移除引用</button>
-            </div>
-          ))}
+        <div
+          className="kb-quiet-list"
+          role="listbox"
+          aria-label="本工作的资料"
+          onDragOver={(e) => {
+            if ([...e.dataTransfer.types].includes(BENCH_REORDER_MIME)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }
+          }}
+          onDrop={(e) => {
+            const draggedRid = e.dataTransfer.getData(BENCH_REORDER_MIME);
+            if (draggedRid) {
+              e.preventDefault();
+              e.stopPropagation();
+              setOverRow(null);
+              onReorder(draggedRid, null);
+            }
+          }}
+        >
+          {refs.map((r) => {
+            const openRef = () => {
+              if (!r.missing) ctx.open(r.resourceId, r.name);
+            };
+            const rowTitle = r.sourceKind === 'web' ? (r.url ?? '') : r.missing ? '原文件已不在原处（可能被删除、移出根或根已移除）。引用保留，可点“修复…”重新定位' : `${r.rootName}/${r.relPath}`;
+            const sub = r.sourceKind === 'web' ? `网络 · ${(r.url ?? '').replace(/^https?:\/\//, '').split('/')[0]}` : `${r.rootName}${r.relPath.includes('/') ? '/' + r.relPath.slice(0, r.relPath.lastIndexOf('/')) : ''}`;
+            const dragSeed: KbDragPayload = { v: 1, items: [{ resourceId: r.resourceId, sourceKind: r.sourceKind === 'web' ? 'web' : 'file', from: { kind: 'workspace-refs', workspaceId: workspaceId || ctx.workspaceId || '' }, entry: r.kind === 'dir' ? 'dir-entry' : 'file', rootId: r.rootId, relPath: r.relPath, name: r.name }] };
+            const outPaths = r.missing || r.sourceKind === 'web' ? [] : nodePaths(r.rootId, r.relPath, r.kind);
+            return (
+              <div
+                key={r.resourceId}
+                className="kb-ref-row"
+                role="option"
+                data-testid="ws-ref-row"
+                data-resource-id={r.resourceId}
+                data-relpath={r.relPath}
+                data-root-id={r.rootId}
+                data-open={openRids.has(r.resourceId) ? 'true' : undefined}
+                aria-selected={ctx.activeResourceId === r.resourceId ? 'true' : 'false'}
+                aria-disabled={r.missing ? 'true' : undefined}
+                tabIndex={0}
+                draggable
+                data-missing={r.missing ? 'true' : undefined}
+                data-source-kind={r.sourceKind === 'web' ? 'web' : undefined}
+                data-drag-over={overRow === r.resourceId ? 'true' : undefined}
+                title={rowTitle}
+                onClick={(e) => {
+                  const el = e.target instanceof Element ? e.target : null;
+                  if (el?.closest('[data-testid="ws-ref-open"], [data-testid="ws-ref-remove"], [data-testid="ws-ref-repair"], [data-testid="ws-ref-reorder-grip"]')) return;
+                  openRef();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' || e.target !== e.currentTarget) return;
+                  openRef();
+                }}
+                onDragStart={(e) => dragTreeFile(e, dragSeed, outPaths)}
+                onDragEnd={() => endDrag()}
+                onDragOver={(e) => {
+                  if ([...e.dataTransfer.types].includes(BENCH_REORDER_MIME)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = 'move';
+                    setOverRow(r.resourceId);
+                  }
+                }}
+                onDragLeave={() => setOverRow((cur) => (cur === r.resourceId ? null : cur))}
+                onDrop={(e) => {
+                  const draggedRid = e.dataTransfer.getData(BENCH_REORDER_MIME);
+                  if (draggedRid) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOverRow(null);
+                    onReorder(draggedRid, r.resourceId);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setMenu({ x: e.clientX, y: e.clientY, resource: r });
+                }}
+              >
+                <button
+                  type="button"
+                  className="al-grip kb-ref-grip"
+                  draggable
+                  title="拖动排序"
+                  aria-label="拖动排序"
+                  data-testid="ws-ref-reorder-grip"
+                  onClick={(e) => e.stopPropagation()}
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData(BENCH_REORDER_MIME, r.resourceId);
+                  }}
+                >
+                  <GripVerticalIcon />
+                </button>
+                <button
+                  type="button"
+                  className="kb-ref-main"
+                  tabIndex={-1}
+                  draggable
+                  title={rowTitle}
+                  onDragStart={(e) => {
+                    dragTreeFile(e, dragSeed, outPaths);
+                    e.stopPropagation();
+                  }}
+                  onDragEnd={() => endDrag()}
+                >
+                  <TreeGlyph kind={r.sourceKind === 'web' ? 'web' : 'file'} ext={r.ext} />
+                  <span className="kb-ref-name">{r.name || r.relPath || r.resourceId}</span>
+                  <span className="kb-ref-sub">{sub}</span>
+                </button>
+                {r.missing && (
+                  <span className="act act--text" data-testid="ws-ref-repair" title="失效的引用不会自动清理：打开“修复路径”重新定位原文件（或移除引用）" onClick={(e) => { e.stopPropagation(); void kb.openMigration('repair'); }}>
+                    修复…
+                  </span>
+                )}
+                <button type="button" className="kb-linkish" data-testid="ws-ref-open" title="打开" disabled={!!r.missing} onClick={() => openRef()}>打开</button>
+                <button type="button" className="kb-linkish danger" data-testid="ws-ref-remove" title="从本工作的资料中移除（不删除、不移动原文件）" onClick={(e) => { e.stopPropagation(); onRemove(r); }}>移除引用</button>
+              </div>
+            );
+          })}
         </div>
       )}
       {menu && (
@@ -503,6 +731,7 @@ export function WorkspaceRefs({ refs, openRids, onRemove, onOpenAll, workspaceId
             resourceId: menu.resource.resourceId,
             title: menu.resource.name,
             missing: menu.resource.missing,
+            absPath: menu.resource.rootId ? (nativeNodePath(menu.resource.rootId, menu.resource.relPath ?? '', 'file') ?? undefined) : undefined,
             inWorkspace: true,
             workspaceId: workspaceId || ctx.workspaceId,
             payload: { v: 1, items: [{ resourceId: menu.resource.resourceId, sourceKind: menu.resource.sourceKind === 'web' ? 'web' : 'file', from: { kind: 'workspace-refs', workspaceId: workspaceId || ctx.workspaceId || '' }, entry: 'file', rootId: menu.resource.rootId, relPath: menu.resource.relPath, name: menu.resource.name }] },
@@ -513,11 +742,13 @@ export function WorkspaceRefs({ refs, openRids, onRemove, onOpenAll, workspaceId
   );
 }
 
-export function AddRoot({ reload }: { reload: () => void }) {
+export function AddRoot({ reload, roots }: { reload: () => void; roots?: Root[] }) {
   const ctx = useContext(AppCtx);
+  const pane = useContext(PaneCtx);
   const [input, setInput] = useState('');
   const [extensions, setExtensions] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  const [fileOpen, setFileOpen] = useState(false);
   const add = async (p: string | null) => {
     if (!p) return;
     try {
@@ -545,13 +776,41 @@ export function AddRoot({ reload }: { reload: () => void }) {
   };
   return (
     <>
-      <button type="button" className="kb-linkish" data-testid="pick-folder" onClick={async () => add(await kb.pickFolder())}>
+      <button type="button" className="kb-linkish kb-add-choice" data-testid="pick-folder" onClick={async () => add(await kb.pickFolder())}>
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6.2h3.6L7 4.6h7V13H2V6.2z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
         选择文件夹注册为根…
       </button>
-      <button type="button" className="kb-linkish" data-testid="pick-file" onClick={() => void addFile()}>
+      <button type="button" className="kb-linkish kb-add-choice" data-testid="pick-file" onClick={() => void addFile()}>
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h5.2L13 6.2V13.5H4V2.5zM9 2.8V6h3.1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
         选择单个文件注册为来源…
       </button>
-      <p data-testid="access-scope-note">{ACCESS_SCOPE_NOTE}</p>
+      <button
+        type="button"
+        className="kb-linkish kb-add-choice"
+        data-testid="new-file"
+        aria-expanded={fileOpen}
+        aria-controls="new-file-drawer"
+        onClick={() => setFileOpen((open) => !open)}
+      >
+        新建文件…
+      </button>
+      {fileOpen ? (
+        <NewFileDrawer
+          roots={roots}
+          onCancel={() => setFileOpen(false)}
+          onCreated={(created) => {
+            setFileOpen(false);
+            for (const id of created.expandIds) {
+              if (!id) continue;
+              ctx.setExpanded(id, true);
+              pane?.setExpanded(id, true);
+            }
+            reload();
+            ctx.open(created.resourceId, created.name);
+          }}
+        />
+      ) : null}
+      <p className="kb-scope-note" data-testid="access-scope-note">{ACCESS_SCOPE_NOTE}</p>
       <input
         className="kb-input"
         data-testid="root-extensions"
@@ -618,9 +877,18 @@ export function FavoritesSection({ favorites }: { favorites: Favorite[] }) {
               aria-selected={ctx.activeResourceId === f.resourceId ? 'true' : undefined}
               title={f.missing ? '文件已不在原处（可能被删除或移出根）' : f.relPath}
               onClick={() => ctx.open(f.resourceId, f.name)}
-              onKeyDown={(e) => e.key === 'Enter' && ctx.open(f.resourceId, f.name)}
+              onKeyDown={(e) => onTreeKeyDown(
+                e,
+                f.relPath,
+                () => ctx.open(f.resourceId, f.name),
+                () => void hideTreeEntry(ctx, f.rootId, f.relPath, f.resourceId, f.relPath),
+              )}
             >
-              <StarIcon filled />
+              {f.kind === 'dir' ? (
+                <TreeGlyph kind="dir" />
+              ) : (
+                <FileTextIcon className={'kb-file-ic icon-file icon-' + (f.name.includes('.') ? f.name.slice(f.name.lastIndexOf('.') + 1).toLowerCase() : 'file')} />
+              )}
               <span className="kb-quiet-name">{f.label || f.name}</span>
               <button type="button" className="kb-linkish" title="取消收藏" onClick={(e) => { e.stopPropagation(); ctx.toggleFav(f.resourceId); }}>
                 取消
@@ -634,6 +902,7 @@ export function FavoritesSection({ favorites }: { favorites: Favorite[] }) {
 }
 
 export function RootsSection({ roots, reload }: { roots: Root[]; reload: () => void }) {
+  const prefs = useSidebarPrefs();
   const ctx = useContext(AppCtx);
   const [addOpen, setAddOpen] = useState(false);
   return (
@@ -643,26 +912,27 @@ export function RootsSection({ roots, reload }: { roots: Root[]; reload: () => v
         testId="roots-module-h"
         addOpen={addOpen}
         onAddToggle={() => setAddOpen((v) => !v)}
-        addMenu={<AddRoot reload={reload} />}
-        moreItems={[
-          {
-            id: 'show-ignored',
-            label: ctx.showIgnored ? '隐藏被忽略的项' : '显示被忽略的项',
-            testId: 'toggle-show-ignored-menu',
-            onClick: () => ctx.setShowIgnored(!ctx.showIgnored),
-          },
-        ]}
+        addMenu={<AddRoot reload={reload} roots={roots} />}
+        moreItems={rootMoreMenuItems(prefs, ctx.showIgnored, ctx.setShowIgnored, () => {
+          void openHiddenItemsDialog({
+            load: () => kb.listHiddenItems(),
+            restore: async (item) => {
+              await kb.restoreHidden(item.rootId, item.relPath);
+              reload();
+            },
+          }).catch((err: unknown) => ctx.notify?.(err instanceof Error ? err.message : String(err)));
+        })}
       />
       <label className="kb-toggle" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }} title="node_modules、.git、$RECYCLE.BIN 等默认不显示、不索引">
         <input type="checkbox" data-testid="toggle-show-ignored" checked={ctx.showIgnored} onChange={(e) => ctx.setShowIgnored(e.target.checked)} />
         显示被忽略的项
       </label>
-      <RootDirectoryBody roots={roots} reload={reload} />
+      <RootDirectoryBody roots={roots} reload={reload} adding={addOpen} />
     </section>
   );
 }
 
-export function RootDirectoryBody({ roots, reload }: { roots: Root[]; reload: () => void }) {
+export function RootDirectoryBody({ roots, reload, adding = false }: { roots: Root[]; reload: () => void; adding?: boolean }) {
   const hidden = useHiddenRootIds();
   const opError = useRootOpError();
   const seenRef = useRef<Set<string> | null>(null);
@@ -682,7 +952,8 @@ export function RootDirectoryBody({ roots, reload }: { roots: Root[]; reload: ()
       if (!prev.has(id) && ids.has(id)) revealRoot(id);
     }
   }, [roots, hidden]);
-  const shown = roots.filter((r) => !hidden.has(rootHideKey(r)));
+  const readableRoots = useReadableFiles(roots);
+  const shown = readableRoots.filter((r) => !hidden.has(rootHideKey(r)));
   return (
     <>
       <RootTaskDock
@@ -696,9 +967,17 @@ export function RootDirectoryBody({ roots, reload }: { roots: Root[]; reload: ()
           {opError}
         </div>
       ) : null}
-      {shown.map((r) => (
-        <RootNode key={r.id} root={r} reload={reload} />
-      ))}
+      {shown.length === 0 ? (
+        <div className="kb-module-empty" data-testid="roots-empty-cta">
+          <p className="kb-empty-lead">还没有根目录。</p>
+          <p className="kb-empty-sub">添加文件夹或单文件来源后即可使用目录树。</p>
+          {adding ? null : <AddRoot reload={reload} roots={roots} />}
+        </div>
+      ) : (
+        shown.map((r) => (
+          <RootNode key={r.id} root={r} reload={reload} />
+        ))
+      )}
     </>
   );
 }

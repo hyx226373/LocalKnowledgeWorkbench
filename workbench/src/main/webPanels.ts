@@ -23,6 +23,7 @@ import { app, BrowserWindow, net, session, shell, WebContentsView, type Session,
 import path from 'node:path';
 import fs from 'node:fs';
 import { checkNavigation, siteHostOf } from '../shared/adapter-sdk/policy';
+import { browsePrefsOf, decideExternalLink } from '../shared/externalBrowse';
 import { checkSubresource, externalUrlError, hostOf, SCROLL_POLL_MS, type WebBounds, type WebEvent, type WebViewInfo } from '../shared/webPanel';
 import type { SubresourceJudgment } from '../shared/webSiteGrant';
 import type { WebSiteGrantStore } from './webSiteGrantStore';
@@ -100,6 +101,9 @@ export interface WebPanelStats {
 
 export class WebPanelManager {
   private views = new Map<string, Entry>();
+  private sidebarSuspended = false;
+  suspendForSidebar() { this.sidebarSuspended = true; for (const id of this.views.keys()) this.setBounds(id, null); }
+  resumeFromSidebar() { this.sidebarSuspended = false; }
   private byWc = new Map<number, Entry>();
   private sessions = new Map<string, { ses: Session; pluginId: string }>();
   /** r11-A：受控下载（fetchForCache）进行中允许的主机：pluginId → 主机集合（没有面板时 onBeforeRequest 用） */
@@ -111,6 +115,25 @@ export class WebPanelManager {
   /** 渲染进程推送的已绑定加速键（规范化 Ctrl+…）；供 before-input-event 过滤 */
   private boundShortcuts = new Set<string>();
   private shortcutDisposers = new Map<string, () => void>();
+  /** 外链开关打开时，把被拦的顶层地址交给主窗口内容区标签。没接上时仍走原来的横幅。 */
+  private externalOpener: ((url: string) => void) | null = null;
+
+  setExternalOpener(fn: ((url: string) => void) | null): void {
+    this.externalOpener = fn;
+  }
+
+  /** 只有「允许打开外链」且地址被放行时返回 true。javascript: 和关着的开关都返回 false。 */
+  private tryExternalTab(url: string): boolean {
+    if (!this.externalOpener) return false;
+    const decision = decideExternalLink(url, browsePrefsOf(this.siteGrants.snapshot()));
+    if (decision.action !== 'open') return false;
+    try {
+      this.externalOpener(decision.url);
+    } catch {
+      /* 渲染进程还没接上 */
+    }
+    return true;
+  }
 
   constructor(
     private getWin: () => BrowserWindow | null,
@@ -257,8 +280,9 @@ export class WebPanelManager {
     }
   }
 
-  /** 顶层导航被拒：逐站面板 + 只是“主机未批准”（不是协议 / IP / 端口问题）→ site-prompt；其余照旧横幅 */
+  /** 顶层导航被拒：外链开关开着就改到内容区标签；否则逐站询问或照旧横幅 */
   private navDenied(e: Entry, url: string, r: { ok: false; reason: string }) {
+    if (this.tryExternalTab(url)) return;
     const host = e.perSite && r.reason === 'domain-blocked' ? siteHostOf(url) : null;
     if (host) {
       // 用户拒绝时可以改用系统浏览器打开（只允许 https，策略为 open-external-with-confirm）
@@ -405,8 +429,14 @@ export class WebPanelManager {
 
   create(viewId: string, pluginId: string, adapterId: string): WebViewInfo {
     if (typeof viewId !== 'string' || !/^[\w.:-]{1,120}$/.test(viewId)) throw new Error('viewId 不合法');
-    this.destroy(viewId);
     const acc = this.plugins.webAccess(pluginId, adapterId);
+    const retained = this.views.get(viewId);
+    if (retained && retained.pluginId === pluginId && retained.adapterId === adapterId) {
+      return { viewId, partition: acc.partition, allowedDomains: acc.domains, resourceDomains: acc.resourceDomains,
+        homeUrl: acc.web.homeUrl, offDomain: acc.web.offDomain, popups: acc.web.popups, downloads: acc.web.downloads,
+        ...(retained.perSite ? { perSite: true } : {}) };
+    }
+    this.destroy(viewId);
     const win = this.getWin();
     if (!win) throw new Error('窗口不可用');
     const ses = this.sessionFor(acc.partition, pluginId);
@@ -533,6 +563,8 @@ export class WebPanelManager {
       }
     });
     wc.setWindowOpenHandler(({ url }) => {
+      const inDomain = checkNavigation(url, e.domains, { allowHttp: e.perSite }).ok === true;
+      if (!inDomain && this.tryExternalTab(url)) return { action: 'deny' };
       this.blocked(e, url, 'popup-blocked');
       return { action: 'deny' };
     });
@@ -837,6 +869,7 @@ export class WebPanelManager {
   setBounds(viewId: string, b: WebBounds | null) {
     const e = this.views.get(viewId);
     if (!e) return;
+    if (this.sidebarSuspended) b = null;
     if (b && (b.width < 2 || b.height < 2)) b = null;
     const before = e.bounds;
     e.bounds = b ? { x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height) } : null;
@@ -915,6 +948,11 @@ export class WebPanelManager {
       }
     }
     return { ok: true };
+  }
+
+  releaseFromRenderer(viewId: string) {
+    if (this.sidebarSuspended) { this.setBounds(viewId, null); return; }
+    this.destroy(viewId);
   }
 
   destroy(viewId: string) {

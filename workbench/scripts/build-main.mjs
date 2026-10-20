@@ -17,9 +17,9 @@ if (fs.existsSync(csc)) {
   console.log('[build] 没有 csc.exe，跳过 reap-orphans.exe');
 }
 const watch = process.argv.includes('--watch');
-const common = { bundle: true, platform: 'node', format: 'cjs', target: 'node22', sourcemap: true, external: ['electron', 'better-sqlite3', '@parcel/watcher', 'chokidar', '@kb/indexer', '@kb/sync', '@kb/identity-watch', '@kb/plan', '@kb/fileops', '@kb/agent-api', 'pdfjs-dist'], logLevel: 'info' };
+const common = { bundle: true, platform: 'node', format: 'cjs', target: 'node22', sourcemap: true, external: ['electron', 'better-sqlite3', 'koffi', '@parcel/watcher', 'chokidar', '@kb/indexer', '@kb/sync', '@kb/identity-watch', '@kb/plan', '@kb/fileops', '@kb/agent-api', 'pdfjs-dist'], logLevel: 'info' };
 await Promise.all([
-  build({ ...common, plugins: [kbIndexerFork], entryPoints: { index: 'src/main/index.ts', dataEntry: 'src/main/data/entry.ts', indexWorker: 'src/main/indexWorker.ts', migrationPreload: 'src/main/migration/preload.ts', updateBackupWorker: 'src/main/update/backupWorker.ts' }, outdir: 'out/main' }),
+  build({ ...common, plugins: [kbIndexerFork], entryPoints: { index: 'src/main/index.ts', dataEntry: 'src/main/data/entry.ts', indexWorker: 'src/main/indexWorker.ts', indexerShim: 'src/main/indexerShim.ts', migrationPreload: 'src/main/migration/preload.ts', agentPickerPreload: 'src/main/agentPicker/preload.ts', updateBackupWorker: 'src/main/update/backupWorker.ts' }, outdir: 'out/main' }),
   build({ ...common, entryPoints: { index: 'src/preload/index.ts' }, outdir: 'out/preload' }),
   build({ bundle: true, platform: 'browser', format: 'esm', target: 'chrome130', sourcemap: false, entryPoints: { runtime: 'src/plugin-runtime/runtime.ts' }, outdir: 'out/plugin-runtime', logLevel: 'info' }),
 ]);

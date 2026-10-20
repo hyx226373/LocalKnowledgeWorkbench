@@ -2,6 +2,7 @@ import { isValidVersion, satisfies } from './semver';
 import { DISPLAY_MODES, SOURCE_KINDS, checkDisplayMode } from './layoutModel';
 import { HOST_API_VERSION, type PluginManifest } from './types';
 import type { PermissionDecl, SourceKind } from '../../shared/adapter-sdk/types';
+import { searchProviderDeclErrors } from '../../shared/searchProvider';
 
 /** 与 SDK policy 相同的“每类适配器允许的权限” */
 const ALLOWED: Record<SourceKind, PermissionDecl['kind'][]> = { file: ['fs.read', 'fileops.write'], web: ['net'], app: ['process.launch'] };
@@ -36,5 +37,7 @@ export function validateManifest(
       if (!p.reason) return `适配器 ${a.id} 的权限 ${p.id} 缺少 reason`;
     }
   }
+  const searchErrs = searchProviderDeclErrors(m.contributes?.searchProviders);
+  if (searchErrs.length) return searchErrs[0]!;
   return null;
 }

@@ -1,3 +1,4 @@
+import { clearAgentMarksForFile } from '../../agent-marks/client';
 /**
  * 文本 / Markdown 原位编辑（第 9 轮 C）。
  * - 保存全部走主进程服务层（api.workspace.textEdit → IPC → TextEditService → FileOpsBackend），渲染进程不写盘；
@@ -9,7 +10,7 @@
  * - 未保存的修改随时存成草稿（插件存储），关闭标签、退出或崩溃后再打开会恢复。
  */
 import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ToolbarColumns2Icon, ToolbarEyeIcon, ToolbarPencilIcon } from '../../ui/shellMarks';
+import { DocTools } from '../../ui/DocTools';
 import { KbToggle } from '../../settings/KbToggle';
 import { loadZoomHudVisible, readZoomHudVisible, subscribeZoomHudVisible, writeZoomHudVisible } from '../../settings/zoomHudVisible';
 import type { PluginApi } from '../../plugin-host/types';
@@ -18,6 +19,7 @@ import type { DiffLine, TextDiff } from '../../../shared/textDiff';
 import { diffLines } from '../../../shared/textDiff';
 import { dialogs } from '../../ui/dialogs';
 import { editorStatus, ENCODING_LABEL } from '../../editorStatus';
+import { registerEditorDiscard, registerEditorSaver } from '../../editorSave';
 
 const DRAFT_KEY = (rid: string) => `draft:${rid}`;
 const PREVIEW_PREF = 'editor.previewBeforeSave';
@@ -114,7 +116,7 @@ export interface EditableDoc {
   refreshedAt: number;
   restoredDraft: boolean;
   busy: boolean;
-  save: () => Promise<void>;
+  save: () => Promise<boolean>;
   undoLastSave: () => Promise<void>;
   loadExternal: () => Promise<void>;
   compareExternal: () => Promise<void>;
@@ -140,6 +142,7 @@ export function useEditableDoc(api: PluginApi, resourceId: string, notify: (s: s
   draftRef.current = draft;
   const dirty = !!snap && draft !== snap.text;
   const draftTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const skipDraft = useRef(false);
   // 编码与未保存状态 → 状态栏 / 移除资料时的确认
   const statusKey = useRef(Symbol('doc'));
   useEffect(() => {
@@ -237,6 +240,10 @@ export function useEditableDoc(api: PluginApi, resourceId: string, notify: (s: s
   useEffect(
     () => () => {
       clearTimeout(draftTimer.current);
+      if (skipDraft.current) {
+        void api.storage.set(DRAFT_KEY(resourceId), null).catch(() => {});
+        return;
+      }
       const s0 = snapRef.current;
       if (s0 && draftRef.current !== s0.text) void api.storage.set(DRAFT_KEY(resourceId), { text: draftRef.current, baseHash: s0.hash, at: Date.now() }).catch(() => {});
     },
@@ -292,17 +299,26 @@ export function useEditableDoc(api: PluginApi, resourceId: string, notify: (s: s
     [accept, notify, te, resourceId],
   );
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<boolean> => {
     const s = snapRef.current;
-    if (!te || !s || busy) return;
-    if (!s.editable) return void dialogs.alert({ title: '无法保存', body: s.readOnlyReason ?? '该文件不可编辑' });
+    if (!te || !s || busy) return false;
+    if (!s.editable) {
+      void dialogs.alert({ title: '无法保存', body: s.readOnlyReason ?? '该文件不可编辑' });
+      return false;
+    }
     const text = draftRef.current;
     setBusy(true);
     try {
       const pref = await api.storage.get<boolean>(PREVIEW_PREF).catch(() => null);
       const pv = await te.previewSave(resourceId, text, s.hash);
-      if (pv.conflict) return await handleOutcome({ status: 'conflict', disk: pv.disk, diff: pv.diff }, text);
-      if (pv.diff.identical) return void notify('没有改动');
+      if (pv.conflict) {
+        await handleOutcome({ status: 'conflict', disk: pv.disk, diff: pv.diff }, text);
+        return draftRef.current === snapRef.current?.text;
+      }
+      if (pv.diff.identical) {
+        notify('没有改动');
+        return true;
+      }
       // 产品决定：用户自己保存时默认不弹预览（保存后可撤销）；只有在工具栏打开“保存前预览”后才弹
       if (pref === true) {
         const ok = await dialogs.custom<'save' | 'cancel' | 'save-always'>({
@@ -330,16 +346,34 @@ export function useEditableDoc(api: PluginApi, resourceId: string, notify: (s: s
             </>
           ),
         });
-        if (ok === 'cancel') return;
+        if (ok === 'cancel') return false;
         if (ok === 'save-always') void api.storage.set(PREVIEW_PREF, false);
       }
       await handleOutcome(await te.save(resourceId, text, s.hash), text);
+      return draftRef.current === snapRef.current?.text;
     } catch (e) {
       await dialogs.alert({ title: '保存失败', body: errMsg(e) });
+      return false;
     } finally {
       setBusy(false);
     }
   }, [te, busy, api, resourceId, handleOutcome, notify]);
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => {
+    const key = statusKey.current;
+    const offSave = registerEditorSaver(resourceId, key, () => saveRef.current());
+    const offDiscard = registerEditorDiscard(resourceId, key, () => {
+      skipDraft.current = true;
+      clearTimeout(draftTimer.current);
+      if (snapRef.current) draftRef.current = snapRef.current.text;
+      void api.storage.set(DRAFT_KEY(resourceId), null).catch(() => {});
+    });
+    return () => {
+      offSave();
+      offDiscard();
+    };
+  }, [api, resourceId]);
 
   const undoLastSave = useCallback(async () => {
     if (!te || busy) return;
@@ -391,14 +425,7 @@ export function useEditableDoc(api: PluginApi, resourceId: string, notify: (s: s
   return { snap, error, draft, setDraft, dirty, external, refreshedAt, restoredDraft, busy, save, undoLastSave, loadExternal, compareExternal, saveCount, getPreviewPref, setPreviewPref };
 }
 
-/** 编辑工具栏 + 外部修改提示。对齐预览 DocBar：模式轻按钮＋选中底板＋路径弱化；低频进更多。 */
-function modeIcon(id: string) {
-  if (id === 'preview' || id === 'read') return <ToolbarEyeIcon />;
-  if (id === 'edit') return <ToolbarPencilIcon />;
-  if (id === 'split') return <ToolbarColumns2Icon />;
-  return null;
-}
-
+/** 编辑工具栏 + 外部修改提示。预览 DocBar 在左，保存等正式动作在路径右侧。 */
 export function EditorBar({
   doc,
   modes,
@@ -406,7 +433,9 @@ export function EditorBar({
   setMode,
   onPreviewChanges,
   crumb,
+  marks,
 }: {
+  marks?: { absPath: string; count: number };
   doc: EditableDoc;
   modes: { id: string; label: string }[];
   mode: string;
@@ -433,31 +462,9 @@ export function EditorBar({
   }, [moreOpen]);
   return (
     <>
-      <div className="kb-view-toolbar editor-toolbar" role="toolbar" aria-label="编辑">
-        <div className="kb-doc-tools">
-          <span className="kb-seg kb-doc-modes" role="group" aria-label="视图">
-            {modes.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={mode === m.id ? 'kb-mode on' : 'kb-mode'}
-                data-testid={`mode-${m.id}`}
-                aria-pressed={mode === m.id ? 'true' : 'false'}
-                onClick={() => setMode(m.id)}
-              >
-                {modeIcon(m.id)}
-                {m.label}
-              </button>
-            ))}
-          </span>
-          {crumb ? (
-            <span className="kb-doc-crumb" title={crumb} data-testid="doc-crumb">
-              {crumb}
-            </span>
-          ) : (
-            <span className="kb-doc-crumb" aria-hidden="true" />
-          )}
-          <span className="kb-doc-actions">
+      <div className="kb-view-toolbar editor-toolbar pane-bar" role="toolbar" aria-label="编辑">
+        <DocTools modes={modes} mode={mode} setMode={setMode} crumb={crumb} />
+        <span className="kb-doc-actions">
             {editing && (
               <>
                 <button className="kb-button" data-testid="editor-save" disabled={!s?.editable || doc.busy} title="保存（Ctrl+S）：原内容备份后直接写入，可用“撤销上次保存”恢复" onClick={() => void doc.save()}>
@@ -493,6 +500,21 @@ export function EditorBar({
               {moreOpen ? (
                 <div className="kb-doc-more-menu" role="menu" data-testid="editor-more-menu">
                   {editing ? <PreviewToggle doc={doc} /> : null}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="kb-doc-more-item"
+                    data-testid="editor-clear-file-marks"
+                    disabled={!marks || !marks.absPath || marks.count === 0}
+                    title={!marks || marks.count === 0 ? '本文件没有标红' : `清除本文件的 ${marks.count} 处标红`}
+                    onClick={() => {
+                      if (!marks?.absPath) return;
+                      setMoreOpen(false);
+                      void clearAgentMarksForFile(marks.absPath);
+                    }}
+                  >
+                    清除本文件的标红
+                  </button>
                   <label title="隐藏后仍可用快捷键与滚轮缩放；再开即恢复浮条">
                     <span>显示内容缩放条</span>
                     <KbToggle
@@ -512,7 +534,6 @@ export function EditorBar({
               ) : null}
             </div>
           </span>
-        </div>
       </div>
       {doc.restoredDraft && doc.dirty && (
         <div className="kb-banner kb-editor-banner" data-testid="editor-draft-restored" data-tone="info">

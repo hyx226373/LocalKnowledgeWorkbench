@@ -109,7 +109,7 @@ describe('工作区启动设置', () => {
     expect(src).not.toContain('setLayout');
     expect(src).not.toContain('createWorkspace');
 
-    const app = readFileSync(path.join(process.cwd(), 'src/renderer/App.tsx'), 'utf8');
+    const app = readFileSync(path.join(process.cwd(), 'src/renderer/MainShell.tsx'), 'utf8');
     const start = app.indexOf('const onReady = useCallback');
     const end = app.indexOf('panelManager.setHost');
     expect(start).toBeGreaterThan(0);

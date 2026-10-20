@@ -5,11 +5,15 @@ import { setLiveHint, liveHint } from './hint';
 import { askMove } from './MoveDialog';
 import { onDropTarget } from './resolve';
 import type { DragPayload, DropTarget, Modifiers } from './types';
+import { OVERVIEW_BOARDS_KEY, parseOverviewBoards, addWorkspacesToCategory } from '../../shared/workspacePicker/overviewBoards';
+import { getAgentLiveBinding, addRefs } from '../agent-live/actions';
+import type { MaterialRef } from '../../shared/agentLive/types';
 
 export type OpenPlace = 'tab' | 'left' | 'right' | 'up' | 'down' | 'float';
 
 export interface DndHost {
   open(resourceId: string, place: OpenPlace): Promise<void>;
+  openReadonly?(path: string): Promise<void>;
   workspaceId(): string | null;
   closePanels(resourceId: string): Promise<void>;
   isDirty(resourceId: string): boolean;
@@ -71,6 +75,101 @@ export function makePorts(): FlowPorts {
     listMembership: (id) => kb.listVfolderMembership(id),
     setMembership: (id, folderIds) => kb.setVfolderMembership(id, folderIds),
     removeMembership: (id, folderId) => kb.removeVfolderMembership(id, folderId),
+    planDrop: async (ops) => {
+      if (!ops.length || !kb?.aiWritePlanDrop) return;
+      const roots = await kb.listRoots().catch(() => []);
+      const root = roots.find((r) => r.id === ops[0].toRootId);
+      const targetRootPath = root?.path || '';
+      const files = await Promise.all(
+        ops.map(async (o) => {
+          let sourceAbs = o.sourceAbs;
+          if (!sourceAbs && o.resourceId && kb.resourceAbsPath) {
+            sourceAbs = await kb.resourceAbsPath(o.resourceId).catch(() => undefined);
+          }
+          return {
+            name: o.name,
+            sourceAbs,
+            resourceId: o.resourceId,
+            entryKind: o.entryKind,
+          };
+        }),
+      );
+      return kb.aiWritePlanDrop({
+        targetRootPath,
+        targetRootId: ops[0].toRootId,
+        targetRelPath: ops[0].toRelPath.includes('/') ? ops[0].toRelPath.slice(0, ops[0].toRelPath.lastIndexOf('/')) : '',
+        files,
+      });
+    },
+    addAgentRefs: async (workspaceId, refs) => {
+      const binding = getAgentLiveBinding();
+      if (!binding) return;
+      const mRefs: MaterialRef[] = refs.map((r) => ({
+        resourceId: r.resourceId,
+        absPath: r.absPath ?? '',
+        name: r.name,
+        relPath: r.relPath,
+        sourceId: r.sourceId,
+      }));
+      await addRefs(binding, mRefs);
+    },
+    reorderMaterials: async (workspaceId, ids) => {
+      const key = 'workspace.refs:' + workspaceId;
+      let existing: { id: string; at: number }[] = [];
+      try {
+        const raw = await kb.getLayout(key);
+        if (Array.isArray(raw)) existing = raw;
+        else if (typeof raw === 'string') existing = JSON.parse(raw);
+      } catch {
+        existing = [];
+      }
+      const map = new Map(existing.map((item) => [item.id, item]));
+      const now = Date.now();
+      const next = ids.map((id, index) => map.get(id) ?? { id, at: now + index });
+      for (const item of existing) {
+        if (!ids.includes(item.id)) next.push(item);
+      }
+      await kb.setLayout(key, next);
+    },
+    addCategory: async (categoryId, workspaceId) => {
+      let rawBoards: unknown = null;
+      try {
+        rawBoards = await kb.getLayout(OVERVIEW_BOARDS_KEY);
+      } catch {
+        rawBoards = null;
+      }
+      const boards = parseOverviewBoards(rawBoards);
+      const next = addWorkspacesToCategory(boards, categoryId, [workspaceId]);
+      await kb.setLayout(OVERVIEW_BOARDS_KEY, next);
+    },
+    linkPaths: async (workspaceId, paths) => {
+      const allRoots = await kb.listRoots().catch(() => []);
+      const rids: string[] = [];
+      for (const p of paths) {
+        const normP = p.replace(/\\/g, '/').toLowerCase();
+        for (const r of allRoots) {
+          const normRoot = r.path.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+          if (normP === normRoot || normP.startsWith(normRoot + '/')) {
+            const rel = p.slice(r.path.length).replace(/^[\\/]+/, '').replace(/\\/g, '/');
+            if (kb.consoleResolvePath) {
+              const rid = await kb.consoleResolvePath(r.id, rel).catch(() => null);
+              if (rid) rids.push(rid);
+            }
+            break;
+          }
+        }
+      }
+      if (rids.length) {
+        await kb.addWorkspaceRefs(workspaceId, rids);
+      }
+    },
+    openReadonly: async (path) => {
+      if (host?.openReadonly) {
+        await host.openReadonly(path);
+      } else if (typeof (kb as unknown as { openPath?: (p: string) => Promise<unknown> }).openPath === 'function') {
+        await (kb as unknown as { openPath: (p: string) => Promise<unknown> }).openPath(path);
+      }
+    },
   };
 }
 

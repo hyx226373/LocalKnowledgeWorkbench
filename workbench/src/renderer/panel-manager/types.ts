@@ -102,8 +102,11 @@ export interface PanelManagerApi {
   get(id: string): WindowInfo | undefined;
   /** 移动到容器坐标 (left, top)。停靠的面板先变为浮动 */
   move(id: string, pos: { left: number; top: number }): void;
-  /** 调整宽高。浮动：改窗口矩形；停靠在分屏：改所在分组的宽/高（分屏的另一侧随之变化） */
-  resize(id: string, size: Partial<Size>): void;
+  /**
+   * 调整宽高。浮动：改窗口矩形；停靠在分屏：改所在分组的宽/高（分屏的另一侧随之变化）。
+   * commit 缺省为 true。拖动手柄可传 { commit: false }，松手再提交，避免每帧写盘。
+   */
+  resize(id: string, size: Partial<Size>, opts?: { commit?: boolean }): void;
   bringToFront(id: string): void;
   collapseToBubble(id: string): void;
   restoreFromBubble(id: string): void;

@@ -51,11 +51,12 @@ describe('工作资料（集合）', () => {
     expect(svc.listOps(50).filter((o) => /ref/i.test(o.op))).toEqual([]);
   });
 
-  it('只能加入文件；不存在的资源报错；删除工作区清掉引用记录', async () => {
+  it('文件夹可以加入工作资料；不存在的资源报错；删除工作区清掉引用记录', async () => {
     const { svc, roots } = await setup();
     svc.getCurrentWorkspaceId();
     const w = svc.createWorkspace('临时', '', EMPTY, []).id;
-    expect(() => svc.addWorkspaceRefs(w, [roots[0].resourceId])).toThrow(/只能把文件/);
+    const folderId = roots[0].resourceId;
+    expect(svc.addWorkspaceRefs(w, [folderId]).map((r) => r.resourceId)).toContain(folderId);
     expect(() => svc.addWorkspaceRefs(w, ['nope'])).toThrow(/资源不存在/);
     svc.addWorkspaceRefs(w, [svc.resourceIdFor(roots[1].id, '章节/一.md')]);
     svc.deleteWorkspace(w);

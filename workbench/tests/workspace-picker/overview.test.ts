@@ -124,6 +124,7 @@ function actions() {
     onCopy: vi.fn<(workspaceId: string) => void>(),
     onExport: vi.fn<(workspaceId: string) => void>(),
     onRename: vi.fn<(workspaceId: string, name: string) => void>(),
+    onDelete: vi.fn<(workspaceId: string) => void>(),
     onFavorite: vi.fn<(workspaceId: string, favorite: boolean) => void>(),
     onCreate: vi.fn<(name: string) => void>(),
     onCreateFirst: vi.fn<(name: string) => void>(),
@@ -135,6 +136,7 @@ function actions() {
     onCopy: (workspaceId) => spies.onCopy(workspaceId),
     onExport: (workspaceId) => spies.onExport(workspaceId),
     onRename: (workspaceId, name) => spies.onRename(workspaceId, name),
+    onDelete: (workspaceId) => spies.onDelete(workspaceId),
     onFavorite: (workspaceId, favorite) => spies.onFavorite(workspaceId, favorite),
     onCreate: (name) => spies.onCreate(name),
     onCreateFirst: (name) => spies.onCreateFirst(name),
@@ -177,19 +179,48 @@ describe('workspace overview model', () => {
     expect(recent[recent.length - 1]).toBe('ws-stale');
     expect(recent).not.toContain('ws-norecent');
     expect(recent).not.toContain('ws-empty');
-    const projects = section(model, 'projects')?.groups ?? [];
-    expect(projects.map((group) => group.label)).toEqual(['工具', '界面', '考研', '未分组']);
-    expect(ids(projects.find((group) => group.label === '考研')?.cards)).toEqual([
-      'ws-mixed',
-      'ws-same-file',
-      'ws-english',
-      'ws-english-2',
-      'ws-webs',
-    ]);
-    expect(ids(projects.find((group) => group.key === '')?.cards)).toEqual(['ws-broken', 'ws-stale', 'ws-empty']);
-    const english = section(model, 'tags')?.groups?.find((group) => group.key === '英语');
-    expect(ids(english?.cards)).toEqual(['ws-english', 'ws-english-2']);
+    expect(section(model, 'projects')).toBeUndefined();
+    expect(section(model, 'tags')).toBeUndefined();
+    expect(model.allOrderIds[0]).toBe('ws-english');
+    expect(model.allOrderIds).toContain('ws-empty');
+    expect(model.allOrderIds).toContain('ws-norecent');
+    expect(model.allCards.map((card) => card.id)).toEqual(model.allOrderIds);
+    expect(new Set(model.allOrderIds).size).toBe(model.allOrderIds.length);
     expect(model.sections.some((item) => ids(item.cards).includes('tmp-1'))).toBe(false);
+  });
+
+  it('项目和标签只来自用户分组，顺序可以单独记住', () => {
+    const boards = {
+      v: 1 as const,
+      projects: [{ id: 'p-1', name: '项目1', workspaceIds: ['ws-english', 'ws-empty', 'missing'] }],
+      tags: [{ id: 't-1', name: '标签1', workspaceIds: ['ws-webs', 'ws-english'] }],
+      allOrder: ['ws-empty', 'ws-english'],
+      favoriteOrder: ['ws-english', 'ws-cover', 'ws-long', 'ws-mixed'],
+    };
+    const model = modelOf({ boards });
+    const projects = section(model, 'projects')?.groups ?? [];
+    expect(projects.map((group) => group.label)).toEqual(['项目1']);
+    expect(projects.map((group) => group.key)).toEqual(['p-1']);
+    expect(ids(projects[0]?.cards)).toEqual(['ws-english', 'ws-empty']);
+    expect(ids(section(model, 'tags')?.groups?.[0]?.cards)).toEqual(['ws-webs', 'ws-english']);
+    expect(model.allOrderIds.slice(0, 2)).toEqual(['ws-empty', 'ws-english']);
+    expect(model.favoriteOrderIds).toEqual(['ws-english', 'ws-cover', 'ws-long', 'ws-mixed']);
+    expect(ids(section(model, 'favorites')?.cards)).toEqual(['ws-english', 'ws-cover', 'ws-long', 'ws-mixed']);
+    const searched = modelOf({
+      boards,
+      ui: { search: '从未', selectedId: null },
+    });
+    expect(ids(section(searched, 'projects')?.groups?.[0]?.cards)).toEqual([]);
+    expect(section(searched, 'projects')).toBeUndefined();
+    const named = modelOf({
+      boards: {
+        ...boards,
+        projects: [{ id: 'p-1', name: '项目1', workspaceIds: ['ws-english', 'ws-norecent'] }],
+      },
+      ui: { search: '从未', selectedId: null },
+    });
+    expect(ids(section(named, 'projects')?.groups?.[0]?.cards)).toEqual(['ws-norecent']);
+    expect(ids(section(named, 'recent')?.cards)).not.toContain('ws-norecent');
   });
 
   it('searches name, purpose, and tags, and leaves temporary workspaces out', () => {
@@ -201,12 +232,16 @@ describe('workspace overview model', () => {
     expect(byPurpose.sections.every((item) => !ids(item.cards).includes('tmp-1'))).toBe(true);
     expect(byPurpose.sections.every((item) => !(item.groups ?? []).some((group) => ids(group.cards).includes('tmp-1')))).toBe(true);
 
-    const byTag = modelOf({ entries: withTemp, ui: { search: '  论文  ', selectedId: null } });
-    expect(ids(section(byTag, 'current')?.cards)).toEqual([]);
-    expect(section(byTag, 'current')).toBeUndefined();
-    const tagIds = (section(byTag, 'tags')?.groups ?? []).flatMap((group) => ids(group.cards));
-    expect(tagIds).toContain('ws-mixed');
-    expect(tagIds).not.toContain('tmp-1');
+    const byName = modelOf({ entries: withTemp, ui: { search: '  论文  ', selectedId: null } });
+    expect(ids(section(byName, 'current')?.cards)).toEqual([]);
+    expect(section(byName, 'current')).toBeUndefined();
+    expect(section(byName, 'tags')).toBeUndefined();
+    expect(ids(byName.allCards)).toContain('ws-mixed');
+    expect(ids(byName.allCards)).not.toContain('tmp-1');
+
+    const byTag = modelOf({ entries: withTemp, ui: { search: '数学', selectedId: null } });
+    expect(ids(byTag.allCards)).toEqual(['ws-mixed']);
+    expect(byTag.sections.every((item) => !ids(item.cards).includes('tmp-1'))).toBe(true);
 
     const none = modelOf({ ui: { search: '没有这个词', selectedId: null } });
     expect(none.mode).toBe('list');
@@ -262,6 +297,15 @@ describe('workspace overview model', () => {
     expect(renamed.spies.onRename).toHaveBeenCalledWith('ws-broken', '修好了');
     const blank = run(savedEntries, { type: 'rename', id: 'ws-broken', name: '   ' });
     expect(blank.spies.onRename).not.toHaveBeenCalled();
+    const removed = run(savedEntries, { type: 'delete', id: 'ws-broken' });
+    expect(removed.spies.onDelete).toHaveBeenCalledWith('ws-broken');
+    expect(removed.result.called).toBe(true);
+    const only = savedEntries.filter((entry) => entry.summary.id === 'ws-empty');
+    const last = run(only, { type: 'delete', id: 'ws-empty' });
+    expect(last.result.called).toBe(false);
+    expect(last.spies.onDelete).not.toHaveBeenCalled();
+    const tempDelete = run([temporaryEntry()], { type: 'delete', id: 'tmp-1' });
+    expect(tempDelete.spies.onDelete).not.toHaveBeenCalled();
 
     const favOn = run(savedEntries, { type: 'favorite', id: 'ws-english', favorite: true });
     expect(favOn.result.called).toBe(true);
@@ -335,7 +379,7 @@ describe('workspace overview model', () => {
 });
 
 describe('workspace overview markup', () => {
-  it('renders sections, disabled edits, card classes, and an embedded thumb', () => {
+  it('renders sections, card classes, and an embedded thumb without a detail column', () => {
     const html = markup({
       entries: savedEntries,
       currentId: 'ws-english',
@@ -350,9 +394,16 @@ describe('workspace overview markup', () => {
     expect(html).toContain('data-hover-ipc="false"');
     expect(html).toContain('data-kb-scheme="light"');
     expect(html).toContain('--kb-color-surface:');
-    for (const id of ['current', 'favorites', 'recent', 'projects', 'tags', 'presets', 'detail']) {
+    for (const id of ['all', 'presets']) {
       expect(html).toContain(`data-section="${id}"`);
     }
+    expect(html).not.toContain('data-section="current"');
+    expect(html).not.toContain('data-section="projects"');
+    expect(html).not.toContain('data-section="tags"');
+    // r21 §7：分类页卡片可拖到左侧分类（只加引用），因此卡片允许 draggable
+    expect(html).toContain('data-action="add-workspaces"');
+    expect(html).toContain('添加工作区');
+    expect(html).not.toContain('data-section="detail"');
     expect(html).toContain(`class="${WORKSPACE_CARD_CLASS.root} ${WORKSPACE_CARD_CLASS.selected} ${WORKSPACE_CARD_CLASS.favorite}"`);
     expect(html).toContain('data-workspace-id="ws-same-file"');
     expect(html).toContain('data-count-files="1"');
@@ -361,14 +412,13 @@ describe('workspace overview markup', () => {
     expect(html).toContain('class="kb-ws-thumb-frame"');
     expect(html).not.toContain('kb-ws-thumb-frame is-selected');
     expect(html).toContain('data-preset-id="builtin.two-columns"');
-    for (const field of ['purpose', 'tags', 'cover']) {
-      expect(buttonTag(html, 'data-edit', field)).toContain('disabled');
-    }
-    expect(html).toContain('data-detail="files"');
-    expect(html).toContain('高数笔记.md');
+    expect(html).not.toContain('data-edit=');
+    expect(html).not.toContain('data-detail="files"');
+    expect(html).not.toContain('高数笔记.md');
     const broken = markup({ entries: savedEntries, currentId: 'ws-english', selectedId: 'ws-broken' });
-    expect(broken).toContain('data-missing="true"');
-    expect(broken).toContain('data-problem="resource-missing"');
+    expect(broken).not.toContain('data-missing="true"');
+    expect(broken).not.toContain('data-problem="resource-missing"');
+    expect(broken).not.toContain('data-section="detail"');
     expect(html).not.toContain('catalog_id');
   });
 
@@ -391,16 +441,17 @@ describe('workspace overview markup', () => {
     const model = modelOf();
     expect(overviewSectionsForFilter(model.sections, 'recent').map((section) => section.id)).toEqual(['recent']);
     expect(overviewSectionsForFilter(model.sections, 'favorites').map((section) => section.id)).toEqual(['favorites']);
-    expect(overviewSectionsForFilter(model.sections, 'projects').map((section) => section.id)).toEqual(['projects']);
-    expect(overviewSectionsForFilter(model.sections, 'tags').map((section) => section.id)).toEqual(['tags']);
-    const projectLabels = overviewSectionsForFilter(model.sections, 'projects').flatMap((section) => section.groups?.map((group) => group.label) ?? []);
-    expect(projectLabels).toContain('考研');
-    expect(projectLabels).toContain('未分组');
+    expect(overviewSectionsForFilter(model.sections, 'projects')).toEqual([]);
+    expect(overviewSectionsForFilter(model.sections, 'tags')).toEqual([]);
 
     const html = markup({ entries: savedEntries, currentId: 'ws-english' });
     expect(html).toContain('name="kb-ws-overview-filter"');
     expect(html).toContain('data-filter-owner="overview"');
     expect(html).toContain('data-action="toggle-filter"');
+    expect(html).toContain('data-category-id="all"');
+    expect(html).toContain('data-default="true"');
+    expect(html).toContain('data-action="new-category"');
+    expect(html).toContain('新建分类');
     expect(html).toContain('data-action="open-preview"');
     expect(html).toContain('data-action="open-title"');
     expect(html).toContain('data-action="favorite"');
@@ -414,7 +465,41 @@ describe('workspace overview markup', () => {
     const favorite = buttonTag(html, 'data-action', 'favorite');
     expect(favorite).not.toContain('data-action="enter"');
     const more = buttonTag(html, 'data-action', 'more');
-    expect(more).toContain('disabled');
+    expect(more).not.toContain('disabled');
+    expect(more).toContain('aria-haspopup="menu"');
+    expect(more).toContain('aria-expanded="false"');
+    expect(html).toContain('data-activate="enter"');
+    expect(html).toContain('data-action="copy"');
+    expect(html).toContain('data-action="export"');
+    expect(html).toContain('data-action="rename"');
+    expect(html).toContain('data-action="delete"');
+    expect(html).toContain('data-testid="workspace-delete"');
+    expect(html).toContain('data-field="rename"');
+    const enabledDelete = buttonTag(html, 'data-testid', 'workspace-delete');
+    expect(enabledDelete).not.toContain('disabled');
+    expect(enabledDelete).toContain('不会删除磁盘上的文件');
+    expect(html).not.toContain('更多（稍后）');
+    const headStart = html.indexOf('<header');
+    const headEnd = html.indexOf('</header>');
+    const head = html.slice(headStart, headEnd);
+    const formStart = head.indexOf('<form');
+    const formOpen = head.slice(formStart, head.indexOf('>', formStart));
+    expect(formOpen).toContain('ov-create-pop');
+    expect(formOpen).toContain('hidden');
+    expect(head.indexOf('data-field="create-name"')).toBeGreaterThan(formStart);
+    expect(head).toContain('data-action="open-create"');
+    expect(head).toContain('aria-haspopup="dialog"');
+    expect(head).toContain('data-action="create"');
+    const tempHtml = markup({ entries: [...savedEntries, temporaryEntry()], currentId: 'ws-english' });
+    expect(buttonTag(tempHtml, 'data-action', 'copy')).toContain('disabled');
+    expect(buttonTag(tempHtml, 'data-action', 'export')).toContain('disabled');
+    expect(buttonTag(tempHtml, 'data-action', 'rename')).toContain('disabled');
+    expect(buttonTag(tempHtml, 'data-testid', 'workspace-delete')).toContain('disabled');
+    expect(buttonTag(tempHtml, 'data-testid', 'workspace-delete')).toContain('临时现场还没保存，不能删除');
+    const source = readFileSync(path.join(process.cwd(), 'src/renderer/workspace-picker/WorkspaceOverview.tsx'), 'utf8');
+    expect(source).not.toContain("type: 'select'");
+    expect(source).toContain("type: 'enter', id: card.id");
+    expect(source).toContain("type: 'create', name");
 
     const shot = markup({
       entries: savedEntries,
@@ -434,16 +519,133 @@ describe('workspace overview markup', () => {
     expect(closed).toContain('布局预览');
     expect(closed).toContain('data-cover-file="ws-cover.png"');
   });
+
+  it('只剩一个已保存工作区时，删除按钮禁用并说明原因', () => {
+    const html = markup({ entries: savedEntries.filter((entry) => entry.summary.id === 'ws-empty'), currentId: 'ws-empty' });
+    const button = buttonTag(html, 'data-testid', 'workspace-delete');
+    expect(button).toContain('data-workspace-id="ws-empty"');
+    expect(button).toContain('disabled');
+    expect(button).toContain('只剩这一个工作区，不能删除');
+    expect(button).toContain('删除');
+  });
+});
+
+describe('分类页', () => {
+  const boards = {
+    v: 1 as const,
+    projects: [{ id: 'p-1', name: '项目1', workspaceIds: ['ws-english', 'ws-empty'] }],
+    tags: [{ id: 't-1', name: '标签1', workspaceIds: ['ws-webs'] }],
+    allOrder: [] as string[],
+    favoriteOrder: [] as string[],
+  };
+
+  it('没有项目分类时回到全部，仍有添加框，不按工作区项目字段分组', () => {
+    const html = markup({ entries: savedEntries, currentId: 'ws-english', initialFilter: 'projects' });
+    expect(html).toContain('data-section="all"');
+    expect(html).toContain('data-action="add-workspaces"');
+    expect(html).toContain('添加工作区');
+    expect(html).toContain('data-action="new-category"');
+    expect(html).not.toContain('data-action="add-group"');
+    expect(html).not.toContain('data-project=');
+    expect(html).not.toContain('>考研<');
+    // r21 §7：分类页卡片可拖到左侧分类（只加引用），因此卡片允许 draggable
+  });
+
+  it('项目分类是流式网格，卡片按分组顺序，末尾是添加框', () => {
+    const html = markup({ entries: savedEntries, currentId: 'ws-english', initialFilter: 'projects', boards });
+    expect(html).toContain('data-section="p-1"');
+    expect(html).toContain('项目1');
+    expect(html).toContain('data-category-id="cat:p-1"');
+    expect(html).toContain('data-origin="projects"');
+    expect(html).toContain('data-workspace-id="ws-english"');
+    expect(html).toContain('data-workspace-id="ws-empty"');
+    expect(html).toContain('data-action="add-workspaces"');
+    expect(html).toContain('data-action="remove-ref"');
+    expect(html).toContain('移出分类');
+    // 分类页里只能移出引用，不能从这里删掉工作区本身（旧 bug：删一个，别处的同一卡片失效）。
+    expect(html).not.toContain('data-testid="workspace-delete"');
+    expect(html).not.toContain('class="kb-ws-overview-row ov-row"');
+    // r21 §7：分类页卡片可拖到左侧分类（只加引用），因此卡片允许 draggable
+    const english = html.indexOf('data-workspace-id="ws-english"');
+    const empty = html.indexOf('data-workspace-id="ws-empty"');
+    expect(english).toBeGreaterThan(0);
+    expect(english).toBeLessThan(empty);
+    const css = readFileSync(path.join(process.cwd(), 'src/renderer/workspace-picker/overview.css'), 'utf8');
+    const preview = readFileSync(path.join(process.cwd(), 'src/renderer/ui/overview-preview.css'), 'utf8');
+    expect(css).not.toContain('flex-wrap: nowrap');
+    expect(css).not.toContain('overflow-x: auto');
+    expect(css).toContain('repeat(auto-fill, minmax(220px, 1fr))');
+    expect(preview).toContain('repeat(auto-fill, minmax(220px, 1fr))');
+    expect(preview).not.toContain('minmax(240px, 1fr)');
+    expect(css).not.toContain('#5B5BD6');
+    expect(preview).not.toContain('#5B5BD6');
+  });
+
+  it('标签分类用同一套网格', () => {
+    const html = markup({ entries: savedEntries, currentId: 'ws-english', initialFilter: 'tags', boards });
+    expect(html).toContain('data-section="t-1"');
+    expect(html).toContain('标签1');
+    expect(html).toContain('data-category-id="cat:t-1"');
+    expect(html).toContain('data-origin="tags"');
+    expect(html).toContain('data-workspace-id="ws-webs"');
+    expect(html).not.toContain('data-workspace-id="ws-english"');
+    expect(html).not.toContain('class="kb-ws-overview-row ov-row"');
+  });
+
+  it('选择工作区是缩略图多选，已添加置灰，临时现场不出现', () => {
+    const html = markup({
+      entries: [...savedEntries, temporaryEntry()],
+      currentId: 'ws-english',
+      initialFilter: 'projects',
+      boards,
+      initialPickerOpen: true,
+    });
+    const pickerAt = html.indexOf('aria-label="添加到 项目1"');
+    expect(pickerAt).toBeGreaterThan(0);
+    const picker = html.slice(pickerAt);
+    expect(picker).toContain('data-field="pick-search"');
+    expect(picker).toContain('data-action="confirm-add"');
+    expect(picker).toContain('data-action="cancel-add"');
+    expect(picker).toContain('已选 <b>0</b> 个');
+    expect(picker).toContain('已添加');
+    expect(buttonTag(picker, 'data-action', 'confirm-add')).toContain('disabled');
+    expect(picker).toContain('确定');
+    expect(picker).toContain('取消');
+    expect(picker).not.toContain('论文临时现场');
+    expect(picker).not.toContain('data-workspace-id="tmp-1"');
+    expect(buttonTag(picker, 'data-workspace-id', 'ws-english')).toContain('data-added="true"');
+    expect(buttonTag(picker, 'data-workspace-id', 'ws-english')).toContain('disabled');
+    expect(buttonTag(picker, 'data-workspace-id', 'ws-webs')).toContain('data-added="false"');
+    expect(buttonTag(picker, 'data-workspace-id', 'ws-webs')).not.toContain('disabled');
+    const cover = picker.indexOf('自设封面');
+    const english = picker.indexOf('英语阅读');
+    const blank = picker.indexOf('>空白<');
+    expect(cover).toBeGreaterThan(0);
+    expect(cover).toBeLessThan(english);
+    expect(english).toBeLessThan(blank);
+  });
+
+  it('最近和收藏不能排序拖动，添加框仍在', () => {
+    const recent = markup({ entries: savedEntries, currentId: 'ws-english', initialFilter: 'recent' });
+    expect(recent).not.toContain('data-order-scope="recent"');
+    expect(recent).toContain('data-section="recent"');
+    expect(recent).toContain('data-action="add-workspaces"');
+    const favorites = markup({ entries: savedEntries, currentId: 'ws-english', initialFilter: 'favorites' });
+    expect(favorites).toContain('data-section="favorites"');
+    expect(favorites).not.toContain('data-order-scope="favorites"');
+    expect(favorites).not.toContain('移出分类');
+  });
 });
 
 describe('workspace overview sources', () => {
   it('does not reference catalog rows, host attach, or the invoke whitelist', () => {
     const files = [
       'src/shared/workspacePicker/overview.ts',
+      'src/shared/workspacePicker/overviewBoards.ts',
       'src/renderer/workspace-picker/WorkspaceOverview.tsx',
       'src/renderer/workspace-picker/overview.css',
     ];
-    const banned = ['catalog_id', 'host.attach', 'createWin32Helper', 'setVisible', 'INVOKE_WHITELIST', 'appLaunch', 'ipcRenderer'];
+    const banned = ['catalog_id', 'host.attach', 'createWin32Helper', 'setVisible', 'INVOKE_WHITELIST', 'appLaunch', 'ipcRenderer', 'clipboard', 'LOCALAPPDATA', 'LocalKnowledgeWorkbench'];
     for (const file of files) {
       const text = readFileSync(path.join(process.cwd(), file), 'utf8');
       for (const word of banned) expect(text, file).not.toContain(word);

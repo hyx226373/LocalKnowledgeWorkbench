@@ -3,6 +3,7 @@
  * 外观全部来自主题令牌（.kb-ui-* 类），主题切换自动生效。输入应先经过 sanitizeUiNode。
  */
 import React from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { JsonValue, UiNode, UiTreeNode } from '../../shared/adapter-sdk/types';
 
 type OnAction = (action: string, payload: JsonValue | undefined) => void;
@@ -17,7 +18,9 @@ function Tree({ nodes, toggleAction, onAction, depth }: { nodes: UiTreeNode[]; t
             <div className="kb-ui-tree-row" style={{ paddingLeft: depth * 14 }}>
               {hasKids ? (
                 <button className="kb-ui-tree-toggle" data-testid="ui-tree-toggle" aria-label={n.expanded ? '折叠' : '展开'} onClick={() => onAction(toggleAction, n.id)}>
-                  {n.expanded ? '▾' : '▸'}
+                  {n.expanded
+                    ? <ChevronDown size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: 'middle' }} />
+                    : <ChevronRight size={14} strokeWidth={1.75} aria-hidden="true" style={{ verticalAlign: 'middle' }} />}
                 </button>
               ) : (
                 <span className="kb-ui-tree-toggle" />

@@ -1,0 +1,66 @@
+/* chrome-layout：真隐藏（VC-CH-12）—— display:none + pointer-events:none；禁止透明遮罩 */
+
+.kb-chrome-slot[data-chrome-hidden='true'] {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: none !important;
+}
+
+/* 内容区在只看内容时吃满 */
+.kb-chrome-root[data-content-only='true'] .kb-chrome-content {
+  flex: 1;
+  min-height: 0;
+}
+
+.kb-chrome-edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--kb-color-chrome, #2a2a2a);
+  border-bottom: 1px solid var(--kb-color-border, #444);
+  font-size: 12px;
+  z-index: 60;
+}
+
+.kb-chrome-edit-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.kb-chrome-fab {
+  position: fixed;
+  right: 12px;
+  bottom: 36px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kb-chrome-fab button {
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+/* chrome.tabs：真隐藏 dockview 标签条（无 hit-test） */
+:root[data-kb-chrome-tabs='off'] .kb-dock .dv-tabs-and-actions-container {
+  display: none !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}

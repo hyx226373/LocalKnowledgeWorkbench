@@ -87,7 +87,8 @@ export function tmpLooksComplete(file: string, dest: string): boolean {
   }
   if (base === 'ENTRY.md') {
     const text = readText(file);
-    return !!text && text.startsWith('<!-- kb-live ') && text.includes('## 6. 接入约定');
+    // 规则区可以在版本注释前面。旧文件的注释仍在开头，两种都算完整。
+    return !!text && text.includes('<!-- kb-live ') && text.includes('## 6. 接入约定');
   }
   if (dest.endsWith('.md')) {
     const text = readText(file);

@@ -1,0 +1,749 @@
+/* 工作区总览视觉。数值对齐预览 overview / styles.css 的 ov-*、icon-pop、emerge。
+   作用域只在 .kb-ws-overview，颜色走 --kb-*，不写死预览蓝，四套美术仍可换色。 */
+
+.kb-ws-overview {
+  height: 100%;
+  min-height: 0;
+}
+
+.kb-ws-overview .ov-screen {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  grid-auto-rows: auto;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.kb-ws-overview .ov-screen:has(.ov-side[data-collapsed='true']) {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.kb-ws-overview .ov-side {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 224px;
+  min-height: 0;
+  padding: 0;
+  background: var(--kb-color-surface-sunken, var(--kb-color-bg));
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  transition: none;
+}
+
+.kb-ws-overview .ov-side[data-collapsed='true'] {
+  width: auto;
+  padding: 0;
+}
+
+.kb-ws-overview .ov-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+}
+
+.kb-ws-overview .ov-cats-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.kb-ws-overview .ov-cats-head > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-ws-overview button.ov-filter-toggle {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--kb-color-text-faint);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.kb-ws-overview button.ov-filter-toggle:hover {
+  color: var(--kb-color-text);
+}
+
+.kb-ws-overview label.ov-item {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kb-color-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.kb-ws-overview label.ov-item.on {
+  background: var(--kb-color-accent-soft);
+  color: var(--kb-color-accent);
+  font-weight: 600;
+}
+
+.kb-ws-overview label.ov-item input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kb-ws-overview .ov-item svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--kb-color-text-muted);
+  transform: none;
+  transition: none;
+  animation: none;
+}
+
+.kb-ws-overview .ov-item:active svg {
+  transform: none;
+}
+
+.kb-ws-overview .ov-item.on svg {
+  color: var(--kb-color-accent);
+  animation: none;
+}
+
+.kb-ws-overview .ov-main {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 22px 28px 24px;
+  overflow: auto;
+  background: var(--kb-color-bg);
+}
+
+.kb-ws-overview .ov-main::-webkit-scrollbar {
+  width: 10px;
+}
+
+.kb-ws-overview .ov-main::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--kb-color-text) 14%, transparent);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+.kb-ws-overview .ov-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+  min-width: 0;
+  position: relative;
+  z-index: 6;
+}
+
+.kb-ws-overview .ov-head h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.kb-ws-overview label.ov-search {
+  margin-left: auto;
+  width: min(280px, 36vw);
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 6px;
+  background: var(--kb-color-surface);
+  box-shadow: none;
+  color: var(--kb-color-text-faint);
+}
+
+.kb-ws-overview label.ov-search input {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  color: var(--kb-color-text);
+}
+
+.kb-ws-overview label.ov-search input::placeholder {
+  color: var(--kb-color-text-faint);
+}
+
+.kb-ws-overview .ov-create {
+  position: relative;
+  flex: none;
+}
+
+.kb-ws-overview .ov-create-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: min(320px, 70vw);
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 10px;
+  background: var(--kb-color-surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kb-ws-overview .ov-create-pop .kb-ws-overview-name {
+  width: 11rem;
+  height: 28px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kb-color-text) 8%, transparent);
+  background: var(--kb-color-bg);
+  font-size: 13px;
+}
+
+.kb-ws-overview .ov-create-pop button.ov-new {
+  flex: none;
+}
+
+.kb-ws-overview .ov-create-pop[hidden] {
+  display: none !important;
+}
+
+.kb-ws-overview button.ov-new {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--kb-color-accent);
+  color: var(--kb-color-accent-fg, #fff);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.kb-ws-overview button.ov-new:hover {
+  filter: brightness(0.92);
+}
+
+.kb-ws-overview .ov-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.kb-ws-overview .ov-section-label {
+  margin: 0 0 8px;
+  padding: 0 2px;
+  color: var(--kb-color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.kb-ws-overview .ov-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-auto-rows: auto;
+  align-items: stretch;
+  align-content: start;
+  gap: 16px;
+}
+
+.kb-ws-overview .ov-stack > .kb-ws-overview-section:only-child {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.kb-ws-overview .ov-grid > .ov-card {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  animation: kb-ov-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.kb-ws-overview .ov-card > article.kb-ws-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 8px;
+  background: var(--kb-color-surface);
+  background-image: none;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.kb-ws-overview .ov-card > article.kb-ws-card.is-selected {
+  background-color: var(--kb-color-surface);
+  background-image: none;
+  color: inherit;
+  border-color: var(--kb-color-accent);
+  box-shadow: inset 0 0 0 1px var(--kb-color-accent);
+}
+
+.kb-ws-overview .ov-card > article.kb-ws-card:hover,
+.kb-ws-overview .ov-card > article.kb-ws-card.is-selected:hover {
+  transform: none;
+  background-image: none;
+  border-color: var(--kb-color-accent);
+  box-shadow: inset 0 0 0 1px var(--kb-color-accent);
+}
+
+.kb-ws-overview .ov-thumb {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 7px 7px 0 0;
+  background: var(--kb-color-surface-sunken, var(--kb-color-bg));
+  border-bottom: 1px solid color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+}
+
+.kb-ws-overview .ov-thumb button.kb-ws-card-preview {
+  position: relative;
+  display: block;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 200px;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  aspect-ratio: 16 / 10;
+}
+
+.kb-ws-overview .ov-thumb .kb-ws-card-shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+}
+
+.kb-ws-overview .ov-thumb .kb-ws-thumb-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.kb-ws-overview .ov-thumb .kb-ws-thumb {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.kb-ws-overview .ov-thumb .kb-ws-card-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  aspect-ratio: auto;
+}
+
+.kb-ws-overview .ov-thumb .kb-ws-card-preview-label {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kb-color-surface) 88%, transparent);
+  color: var(--kb-color-text);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.kb-ws-overview .ov-meta {
+  flex: none;
+  padding: 12px 14px 14px;
+}
+
+.kb-ws-overview .ov-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.kb-ws-overview .ov-name button.kb-ws-card-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  font-size: 14px;
+  font-weight: 600;
+  color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.kb-ws-overview .ov-name em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--kb-color-selected-fg, var(--kb-color-accent));
+  background: var(--kb-color-accent-soft, color-mix(in srgb, var(--kb-color-accent) 16%, transparent));
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.kb-ws-overview .ov-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.kb-ws-overview .kb-ws-card-menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.kb-ws-overview .ov-card.is-menu-open {
+  position: relative;
+  z-index: 5;
+}
+
+.kb-ws-overview .ov-card-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 10px;
+  background: var(--kb-color-surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kb-ws-overview .ov-card-menu[hidden] {
+  display: none !important;
+}
+
+.kb-ws-overview .ov-card-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--kb-color-text);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+}
+
+.kb-ws-overview .ov-card-menu button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+}
+
+.kb-ws-overview .ov-card-menu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.kb-ws-overview .kb-ws-card-menu-rename {
+  display: block;
+  margin: 2px 0 0;
+}
+
+.kb-ws-overview .kb-ws-card-rename {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--kb-color-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kb-color-text) 8%, transparent);
+  color: var(--kb-color-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.kb-ws-overview .kb-ws-card-rename:disabled {
+  opacity: 0.45;
+}
+
+.kb-ws-overview button.star {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--kb-color-text-faint);
+  cursor: pointer;
+}
+
+.kb-ws-overview button.star.on {
+  color: var(--kb-color-accent);
+}
+
+.kb-ws-overview button.star:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--kb-color-text) 5%, transparent);
+}
+
+.kb-ws-overview button.star:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.kb-ws-overview .ov-meta p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-ws-overview .ov-meta p span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-ws-overview .ov-meta p span:last-child {
+  flex: none;
+}
+
+.kb-ws-overview .ov-unsaved-note,
+.kb-ws-overview .ov-empty {
+  margin: 0;
+  color: var(--kb-color-text-muted);
+  font-size: 12.5px;
+}
+
+.kb-ws-overview .ov-presets,
+.kb-ws-overview .ov-detail,
+.kb-ws-overview .ov-welcome {
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 10px;
+  background: var(--kb-color-surface);
+  box-shadow: none;
+}
+
+.kb-ws-overview .ov-welcome {
+  margin: 22px 28px;
+}
+
+.kb-ws-overview[data-mode='welcome'] .ov-presets {
+  margin: 0 28px 22px;
+}
+
+.kb-ws-overview .ov-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 18px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.kb-ws-overview .ov-presets .ov-section-label {
+  margin: 0;
+}
+
+.kb-ws-overview .ov-presets button,
+.kb-ws-overview .ov-detail .kb-ws-overview-actions button,
+.kb-ws-overview .ov-welcome .kb-ws-overview-actions button {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 999px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  box-shadow: none;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.kb-ws-overview .ov-presets button:hover:not(:disabled),
+.kb-ws-overview .ov-detail .kb-ws-overview-actions button:hover:not(:disabled),
+.kb-ws-overview .ov-welcome .kb-ws-overview-actions button:hover:not(:disabled) {
+  background: var(--kb-color-hover, color-mix(in srgb, var(--kb-color-text) 5%, transparent));
+}
+
+.kb-ws-overview .ov-welcome .kb-ws-overview-heading {
+  margin: 0 0 8px;
+  color: var(--kb-color-text);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.kb-ws-overview .emerge {
+  animation: kb-ov-emerge 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes kb-ov-icon-pop {
+  0% {
+    transform: scale(0.82);
+  }
+  55% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes kb-ov-emerge {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .kb-ws-overview .ov-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .kb-ws-overview .ov-screen,
+  .kb-ws-overview .ov-screen:has(.ov-side[data-collapsed='true']) {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .kb-ws-overview .ov-side {
+    width: auto;
+  }
+
+  .kb-ws-overview .ov-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+    min-height: 0;
+  }
+
+  .kb-ws-overview .ov-head h1 {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-ws-overview .ov-side,
+  .kb-ws-overview .ov-item svg {
+    transition: none;
+  }
+
+  .kb-ws-overview .ov-item.on svg,
+  .kb-ws-overview .ov-card,
+  .kb-ws-overview .emerge {
+    animation: none;
+  }
+}
+
+.app[data-motion='reduce'] .kb-ws-overview .ov-side,
+.app[data-motion='reduce'] .kb-ws-overview .ov-item svg,
+[data-reduce-motion='true'] .kb-ws-overview .ov-side,
+[data-reduce-motion='true'] .kb-ws-overview .ov-item svg,
+.kb-ws-overview[data-motion='reduce'] .ov-side,
+.kb-ws-overview[data-motion='reduce'] .ov-item svg {
+  transition: none;
+}
+
+.app[data-motion='reduce'] .kb-ws-overview .ov-item.on svg,
+.app[data-motion='reduce'] .kb-ws-overview .ov-card,
+.app[data-motion='reduce'] .kb-ws-overview .emerge,
+[data-reduce-motion='true'] .kb-ws-overview .ov-item.on svg,
+[data-reduce-motion='true'] .kb-ws-overview .ov-card,
+[data-reduce-motion='true'] .kb-ws-overview .emerge,
+.kb-ws-overview[data-motion='reduce'] .ov-item.on svg,
+.kb-ws-overview[data-motion='reduce'] .ov-card,
+.kb-ws-overview[data-motion='reduce'] .emerge {
+  animation: none;
+}

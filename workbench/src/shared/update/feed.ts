@@ -16,6 +16,12 @@ export function resolveFeed(input: string): FeedTarget {
   const raw = input.trim();
   if (!raw) throw new Error('没有配置更新源');
   if (/^https?:\/\//i.test(raw)) {
+    const bare = raw.split('#')[0] ?? raw;
+    if (/\.(yml|yaml|json)(\?|$)/i.test(bare)) {
+      const slash = bare.lastIndexOf('/');
+      const base = slash >= 0 ? bare.slice(0, slash + 1) : bare.endsWith('/') ? bare : `${bare}/`;
+      return { kind: 'http', baseUrl: base, latestUrl: bare };
+    }
     const base = raw.endsWith('/') ? raw : `${raw}/`;
     return { kind: 'http', baseUrl: base, latestUrl: `${base}latest.yml` };
   }

@@ -90,6 +90,7 @@ export interface WorkspaceLayout {
   shell: ShellLayout;
 }
 
+/** 已保存布局缺宽度或宽度非法时的读回退。新工作区默认宽不改这个数。 */
 export const DEFAULT_SHELL: ShellLayout = { sidebarWidth: 280 };
 
 export type MigrateResult = { ok: true; layout: WorkspaceLayout; migratedFrom: number } | { ok: false; reason: 'newer' | 'invalid'; schema?: number };

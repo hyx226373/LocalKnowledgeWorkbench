@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import type { PlaybookDelivery, PlaybookMount, PlaybookRelation } from '../../../shared/ctxPlaybook';
+import { isPlaybookDelivery, isPlaybookMount, isPlaybookRelation } from '../../../shared/ctxPlaybook';
 import { MaterialStoreError } from './errors';
 import type { MaterialStatus } from '../../../shared/agentLive/types';
 
@@ -25,6 +27,12 @@ export interface PersistedMaterial {
   mtimeMs: number | null;
   /** 后台哈希和粗估已结束。estTokens 对 PDF、Office、二进制仍是 null。 */
   estimated: boolean;
+  /** 上下文剧本。缺省不写入，旧资料字节不变。 */
+  slotId?: string;
+  mount?: PlaybookMount;
+  delivery?: PlaybookDelivery;
+  summary?: string;
+  relations?: PlaybookRelation[];
   extra: Record<string, unknown>;
 }
 
@@ -32,6 +40,7 @@ const ITEM_KEYS = new Set([
   'materialId', 'tier', 'resourceId', 'sourceId', 'relPath', 'absPath', 'name', 'purpose', 'order',
   'status', 'contentHash', 'contentVersion', 'readable', 'addedAt', 'bytes', 'estTokens', 'hasText',
   'pages', 'mtimeMs', 'estimated', 'extra',
+  'slotId', 'mount', 'delivery', 'summary', 'relations',
 ]);
 
 export interface WorkspaceRecordStore {
@@ -269,7 +278,24 @@ export function serializeMaterial(item: PersistedMaterial): Record<string, unkno
     pages: item.pages,
     mtimeMs: item.mtimeMs,
     estimated: item.estimated,
+    ...(item.slotId ? { slotId: item.slotId } : {}),
+    ...(item.mount ? { mount: item.mount } : {}),
+    ...(item.delivery ? { delivery: item.delivery } : {}),
+    ...(item.summary ? { summary: item.summary } : {}),
+    ...(item.relations?.length ? { relations: item.relations } : {}),
   };
+}
+
+function parseRelations(value: unknown): PlaybookRelation[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out: PlaybookRelation[] = [];
+  for (const row of value) {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+    const rec = row as Record<string, unknown>;
+    if (!isPlaybookRelation(rec.type) || typeof rec.targetId !== 'string' || !rec.targetId.trim()) continue;
+    out.push({ type: rec.type, targetId: rec.targetId.trim() });
+  }
+  return out.length ? out : undefined;
 }
 
 function parseMaterial(raw: unknown, index: number): PersistedMaterial | null {
@@ -303,6 +329,14 @@ function parseMaterial(raw: unknown, index: number): PersistedMaterial | null {
     pages: typeof obj.pages === 'number' && Number.isFinite(obj.pages) ? obj.pages : null,
     mtimeMs: typeof obj.mtimeMs === 'number' && Number.isFinite(obj.mtimeMs) ? obj.mtimeMs : null,
     estimated: obj.estimated === true,
+    ...(typeof obj.slotId === 'string' && obj.slotId.trim() ? { slotId: obj.slotId.trim() } : {}),
+    ...(isPlaybookMount(obj.mount) ? { mount: obj.mount } : {}),
+    ...(isPlaybookDelivery(obj.delivery) ? { delivery: obj.delivery } : {}),
+    ...(typeof obj.summary === 'string' && obj.summary.trim() ? { summary: obj.summary.trim() } : {}),
+    ...(() => {
+      const relations = parseRelations(obj.relations);
+      return relations ? { relations } : {};
+    })(),
     extra,
   };
 }

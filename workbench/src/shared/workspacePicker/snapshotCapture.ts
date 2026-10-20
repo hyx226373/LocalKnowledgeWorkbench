@@ -11,6 +11,8 @@ import {
 } from './snapshotGuard';
 
 export const WORKSPACE_SNAPSHOT_CAPTURE_CHANNEL = 'kb:workspace-snapshot-capture';
+export const WORKSPACE_SNAPSHOT_LOAD_CHANNEL = 'kb:workspace-snapshot-load';
+export const WORKSPACE_SNAPSHOT_DELETE_CHANNEL = 'kb:workspace-snapshot-delete';
 
 export type { SnapshotCaptureDecision };
 
@@ -25,6 +27,15 @@ export interface WorkspaceSnapshotRequest {
   snapshotEnabled?: boolean;
   fileName?: string | null;
 }
+
+export interface WorkspaceSnapshotLoadEntry {
+  fileName: string;
+  dataUrl: string;
+  takenAt: string | null;
+}
+
+/** 工作区 id → 已落盘快照。缺文件的 id 不出现。 */
+export type WorkspaceSnapshotLoadResult = Record<string, WorkspaceSnapshotLoadEntry>;
 
 export interface SnapshotPixelSource {
   mainPng: Buffer | null;

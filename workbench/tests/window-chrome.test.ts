@@ -8,28 +8,28 @@ describe('windowChromeOptions', () => {
     expect(options.titleBarOverlay).toEqual({
       color: '#1e1e1e',
       symbolColor: '#e6e6e6',
-      height: 40,
+      height: 48,
     });
     expect(options).not.toHaveProperty('frame');
     expect(options).not.toHaveProperty('backgroundColor');
     expect(options.titleBarOverlay.color).not.toBe('#ebe9e4');
   });
 
-  it('颜色与符号色可单独覆盖，高度仍是 40', () => {
+  it('颜色与符号色可单独覆盖，高度跟预览顶栏 48', () => {
     expect(windowChromeOptions({ color: '#252526' }).titleBarOverlay).toEqual({
       color: '#252526',
       symbolColor: '#e6e6e6',
-      height: 40,
+      height: 48,
     });
     expect(windowChromeOptions({ symbolColor: '#1a1a1a' }).titleBarOverlay).toEqual({
       color: '#1e1e1e',
       symbolColor: '#1a1a1a',
-      height: 40,
+      height: 48,
     });
     expect(windowChromeOptions({ color: '#ebe9e4', symbolColor: '#1a1a1a' }).titleBarOverlay).toEqual({
       color: '#ebe9e4',
       symbolColor: '#1a1a1a',
-      height: 40,
+      height: 48,
     });
   });
 
@@ -64,7 +64,7 @@ describe('applyWindowChromeColors', () => {
     const win = { setTitleBarOverlay, close };
     applyWindowChromeColors(win, { color: '#222222', symbolColor: '#f0f0f0' });
     expect(setTitleBarOverlay).toHaveBeenCalledTimes(1);
-    expect(setTitleBarOverlay).toHaveBeenCalledWith({ color: '#222222', symbolColor: '#f0f0f0', height: 40 });
+    expect(setTitleBarOverlay).toHaveBeenCalledWith({ color: '#222222', symbolColor: '#f0f0f0', height: 48 });
     expect(close).not.toHaveBeenCalled();
   });
 

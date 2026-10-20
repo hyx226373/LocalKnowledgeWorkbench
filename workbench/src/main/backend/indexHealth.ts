@@ -14,6 +14,8 @@ export interface IndexHealth {
   contentIndexedFiles: number;
   /** 全文空间满且压实后仍失败。不因此把 contentSearch 改成 false。 */
   contentIndexNotice?: string;
+  /** 后端启动失败时的调用栈前几行，诊断用，界面不直接显示。 */
+  reasonStack?: string;
   /** locked/busy 重试用完的路径。失败记录还在，压实或手动重建时再补。 */
   contentIndexFailed?: Array<{ rootId: string; relPath: string; kind: 'locked' | 'busy' }>;
 }

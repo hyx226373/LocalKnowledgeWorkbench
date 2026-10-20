@@ -136,12 +136,13 @@ const themes = [
 ];
 
 async function applyTheme(win, chrome, reading, scheme) {
+  await domClick(win, '[data-testid="top-more"]');
   await domClick(win, '[data-testid="appearance-button"]');
   await setSelect(win, 'appearance-chrome', chrome);
   await setSelect(win, 'appearance-reading', reading);
   await setSelect(win, 'appearance-scheme', scheme);
   await win.waitForTimeout(300);
-  await domClick(win, '[data-testid="appearance-button"]');
+  await domClick(win, '[data-testid="top-more"]');
 }
 
 let app;
@@ -217,9 +218,10 @@ try {
 
   state = await readState(win);
   if (!state.chromeOptions.length) {
+    await domClick(win, '[data-testid="top-more"]');
     await domClick(win, '[data-testid="appearance-button"]');
     state = await readState(win);
-    await domClick(win, '[data-testid="appearance-button"]');
+    await domClick(win, '[data-testid="top-more"]');
   }
   note('chrome-options', state.chromeOptions.join(','));
   for (const [chrome, reading, scheme, file] of themes) {

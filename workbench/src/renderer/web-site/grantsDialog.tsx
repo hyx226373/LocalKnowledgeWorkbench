@@ -5,11 +5,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { kb } from '../kb';
 import { KbToggle } from '../settings/KbToggle';
 import { dialogs } from '../ui/dialogs';
-import { GLOBAL_NEVER_BLOCK_WARNING, type WebSiteGrantRow } from '../../shared/webSiteGrant';
+import { GLOBAL_NEVER_BLOCK_WARNING, type WebSiteApplyRequest, type WebSiteGrantRow } from '../../shared/webSiteGrant';
+import { noteExternalBrowsePrefs } from '../external-browse/openTab';
 
 interface Listed {
   file: string;
   globalNeverBlock: boolean;
+  allowOpenExternal?: boolean;
+  trustInsecureLinks?: boolean;
   sites: WebSiteGrantRow[];
 }
 
@@ -40,18 +43,22 @@ export function WebSiteGrantsBody({ done, embedded = false }: { done?: () => voi
   const [busy, setBusy] = useState(false);
   const writing = useRef(false);
   const reload = () => {
-    void kb.webSiteList().then(setListed).catch((err: unknown) => setError(String((err as Error)?.message ?? err)));
+    void kb.webSiteList().then((next) => {
+      setListed(next);
+      noteExternalBrowsePrefs(next);
+    }).catch((err: unknown) => setError(String((err as Error)?.message ?? err)));
   };
   useEffect(reload, []);
-  const turnGlobal = (enabled: boolean) => {
+  const apply = (req: WebSiteApplyRequest) => {
     if (writing.current) return;
     writing.current = true;
     setBusy(true);
     setError('');
-    void kb.webSiteApply({ actionId: 'web.neverBlock', global: true, enabled })
+    void kb.webSiteApply(req)
       .then(() => kb.webSiteList())
       .then((next) => {
         setListed(next);
+        noteExternalBrowsePrefs(next);
       })
       .catch((err: unknown) => {
         setError(String((err as Error)?.message ?? err));
@@ -61,18 +68,31 @@ export function WebSiteGrantsBody({ done, embedded = false }: { done?: () => voi
         setBusy(false);
       });
   };
+  const turnGlobal = (enabled: boolean) => apply({ actionId: 'web.neverBlock', global: true, enabled });
   return (
     <>
       <div className="kb-dialog-body" data-testid="web-site-grants-body">
-        <p data-testid="web-site-global-warning">{GLOBAL_NEVER_BLOCK_WARNING}。关掉之后会重新按网站询问。</p>
-        <KbToggle testId="web-site-global-toggle" checked={listed?.globalNeverBlock === true} busy={busy} disabled={busy || listed === null} onChange={turnGlobal}>
-          从不拦截外部资源（全部网页面板）
-        </KbToggle>
-        <p className="meta" data-testid="web-site-grant-file">
+        <p className="kb-set-banner kb-set-banner--info" data-testid="web-site-global-warning">{GLOBAL_NEVER_BLOCK_WARNING}。关掉之后会重新按网站询问。</p>
+        <section className="kb-set-card kb-set-card--list">
+          <KbToggle testId="web-site-global-toggle" checked={listed?.globalNeverBlock === true} busy={busy} disabled={busy || listed === null} onChange={turnGlobal}>
+            从不拦截外部资源（全部网页面板）
+          </KbToggle>
+          <div data-testid="ext-browse-settings">
+            <KbToggle testId="ext-browse-allow" checked={listed ? listed.allowOpenExternal !== false : false} busy={busy} disabled={busy || listed === null} onChange={(enabled) => apply({ actionId: 'web.allowOpenExternal', enabled })}>
+              允许打开外链（应用内标签打开）
+            </KbToggle>
+            <p className="meta">默认开启。关闭时，外链仍按原来的方式拦截，不在应用内打开。</p>
+            <KbToggle testId="ext-browse-trust" checked={listed?.trustInsecureLinks === true} busy={busy} disabled={busy || listed === null} onChange={(enabled) => apply({ actionId: 'web.trustInsecureLinks', enabled })}>
+              信任不安全链接
+            </KbToggle>
+            <p className="meta">默认关闭。打开后，file:// 等非 http 链接也在应用内打开。javascript: 始终拒绝。</p>
+          </div>
+        </section>
+        <p className="meta kb-set-chip" data-testid="web-site-grant-file">
           配置文件（不在资料里）：{listed?.file ?? '…'}
         </p>
         {error && <p data-testid="web-site-grants-error">{error}</p>}
-        <ul className="kb-web-grant-list" data-testid="web-site-grant-list">
+        <ul className="kb-web-grant-list kb-set-table" data-testid="web-site-grant-list">
           {(listed?.sites ?? []).length === 0 && <li className="meta">还没有保存的网站授权。</li>}
           {(listed?.sites ?? []).map((row) => (
             <li key={row.site} data-testid={`web-site-saved-${row.site}`} data-decision={row.decision} data-source={row.source} data-persistence={row.persistence}>

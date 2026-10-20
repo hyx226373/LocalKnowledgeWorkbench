@@ -15,11 +15,15 @@ export const SETTINGS_CATEGORIES = [
   { id: 'keybindings', label: '快捷键', needsData: false },
   { id: 'plugins', label: '插件与开发者模式', needsData: true },
   { id: 'workspace', label: '工作区启动', needsData: true },
+  { id: 'rebirth', label: '重生仓库', needsData: false },
+  { id: 'agentData', label: 'Agent 数据', needsData: false },
+  { id: 'aiWrite', label: 'AI 写入通道', needsData: false },
   { id: 'web', label: '网页外部资源授权', needsData: false },
   { id: 'index', label: '索引', needsData: true },
   { id: 'ignored', label: '显示被忽略的文件', needsData: true },
   { id: 'delay', label: '后台加载延迟', needsData: true },
   { id: 'reading', label: '阅读', needsData: false },
+  { id: 'obsidian', label: 'Obsidian', needsData: false },
   { id: 'about', label: '关于', needsData: false },
 ] as const;
 

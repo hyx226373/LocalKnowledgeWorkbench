@@ -1,8 +1,17 @@
 /** 纯几何函数（可单测）：找回（夹回可见区域）、最大化矩形、吸附。 */
 import type { Box, Size } from './types';
 
-/** 浮动窗口最小尺寸（插件视图可以声明更大的 minSize，见 docs/11 §6） */
+/**
+ * 浮动窗口最小尺寸（插件视图可以声明更大的 minSize，见 docs/11 §6）。
+ * 预览样例 beginResize 的下限是 300×200（PREVIEW_MIN_FLOAT）。这里保持 240×140：
+ * rescue / keepGrabbable 会把更小的矩形抬到这个下限，restoreLayout 结束时就会跑 rescue。
+ * 已保存的浮动窗和约 280 宽的浮动侧栏若被抬到 300，恢复后的矩形就变了。
+ * migrate / finalize 本身不读这个值，但它们交出去的 bounds 会在 rescue 里被夹。
+ */
 export const MIN_FLOAT: Size = { width: 240, height: 140 };
+
+/** 预览 doc-stage 的缩放下限。只作对照，不参与 rescue / resize。 */
+export const PREVIEW_MIN_FLOAT: Size = { width: 300, height: 200 };
 
 const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -65,6 +74,21 @@ export function intersects(a: Box, b: Box): boolean {
 }
 
 /** 新浮动窗口的默认位置：在容器内错开排列（第 n 个窗口右下移 32px） */
+/**
+ * 右下角缩放：以起始矩形加指针增量，夹在 PanelManager 最小尺寸与容器内边（默认 12px，对齐预览）之间。
+ * 不另记一套窗口状态；结果交给 PanelManager.resize。
+ */
+export function resizeDelta(start: Box, dx: number, dy: number, container: Size, min: Size = MIN_FLOAT, margin = 12): Size {
+  const cw = Math.max(1, Math.floor(container.width));
+  const ch = Math.max(1, Math.floor(container.height));
+  const maxW = Math.max(min.width, cw - start.left - margin);
+  const maxH = Math.max(min.height, ch - start.top - margin);
+  return {
+    width: Math.min(maxW, Math.max(min.width, Math.round(start.width + dx))),
+    height: Math.min(maxH, Math.max(min.height, Math.round(start.height + dy))),
+  };
+}
+
 export function cascadeBox(n: number, c: Size, size: Size = { width: 520, height: 380 }): Box {
   const w = Math.min(size.width, Math.max(MIN_FLOAT.width, c.width - 40));
   const h = Math.min(size.height, Math.max(MIN_FLOAT.height, c.height - 40));

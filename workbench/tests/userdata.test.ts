@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { migrateUserData, planUserDataDir, DATA_MARKER, MIGRATION_NOTE } from '../src/main/userDataDir';
+import { migrateUserData, planUserDataDir, isFormalInstallPath, isolatedUserDataDir, DATA_MARKER, MIGRATION_NOTE, ISOLATED_UD_PARENT, FORMAL_INSTALL_ROOT } from '../src/main/userDataDir';
 import { tmpDir, write } from './helpers';
 
 describe('数据目录规划', () => {
@@ -56,5 +56,52 @@ describe('一次性迁移', () => {
   it('旧目录没有元数据库 → 不迁移', () => {
     const base = tmpDir('kbud-');
     expect(migrateUserData(path.join(base, 'nope'), path.join(base, 'to'))).toBe('none');
+  });
+});
+
+describe('非正式装机硬隔离', () => {
+  const roaming = 'C:\\Users\\a\\AppData\\Roaming\\LocalKnowledgeWorkbench';
+  const local = 'C:\\Users\\a\\AppData\\Local';
+  it('正式装机路径仍用默认真库 UD', () => {
+    expect(isFormalInstallPath('D:\\study_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe')).toBe(true);
+    expect(isFormalInstallPath('d:/study_dev/LocalKnowledgeWorkbench/LocalKnowledgeWorkbench.exe')).toBe(true);
+    const plan = planUserDataDir({
+      platform: 'win32',
+      env: { LOCALAPPDATA: local },
+      electronDefault: roaming,
+      execPath: 'D:\\study_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe',
+    });
+    expect(plan).toEqual({ dir: path.win32.join(local, 'LocalKnowledgeWorkbench'), migrateFrom: roaming });
+  });
+  it('staging/candidate/wt dist 强制独立 UD，不碰真库', () => {
+    expect(isFormalInstallPath('D:\\STUDY MATERIAL\\项目\\知识库\\收口-day\\candidate\\staging-079a164\\release\\win-unpacked\\LocalKnowledgeWorkbench.exe')).toBe(false);
+    const stagingExe = 'D:\\wt\\release-staging\\abc\\release\\win-unpacked\\LocalKnowledgeWorkbench.exe';
+    const plan = planUserDataDir({
+      platform: 'win32',
+      env: { LOCALAPPDATA: local },
+      electronDefault: roaming,
+      execPath: stagingExe,
+    });
+    const expected = isolatedUserDataDir(local, stagingExe);
+    expect(plan.dir).toBe(expected);
+    expect(plan.migrateFrom).toBeNull();
+    expect(plan.dir.toLowerCase()).toContain(ISOLATED_UD_PARENT.toLowerCase());
+    expect(plan.dir.toLowerCase()).not.toBe(path.win32.join(local, 'LocalKnowledgeWorkbench').toLowerCase());
+  });
+  it('KB_USER_DATA 仍优先于硬隔离', () => {
+    const plan = planUserDataDir({
+      platform: 'win32',
+      env: { KB_USER_DATA: 'D:\\tmp\\kb-ud', LOCALAPPDATA: local },
+      electronDefault: roaming,
+      execPath: 'D:\\wt\\staging\\LocalKnowledgeWorkbench.exe',
+    });
+    expect(plan).toEqual({ dir: path.resolve('D:\\tmp\\kb-ud'), migrateFrom: null });
+  });
+  it('无 execPath 时保持旧行为（兼容测试）', () => {
+    expect(FORMAL_INSTALL_ROOT.toLowerCase()).toContain('study_dev');
+    expect(planUserDataDir({ platform: 'win32', env: { LOCALAPPDATA: local }, electronDefault: roaming })).toEqual({
+      dir: path.win32.join(local, 'LocalKnowledgeWorkbench'),
+      migrateFrom: roaming,
+    });
   });
 });

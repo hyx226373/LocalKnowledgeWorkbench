@@ -306,11 +306,13 @@ const A0 = await mdAnchor(win);
 const headBefore = await topHeading(win);
 await win.evaluate(() => window.__kb.flush());
 const layoutBefore = (await stored(win, ws2)).layout;
+// 外观弹层已迁入「更多」；保持阅读面板挂载，沿用弹层断言。
+await win.click('[data-testid="top-more"]');
 await win.click('[data-testid="appearance-button"]');
 await win.selectOption('[data-testid="appearance-chrome"]', 'study');
 await win.selectOption('[data-testid="appearance-reading"]', 'bright');
 await win.selectOption('[data-testid="appearance-scheme"]', 'light');
-await win.click('[data-testid="appearance-button"]');
+await win.click('[data-testid="top-more"]');
 await win.mouse.move(5, 790);
 await win.waitForTimeout(600);
 const attrs = await win.evaluate(() => [document.documentElement.dataset.kbChrome, document.documentElement.dataset.kbReading, document.documentElement.dataset.kbScheme].join());
@@ -338,11 +340,13 @@ check(
   fileStates(layoutBefore) === fileStates(layoutAfter) && JSON.stringify(layoutBefore.shell) === JSON.stringify(layoutAfter.shell) && Object.keys(layoutBefore.items).join() === Object.keys(layoutAfter.items).join() && JSON.stringify(layoutBefore.dock.panels) === JSON.stringify(layoutAfter.dock.panels),
   `${fileStates(layoutBefore)} → ${fileStates(layoutAfter)}`,
 );
+// 外观弹层已迁入「更多」；保持阅读面板挂载，沿用弹层断言。
+await win.click('[data-testid="top-more"]');
 await win.click('[data-testid="appearance-button"]');
 await win.selectOption('[data-testid="appearance-chrome"]', 'pro');
 await win.selectOption('[data-testid="appearance-reading"]', 'pro');
 await win.selectOption('[data-testid="appearance-scheme"]', 'dark');
-await win.click('[data-testid="appearance-button"]');
+await win.click('[data-testid="top-more"]');
 await win.mouse.move(5, 790);
 await win.waitForTimeout(600);
 const A2 = await mdAnchor(win);

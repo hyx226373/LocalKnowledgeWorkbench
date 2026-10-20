@@ -1,5 +1,10 @@
+import type { WriteChannelSnapshot } from '../../../shared/aiWriteChannel';
+import { renderPlaybookEntry, type PlaybookEntryBlock } from '../../../shared/ctxPlaybook';
+import { SKILL_DISTILL_ENTRY_LINE } from '../../../shared/skillDistill';
+import { WRITE_TIER_META } from '../../../shared/aiWriteChannel';
+import type { AttentionSignal } from '../../../shared/agentMarks';
 import { AGENT_LIVE_ACTIONS, LIVE_NAV, type LivePanel, type LiveReading } from '../../../shared/agentLive/types';
-import { AGREEMENT, CURSOR_HINT, STABILITY, UNTRUSTED, architectureMarkdown, guideMarkdown } from './templates';
+import { AGREEMENT, CURSOR_HINT, LIBRARY_READ_NOTE, STABILITY, UNTRUSTED, architectureMarkdown, guideMarkdown } from './templates';
 import { oneLine } from './text';
 import { formatTotal, tokenWarning, type TotalItem } from './tokens';
 
@@ -14,6 +19,27 @@ export interface EntryDocItem extends TotalItem {
   status: string;
   readableLabel: string;
   tier: 'session' | 'pinned';
+  /** 文件夹节点：目录概览，不假装读过正文 */
+  dirOverview?: string;
+  /** shallow child count; omit when unknown */
+  fileCount?: number;
+}
+
+
+export interface EntryPanelView {
+  name: string;
+  absPath: string;
+  panelId?: string;
+  materialId?: string | null;
+  resourceId?: string | null;
+}
+
+export interface EntryReadingView {
+  name: string;
+  absPath: string;
+  panelId?: string;
+  materialId?: string | null;
+  resourceId?: string | null;
 }
 
 export interface EntryDoc {
@@ -22,20 +48,40 @@ export interface EntryDoc {
   workspaceId: string;
   workspaceName: string;
   purpose?: string;
-  panels: { name: string; absPath: string }[];
-  reading: { name: string; absPath: string } | null;
+  panels: EntryPanelView[];
+  reading: EntryReadingView | null;
   sessionShown: EntryDocItem[];
   pinnedShown: EntryDocItem[];
   sessionAll: EntryDocItem[];
   pinnedAll: EntryDocItem[];
   omitted: number;
   pathStyle: 'workspace' | 'current';
+  /** 特别关注。空则不渲染这一节。 */
+  attention?: AttentionSignal[];
+  /** AI 写入通道。空则不渲染第 7 节。 */
+  writeChannel?: WriteChannelSnapshot;
+  /** 蒸馏开启时在第 7 节末尾加一行。缺省不改原文。 */
+  skillDistill?: boolean;
+  /** 上下文剧本。缺省不写第 8 节，第 1–7 节字节不变。 */
+  playbook?: PlaybookEntryBlock;
+  /** 没有正文搜索时为 none。缺省不渲染，不改旧字段含义。 */
+  contentSearch?: 'none';
 }
 
 export interface EntryTreeNode {
   name: string;
   relPath?: string;
+  /** 资料根下的本机真实绝对路径。没有则这一行不标路径。 */
+  path?: string;
   children?: EntryTreeNode[];
+  kind?: 'dir' | 'file';
+  /** 这一层列不完：超过深度，或条目预算在这里用尽。 */
+  truncated?: boolean;
+}
+
+export interface StructureNote {
+  truncatedReason?: string;
+  errors?: { path: string; message: string }[];
 }
 
 export interface EntryRelation {
@@ -66,11 +112,35 @@ const LIVE_ACTIONS: { id: string; approval: boolean }[] = [
   { id: AGENT_LIVE_ACTIONS.getDiff, approval: false },
 ];
 
+
+function idSuffix(ids: { panelId?: string; materialId?: string | null; resourceId?: string | null }): string {
+  const parts: string[] = [];
+  if (ids.panelId) parts.push('panelId:' + oneLine(ids.panelId));
+  if (ids.materialId) parts.push('materialId:' + oneLine(ids.materialId));
+  if (ids.resourceId) parts.push('resourceId:' + oneLine(ids.resourceId));
+  return parts.length ? (' · ' + parts.join(' · ')) : '';
+}
+
 function itemLine(item: EntryDocItem): string {
   const name = oneLine(item.name) || '未命名';
   const where = item.absPath ? oneLine(item.absPath) : '（无真实路径）';
   const purpose = item.purpose ? oneLine(item.purpose) : '未填写';
+  if (item.dirOverview) {
+    const count = typeof item.fileCount === 'number' ? ` · fileCount:${item.fileCount}` : '';
+    return `- ${name} · ${where} · 用途：${purpose} · ${oneLine(item.status) || 'ok'} · 目录概览：${oneLine(item.dirOverview)}${count}`;
+  }
   return `- ${name} · ${where} · 用途：${purpose} · ${oneLine(item.status) || 'ok'} · ${oneLine(item.readableLabel) || '内容生成中'}`;
+}
+
+function attentionBlock(marks: AttentionSignal[] | undefined): string[] {
+  if (!marks?.length) return [];
+  const lines = ['### 特别关注', ''];
+  for (const mark of marks) {
+    const where = mark.rebirth ? `R${mark.rebirth.no} · ${oneLine(mark.rebirth.title)} · B${mark.rebirth.blockIdx}` : oneLine(mark.absPath) || '（无路径）';
+    const quote = oneLine(mark.text, 500);
+    lines.push(`- ${where} · 行 ${mark.startLine}-${mark.endLine} · 偏移 ${mark.startOffset}-${mark.endOffset} · 原文：${quote}`);
+  }
+  return lines;
 }
 
 function sectionItems(title: string, shown: EntryDocItem[], all: EntryDocItem[]): string[] {
@@ -97,17 +167,20 @@ export function renderEntry(doc: EntryDoc): string {
     `- 名称：${oneLine(doc.workspaceName) || doc.workspaceId}`,
     `- 用途：${doc.purpose ? oneLine(doc.purpose) : '未填写'}`,
     `- id：${doc.workspaceId}`,
+  ];
+  if (doc.contentSearch === 'none') lines.push('- 搜索：本软件只按文件名搜索（contentSearch: none）');
+  lines.push(
     '',
     '## 2. 已打开的资料',
     '',
-  ];
+  );
   const panels = doc.panels.slice(0, ENTRY_PANEL_LIMIT);
   if (!doc.panels.length) lines.push('（没有已打开的资料）');
   else {
     for (const panel of panels) {
       const name = oneLine(panel.name) || '未命名';
       const where = panel.absPath ? oneLine(panel.absPath) : '（无真实路径）';
-      lines.push(`- ${name} · ${where}`);
+      lines.push(`- ${name} · ${where}${idSuffix(panel)}`);
     }
     if (doc.panels.length > ENTRY_PANEL_LIMIT) {
       lines.push(`另有 ${doc.panels.length - ENTRY_PANEL_LIMIT} 个面板只在 snapshot.json。`);
@@ -118,12 +191,14 @@ export function renderEntry(doc: EntryDoc): string {
   else {
     const name = oneLine(doc.reading.name) || '未命名';
     const where = doc.reading.absPath ? oneLine(doc.reading.absPath) : '（无真实路径）';
-    lines.push(`当前阅读：${name} · ${where}`);
+    lines.push(`当前阅读：${name} · ${where}${idSuffix(doc.reading)}`);
   }
   lines.push('', '## 3. 工作资料', '');
   lines.push(...sectionItems('本轮资料', doc.sessionShown, doc.sessionAll));
   lines.push('');
-  lines.push(...sectionItems('固定资料', doc.pinnedShown, doc.pinnedAll));
+  if(doc.pinnedAll.length) lines.push(...sectionItems('固定资料', doc.pinnedShown, doc.pinnedAll));
+  const attention = attentionBlock(doc.attention);
+  if (attention.length) lines.push('', ...attention);
   if (doc.omitted > 0) {
     lines.push('', `入口只列出前 ${ENTRY_LIST_LIMIT} 项。另有 ${doc.omitted} 项只在 snapshot.json。`);
   }
@@ -143,6 +218,8 @@ export function renderEntry(doc: EntryDoc): string {
     `- 架构说明：${prefix}nav/architecture.md`,
     `- 请求协议：${protocol}`,
     '',
+    LIBRARY_READ_NOTE,
+    '',
     '## 5. 版本',
     '',
     `- revision：${doc.revision}`,
@@ -160,7 +237,27 @@ export function renderEntry(doc: EntryDoc): string {
     lines.push('- marker：marker.json', '- 变更索引：changes/index.json', '- 快照：snapshot.json');
   }
   lines.push('', '## 6. 接入约定', '', AGREEMENT, '', UNTRUSTED, '', CURSOR_HINT, '');
+  const channel = writeChannelBlock(doc.writeChannel);
+  if (doc.skillDistill === true) {
+    if (!channel.length) channel.push('## 7. AI 写入通道', '');
+    channel.push(SKILL_DISTILL_ENTRY_LINE);
+  }
+  if (channel.length) lines.push('', ...channel);
+  if (doc.playbook) lines.push('', renderPlaybookEntry(doc.playbook));
   return lines.join('\n');
+}
+
+function writeChannelBlock(channel: WriteChannelSnapshot | undefined): string[] {
+  if (!channel || (!channel.folders.length && !channel.defaultTier)) return [];
+  const lines = ['## 7. AI 写入通道', '', `- 默认档位：${WRITE_TIER_META[channel.defaultTier].label}`];
+  if (!channel.folders.length) lines.push('（链接区还没有文件夹或文件）');
+  for (const folder of channel.folders) {
+    const where = folder.tier === 'high' || !folder.absPath ? folder.virtualPath : `${folder.virtualPath} · ${oneLine(folder.absPath)}`;
+    const kind = folder.kind === 'file' ? '文件' : '文件夹';
+    lines.push(`- ${oneLine(folder.name) || folder.id} · ${WRITE_TIER_META[folder.tier].label} · ${WRITE_TIER_META[folder.tier].backup} · ${kind} · ${where}`);
+  }
+  if (channel.inboxPath) lines.push(`- 收件箱：${oneLine(channel.inboxPath)}`);
+  return lines;
 }
 
 function cell(value: string): string {
@@ -198,34 +295,78 @@ export function actionsMarkdown(actions: ManifestAction[], manifestFound: boolea
   return lines.join('\n');
 }
 
-export function structureMarkdown(nodes: EntryTreeNode[] | undefined, materials: { name: string; relPath: string }[]): string {
+function treeDir(node: EntryTreeNode): boolean {
+  if (node.kind === 'dir') return true;
+  if (node.kind === 'file') return false;
+  return Boolean(node.children?.length);
+}
+
+function byTreeName(a: EntryTreeNode, b: EntryTreeNode): number {
+  const dir = Number(treeDir(b)) - Number(treeDir(a));
+  if (dir) return dir;
+  return (a.name || '').localeCompare(b.name || '', 'zh-CN', { numeric: true });
+}
+
+function reasonLabel(reason: string): string {
+  if (reason === 'depth') return '超过深度限制';
+  if (reason === 'entries') return '超过条目限制';
+  if (reason === 'depth+entries') return '超过深度限制、超过条目限制';
+  return oneLine(reason) || '已截断';
+}
+
+function treeLine(node: EntryTreeNode, depth: number): string {
+  const pad = '  '.repeat(Math.min(depth, 8));
+  const name = oneLine(node.name) || '未命名';
+  const mark = node.truncated ? ' （已截断）' : '';
+  const where = node.path ? oneLine(node.path) : '';
+  const title = where && treeDir(node) ? `${name}/${mark}` : `${name}${mark}`;
+  return where ? `${pad}- ${title} · ${where}` : `${pad}- ${title}`;
+}
+
+export function structureMarkdown(
+  nodes: EntryTreeNode[] | undefined,
+  materials: { name: string; relPath: string }[],
+  note?: StructureNote,
+): string {
   const lines = [
     '# 资料结构',
     '',
-    '这份结构来自调用方交来的资料树快照。生成入口时没有遍历根目录，也没有读取全部正文。',
+    '生成时没有读取正文。',
     '',
   ];
-  if (!nodes?.length) {
+  if (nodes === undefined) {
     lines.push('这次没有交来资料树快照。工作资料的路径见下面和 snapshot.json。');
   } else {
-    let count = 0;
-    let truncated = false;
-    const walk = (list: EntryTreeNode[], depth: number): void => {
-      for (const node of list) {
-        if (count >= 500) {
-          truncated = true;
-          return;
+    if (note?.truncatedReason) lines.push(`资料树已截断：${reasonLabel(note.truncatedReason)}。`, '');
+    lines.push(LIBRARY_READ_NOTE, '');
+    if (!nodes.length) {
+      lines.push('资料根目录里没有可列出的条目。');
+    } else {
+      let count = 0;
+      let truncated = false;
+      const walk = (list: EntryTreeNode[], depth: number): void => {
+        const ordered = [...list].sort(byTreeName);
+        for (const node of ordered) {
+          if (count >= 500) {
+            truncated = true;
+            return;
+          }
+          count += 1;
+          lines.push(treeLine(node, depth));
+          if (node.children?.length && depth < 8) walk(node.children, depth + 1);
+          if (truncated) return;
         }
-        count += 1;
-        const pad = '  '.repeat(Math.min(depth, 8));
-        const rel = node.relPath ? ` · ${oneLine(node.relPath)}` : '';
-        lines.push(`${pad}- ${oneLine(node.name) || '未命名'}${rel}`);
-        if (node.children?.length && depth < 8) walk(node.children, depth + 1);
-        if (truncated) return;
+      };
+      walk(nodes, 0);
+      if (truncated) lines.push('快照节点较多，这里只列了前 500 个。');
+    }
+    if (note?.errors?.length) {
+      lines.push('', '以下目录读取失败，已跳过：');
+      for (const err of note.errors.slice(0, 20)) {
+        lines.push(`- ${oneLine(err.path) || '.'} · ${oneLine(err.message) || 'read-failed'}`);
       }
-    };
-    walk(nodes, 0);
-    if (truncated) lines.push('快照节点较多，这里只列了前 500 个。');
+      if (note.errors.length > 20) lines.push(`另有 ${note.errors.length - 20} 个只在 snapshot.json。`);
+    }
   }
   lines.push('', '## 工作资料路径', '');
   if (!materials.length) lines.push('（没有工作资料）');
@@ -318,9 +459,10 @@ export function navFiles(input: {
   actions: ManifestAction[];
   manifestFound: boolean;
   manifestBroken?: boolean;
+  treeNote?: StructureNote;
 }): Record<(typeof LIVE_NAV)[keyof typeof LIVE_NAV], string> {
   return {
-    [LIVE_NAV.structure]: structureMarkdown(input.nodes, input.materials),
+    [LIVE_NAV.structure]: structureMarkdown(input.nodes, input.materials, input.treeNote),
     [LIVE_NAV.relations]: relationsMarkdown(input.materials, input.panels, input.extra),
     [LIVE_NAV.actions]: actionsMarkdown(input.actions, input.manifestFound, input.manifestBroken),
     [LIVE_NAV.guide]: guideMarkdown(),
@@ -328,18 +470,24 @@ export function navFiles(input: {
   };
 }
 
-export function displayPanels(panels: LivePanel[]): { name: string; absPath: string }[] {
+export function displayPanels(panels: LivePanel[]): EntryPanelView[] {
   return panels.map((panel) => ({
     name: panel.name || panel.panelId,
     absPath: panel.absPath || '',
+    panelId: panel.panelId,
+    ...(panel.materialId != null && panel.materialId !== '' ? { materialId: panel.materialId } : {}),
+    ...(panel.resourceId != null && panel.resourceId !== '' ? { resourceId: panel.resourceId } : {}),
   }));
 }
 
-export function displayReading(reading: LiveReading | null): { name: string; absPath: string } | null {
+export function displayReading(reading: LiveReading | null): EntryReadingView | null {
   if (!reading) return null;
   if (!reading.name && !reading.absPath && !reading.materialId && !reading.resourceId && !reading.panelId) return null;
   return {
     name: reading.name || reading.materialId || reading.resourceId || reading.panelId || '未命名',
     absPath: reading.absPath || '',
+    ...(reading.panelId ? { panelId: reading.panelId } : {}),
+    ...(reading.materialId != null && reading.materialId !== '' ? { materialId: reading.materialId } : {}),
+    ...(reading.resourceId != null && reading.resourceId !== '' ? { resourceId: reading.resourceId } : {}),
   };
 }

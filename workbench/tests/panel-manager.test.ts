@@ -1,6 +1,8 @@
 /** 第九轮 · 布局组：统一面板管理层的纯函数（找回、吸附、windows 序列化/迁移、浮动组裁剪、视图窗口声明）与保存链路 */
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { cascadeBox, GRAB_VISIBLE, isInside, keepGrabbable, maximizedBox, rescueBox, snapBox } from '../src/renderer/panel-manager/geometry';
+import { readFileSync } from 'node:fs';
+import { cascadeBox, GRAB_VISIBLE, isInside, keepGrabbable, maximizedBox, MIN_FLOAT, PREVIEW_MIN_FLOAT, rescueBox, resizeDelta, snapBox } from '../src/renderer/panel-manager/geometry';
+import { BUBBLE_MOTION, bubbleCaption, DOCK_PREVIEW, DOCK_SEP, EDGE_LABEL, motionReduced } from '../src/renderer/panel-manager/dockChrome';
 import { defaultPanelLayout, finalizePanelLayout, migratePanelLayout } from '../src/renderer/panel-manager/serialize';
 import { resolveViewWindow } from '../src/renderer/panel-manager/viewContract';
 import { MAX_WINDOWS_BYTES, PANEL_LAYOUT_VERSION, SIDEBAR_ID } from '../src/renderer/panel-manager/types';
@@ -44,6 +46,16 @@ describe('找回（屏幕变小后浮动窗口夹回可见区域）', () => {
   });
 });
 
+describe('右下角缩放增量', () => {
+  const start = { left: 40, top: 30, width: 320, height: 240 };
+  const container = { width: 1000, height: 700 };
+  it('跟着指针增大，并夹在最小尺寸与容器内边之间', () => {
+    expect(resizeDelta(start, 80, 50, container)).toEqual({ width: 400, height: 290 });
+    expect(resizeDelta(start, -500, -500, container)).toEqual({ width: 240, height: 140 });
+    expect(resizeDelta(start, 5000, 5000, container)).toEqual({ width: 948, height: 658 });
+  });
+});
+
 describe('吸附（阈值 8px）', () => {
   const c = { width: 1000, height: 600 };
   it('贴近容器边缘与其他窗口边缘时对齐，远离时不动', () => {
@@ -65,6 +77,19 @@ describe('部分移出（标题栏至少 40px 可见）', () => {
   });
   it('尺寸不小于 240×140', () => {
     expect(keepGrabbable({ left: 10, top: 10, width: 100, height: 50 }, c)).toMatchObject({ width: 240, height: 140 });
+  });
+});
+
+describe('缩放下限保持 240×140（预览样例是 300×200）', () => {
+  const c = { width: 1200, height: 800 };
+  it('rescue / keepGrabbable 不把已保存的较小浮动窗抬到预览下限', () => {
+    expect(MIN_FLOAT).toEqual({ width: 240, height: 140 });
+    expect(PREVIEW_MIN_FLOAT).toEqual({ width: 300, height: 200 });
+    const saved = { left: 40, top: 30, width: 260, height: 160 };
+    expect(rescueBox(saved, c)).toEqual(saved);
+    expect(keepGrabbable({ left: 12, top: 12, width: 280, height: 500 }, c)).toMatchObject({ width: 280, height: 500 });
+    expect(rescueBox(saved, c, PREVIEW_MIN_FLOAT)).toEqual({ left: 40, top: 30, width: 300, height: 200 });
+    expect(resizeDelta({ left: 40, top: 30, width: 320, height: 240 }, -500, -500, c)).toEqual({ width: 240, height: 140 });
   });
 });
 
@@ -279,6 +304,7 @@ describe('dragShieldActive：不因自身 pm-drag-shield 自锁', () => {
       attrs: attrMap,
       matches(sel: string) {
         if (sel === '.pm-drag-shield[data-active="true"]') return cls.split(/\s+/).includes('pm-drag-shield') && attrMap.get('data-active') === 'true';
+        if (sel === '.dv-sash[data-pm-dragging="true"]') return cls.split(/\s+/).includes('dv-sash') && attrMap.get('data-pm-dragging') === 'true';
         if (sel.startsWith('.') && !sel.includes('[')) return cls.split(/\s+/).includes(sel.slice(1));
         return false;
       },
@@ -314,6 +340,68 @@ describe('dragShieldActive：不因自身 pm-drag-shield 自锁', () => {
     nodes.length = 0;
     el('dv-drop-target-selection');
     expect(dragShieldActive()).toBe(true);
+    nodes.length = 0;
+    el('dv-drop-target-anchor');
+    expect(dragShieldActive()).toBe(true);
+    nodes.length = 0;
+    el('dv-sash', { 'data-pm-dragging': 'true' });
+    expect(dragShieldActive()).toBe(true);
+    nodes.length = 0;
+    el('dv-sash');
+    expect(dragShieldActive()).toBe(false);
+  });
+});
+
+describe('分屏分隔条、停靠预览、气泡动效（对齐预览，接到现有状态）', () => {
+  const css = readFileSync('src/renderer/panel-manager/panel-manager.css', 'utf8');
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+
+  it('气泡标题只去掉预览样例扩展名', () => {
+    expect(bubbleCaption('极限与连续.md')).toBe('极限与连续');
+    expect(bubbleCaption('高数讲义.pdf')).toBe('高数讲义');
+    expect(bubbleCaption('笔记.MD')).toBe('笔记.MD');
+    expect(bubbleCaption('矩阵')).toBe('矩阵');
+  });
+
+  it('减少动效：根属性、应用属性、系统偏好任一成立即跳过恢复动画', () => {
+    expect(motionReduced({})).toBe(false);
+    expect(motionReduced({ reduceAttr: 'true' })).toBe(true);
+    expect(motionReduced({ appMotion: 'reduce' })).toBe(true);
+    expect(motionReduced({ prefersReduce: true })).toBe(true);
+    expect(motionReduced({ reduceAttr: 'false', appMotion: 'on' })).toBe(false);
+  });
+
+  it('样式保留预览的分隔条、预览框和气泡数值，且没有新的 !important', () => {
+    expect(css).toContain(`border-radius: ${DOCK_SEP.radiusPx}px`);
+    expect(css).toContain(`width: ${DOCK_SEP.trackPx}px`);
+    expect(css).toContain(`height: ${DOCK_SEP.trackPx}px`);
+    expect(css).toContain(`margin-left: -${DOCK_SEP.centerNudgePx}px`);
+    expect(css).toContain('cursor: col-resize');
+    expect(css).toContain('cursor: row-resize');
+    expect(css).toContain(`color-mix(in srgb, var(--kb-color-accent) ${pct(DOCK_SEP.restAlpha)}, transparent)`);
+    expect(css).toContain(`color-mix(in srgb, var(--kb-color-accent) ${pct(DOCK_SEP.hoverAlpha)}, transparent)`);
+    expect(css).toContain(`color-mix(in srgb, var(--kb-color-accent) ${pct(DOCK_SEP.dragAlpha)}, transparent)`);
+    expect(css).toContain(`background-color ${DOCK_SEP.transitionMs}ms ${DOCK_SEP.curve}`);
+    expect(css).toContain('[data-pm-dragging="true"]');
+    expect(css).toContain(`inset: ${DOCK_PREVIEW.insetPx}px`);
+    expect(css).toContain(`border-radius: ${DOCK_PREVIEW.radiusPx}px`);
+    expect(css).toContain(`color-mix(in srgb, var(--kb-color-accent) ${pct(DOCK_PREVIEW.fillAlpha)}, transparent)`);
+    expect(css).toContain(`inset 0 0 0 ${DOCK_PREVIEW.ringPx}px color-mix(in srgb, var(--kb-color-accent) ${pct(DOCK_PREVIEW.ringAlpha)}, transparent)`);
+    expect(css).toContain(`translate: 0 ${DOCK_PREVIEW.emergeY}px`);
+    expect(css).toContain(`${DOCK_PREVIEW.emergeMs}ms ${DOCK_PREVIEW.curve}`);
+    expect(css).toContain(`content: "${EDGE_LABEL.left}"`);
+    expect(css).toContain(`content: "${EDGE_LABEL.right}"`);
+    expect(css).toContain(`content: "${EDGE_LABEL.top}"`);
+    expect(css).toContain(`content: "${EDGE_LABEL.bottom}"`);
+    expect(css).toContain(`content: "${EDGE_LABEL.center}"`);
+    expect(css).toContain('dv-drop-target-selection-line::after { content: none; }');
+    expect(css).toContain(`translateY(${BUBBLE_MOTION.emergeY}px)`);
+    expect(css).toContain(`pm-bubble-in ${BUBBLE_MOTION.emergeMs}ms ${BUBBLE_MOTION.curve}`);
+    expect(css).toContain(`pm-bubble-out ${BUBBLE_MOTION.emergeMs}ms ${BUBBLE_MOTION.curve}`);
+    expect(css).toContain('border-radius: 999px');
+    expect(css).toContain('max-width: 180px');
+    expect(css).toContain('height: 36px');
+    expect(css.match(/!important/g)?.length).toBe(4);
   });
 });
 

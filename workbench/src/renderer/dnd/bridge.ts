@@ -63,6 +63,27 @@ export async function enrichDisk(payload: DragPayload): Promise<DragPayload> {
         /* 解析失败保持原样 */
       }
     }
+    if (!it.rootId && it.absPath) {
+      try {
+        const allRoots = await kb.listRoots().catch(() => []);
+        const normAbs = it.absPath.replace(/\\/g, '/').toLowerCase();
+        for (const r of allRoots) {
+          const normRoot = r.path.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+          if (normAbs === normRoot || normAbs.startsWith(normRoot + '/')) {
+            const rel = it.absPath.slice(r.path.length).replace(/^[\\/]+/, '').replace(/\\/g, '/');
+            it.rootId = r.id;
+            it.relPath = rel;
+            if (!it.resourceId && kb.consoleResolvePath) {
+              const rid = await kb.consoleResolvePath(r.id, rel).catch(() => null);
+              if (rid) it.resourceId = rid;
+            }
+            break;
+          }
+        }
+      } catch {
+        /* 解析失败保持原样 */
+      }
+    }
     items.push(it);
   }
   return { v: 1, items };

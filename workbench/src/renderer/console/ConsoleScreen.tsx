@@ -5,7 +5,6 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react';
 import {
   executableIndex,
-  KB_RESOURCE_MIME,
   openAsLabel,
   orderedItems,
   parseConsoleDocument,
@@ -13,6 +12,7 @@ import {
   type ConsoleIndex,
   type ConsoleIndexItem,
 } from '../../shared/consoleSchema';
+import { readKbPayloadJson } from '../dnd/drag';
 import { consoleBlockRegistry } from '../plugin-host/registry';
 import { safeConsoleContext, type ConsoleBlockContext } from './blockContext';
 import './console.css';
@@ -54,7 +54,7 @@ export function ConsoleScreen({
   const finishDrop = (event: DragEvent, edit: boolean) => {
     event.preventDefault();
     setDropOver(false);
-    const raw = event.dataTransfer.getData(KB_RESOURCE_MIME);
+    const raw = readKbPayloadJson(event.dataTransfer);
     if (!raw) return;
     if (edit) onIndexDrop?.(raw);
     else onDropRejected?.();

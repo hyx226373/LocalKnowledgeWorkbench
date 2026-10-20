@@ -9,3 +9,11 @@ export { performDrop, removeFromFolderFlow, removeFromWorkspaceFlow } from './fl
 export { setDndHost, runDrop, runRemoveFromFolder, runRemoveFromWorkspace } from './session';
 export { isSelected, payloadFor, rememberDragItem, toggleSelected } from './selection';
 export { MENU_ADD_FOLDER, MENU_MOVE_TO, MENU_REMOVE_FOLDER, MENU_REMOVE_WORKSPACE } from './copy';
+export {
+  useDragAutoScroll,
+  installDragAutoScroll,
+  calcEdgeScrollSpeed,
+  findScrollableAncestor,
+  stopDragAutoScroll,
+  updateDragAutoScroll,
+} from './autoScroll';

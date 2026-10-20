@@ -266,10 +266,11 @@ async function readEntryHead(file) {
   let fh;
   try {
     fh = await fs.promises.open(file, 'r');
-    const buf = Buffer.alloc(240);
-    const { bytesRead } = await fh.read(buf, 0, 240, 0);
-    const line = buf.subarray(0, bytesRead).toString('utf8').split(/\r?\n/, 1)[0];
-    const matched = /kb-live\s+schemaVersion=(\d+)\s+revision=(\d+)/.exec(line);
+    const buf = Buffer.alloc(256 * 1024);
+    const { bytesRead } = await fh.read(buf, 0, buf.length, 0);
+    // 规则区在版本注释前面。在文件头部找注释，不要求它是第一行。
+    const head = buf.subarray(0, bytesRead).toString('utf8');
+    const matched = /kb-live\s+schemaVersion=(\d+)\s+revision=(\d+)/.exec(head);
     if (!matched) return { missingComment: true };
     return { schemaVersion: Number(matched[1]), revision: Number(matched[2]) };
   } catch {
@@ -616,7 +617,10 @@ function createWatcher(options) {
           ].concat(guideReads(wsDir), materialReads(snap.value, wsDir))),
         }));
         const ws = await consumeWorkspace(marker.workspaceId, wsDir);
-        if (!ws.ok) return false;
+        if (!ws.ok) {
+          cursor.bootstrapped = false;
+          return false;
+        }
         bucket.push(...ws.notices.filter((item) => item.kind !== 'bootstrap'));
       } else {
         const snap = await readJsonRetry(path.join(scope.dir, 'snapshot.json'));
@@ -723,6 +727,7 @@ function createWatcher(options) {
       return;
     }
     reading = true;
+    const kickStarted = Date.now();
     try {
       do {
         pending = false;
@@ -736,7 +741,13 @@ function createWatcher(options) {
         }
         if (!ok) {
           failStreak += 1;
-          if (failStreak > 5) {
+          // Cold start / --once: keep retrying until bootstrap or ~8s budget.
+          // Steady state (already bootstrapped): yield after 5 failures to poll/dirwatch.
+          const cold = !cursor.bootstrapped;
+          const giveUp = cold
+            ? (Date.now() - kickStarted >= 8000 && failStreak > 3)
+            : failStreak > 5;
+          if (giveUp) {
             failStreak = 0;
             break;
           }
@@ -786,7 +797,20 @@ function createWatcher(options) {
       }));
       if (!options.once) armDirWatch();
       await kick();
-      if (options.once) return;
+      if (options.once) {
+        if (!cursor.bootstrapped) {
+          warn('watch-error --once ended without bootstrap');
+          process.exitCode = 1;
+        }
+        return;
+      }
+      // First kick may miss a still-settling fixture; retry briefly before the long poll.
+      if (!cursor.bootstrapped) {
+        for (let i = 0; i < 15 && !cursor.bootstrapped; i += 1) {
+          await sleep(200);
+          await kick();
+        }
+      }
       const poll = setInterval(() => {
         armDirWatch();
         schedule();

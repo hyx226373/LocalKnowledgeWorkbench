@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { dialogs } from './dialogs';
 import { displayModeLabel } from '../../shared/adapter-sdk/policy';
 import type { ArgTemplate, PermissionPromptAnswer, ProcessLaunchPermission, SlotValue } from '../../shared/adapter-sdk/types';
-import type { AdapterPermissionPrompt } from '../plugin-host/host';
+import type { AdapterPermissionAnswer, AdapterPermissionPrompt } from '../plugin-host/host';
 import type { PlanPreviewDto, UninstallInfo, UninstallOptionsDto } from '../../shared/pluginIpc';
 
 const KIND_TEXT: Record<string, string> = {
@@ -84,11 +84,13 @@ function PermissionBody({ req, done }: { req: AdapterPermissionPrompt; done: (v:
   );
 }
 
-export function askPermissionDialog(req: AdapterPermissionPrompt): Promise<PermissionPromptAnswer> {
-  return dialogs.custom<PermissionPromptAnswer>({
+export function askPermissionDialog(req: AdapterPermissionPrompt, opts?: { signal?: AbortSignal }): Promise<AdapterPermissionAnswer> {
+  return dialogs.custom<AdapterPermissionAnswer>({
     title: '插件请求权限',
     testid: 'perm-dialog',
-    cancelValue: 'deny',
+    // Esc、点背景、关闭走 cancel，不写 denied。只有「拒绝」按钮提交 'deny'。
+    cancelValue: 'cancel',
+    signal: opts?.signal,
     render: (done) => <PermissionBody req={req} done={done} />,
   });
 }

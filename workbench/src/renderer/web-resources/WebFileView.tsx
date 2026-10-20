@@ -45,35 +45,53 @@ export function WebFileView(p: AdapterProps<WebFileState>) {
   const pluginsVer = useSyncExternalStore((cb) => pluginHost.subscribe(cb), () => pluginHost.getVersion());
   const pluginName = pluginHost.sandboxPlugin(WEB_GENERIC_PLUGIN)?.name ?? '通用网页';
 
+  // pluginsVer 已在上面订阅。关掉 web.generic 时这个 effect 立刻换成不可用占位，不再留着已打开的缓存阅读器。
+  // 插件仍可用、且网址与重试代次没变时不重开下载（逐站授权会抬高 pluginsVer，不能把正在进行的加载掐掉）。
+  const flight = useRef<{ alive: boolean; key: string } | null>(null);
   useEffect(() => {
-    let alive = true;
+    const dtoNow = pluginHost.sandboxPlugin(WEB_GENERIC_PLUGIN);
+    const declNow = perSiteDecl(adapterOf(dtoNow?.manifest, WEB_GENERIC_ADAPTER));
+    const genericOff = !dtoNow || !declNow || !dtoNow.enabled || dtoNow.errors.length > 0;
+    if (genericOff) {
+      if (flight.current) flight.current.alive = false;
+      flight.current = null;
+      setPhase({ kind: 'unavailable', detail: '内置网页适配器（web.generic）不可用或已禁用：直链下载使用它的网站授权与数据分区。可在插件管理中重新启用。' });
+      return;
+    }
+    const loadKey = `${url}\0${n}`;
+    if (flight.current?.alive && flight.current.key === loadKey) return;
+    if (flight.current) flight.current.alive = false;
+    const token = { alive: true, key: loadKey };
+    flight.current = token;
     void (async () => {
       const s = sanitizeWebRef(url);
-      if (!s.ok) return alive && setPhase({ kind: 'unavailable', detail: s.reason });
+      if (!s.ok) return token.alive && setPhase({ kind: 'unavailable', detail: s.reason });
       const dto = pluginHost.sandboxPlugin(WEB_GENERIC_PLUGIN);
       const decl = perSiteDecl(adapterOf(dto?.manifest, WEB_GENERIC_ADAPTER));
-      if (!dto || !decl || !dto.enabled || dto.errors.length) return alive && setPhase({ kind: 'unavailable', detail: '内置网页适配器（web.generic）不可用或已禁用：直链下载使用它的网站授权与数据分区。可在插件管理中重新启用。' });
+      if (!dto || !decl || !dto.enabled || dto.errors.length) return token.alive && setPhase({ kind: 'unavailable', detail: '内置网页适配器（web.generic）不可用或已禁用：直链下载使用它的网站授权与数据分区。可在插件管理中重新启用。' });
       const st = siteAccess.status(WEB_GENERIC_PLUGIN, WEB_GENERIC_ADAPTER, decl, s.host);
-      if (st === 'revoked') return alive && setPhase({ kind: 'unavailable', detail: '内置网页适配器的网络权限已被撤销。可在插件管理中改为允许。' });
+      if (st === 'revoked') return token.alive && setPhase({ kind: 'unavailable', detail: '内置网页适配器的网络权限已被撤销。可在插件管理中改为允许。' });
       if (st !== 'granted') {
-        if (st === 'session-denied') return alive && setPhase({ kind: 'site', host: s.host, denied: true });
+        if (st === 'session-denied') return token.alive && setPhase({ kind: 'site', host: s.host, denied: true });
         setPhase({ kind: 'site', host: s.host, denied: false });
         const ok = await siteAccess.ask({ pluginId: WEB_GENERIC_PLUGIN, pluginName, adapterId: WEB_GENERIC_ADAPTER, host: s.host, url: s.url, purpose: 'file' });
-        if (!ok) return alive && setPhase({ kind: 'site', host: s.host, denied: true });
+        if (!ok) return token.alive && setPhase({ kind: 'site', host: s.host, denied: true });
       }
+      if (!token.alive) return;
       setPhase({ kind: 'loading', detail: force.current ? '正在重新下载…' : '正在下载到本地缓存…' });
       const w = await kb.webResourceAdd({ url: s.url, adapterId: 'web.file', opened: true });
+      if (!token.alive) return;
       let r: FetchCacheResult;
       try {
         r = await kb.webFetchCache(w.resourceId, { force: force.current });
       } catch (e) {
-        return alive && setPhase({ kind: 'error', title: '下载失败', detail: String((e as Error).message ?? e).replace(/^Error invoking remote method 'kb': (Error: )?/, '') });
+        return token.alive && setPhase({ kind: 'error', title: '下载失败', detail: String((e as Error).message ?? e).replace(/^Error invoking remote method 'kb': (Error: )?/, '') });
       }
       force.current = false;
-      if (!alive) return;
+      if (!token.alive) return;
       if (r.ok) {
         const res = await kb.getResource(w.resourceId);
-        if (!alive) return;
+        if (!token.alive) return;
         if (!res || !res.exists) return setPhase({ kind: 'error', title: '缓存不可用', detail: '下载完成但缓存文件不见了，请重试。' });
         return setPhase({ kind: 'ready', res, w: r.resource });
       }
@@ -83,17 +101,17 @@ export function WebFileView(p: AdapterProps<WebFileState>) {
         if (siteAccess.status(WEB_GENERIC_PLUGIN, WEB_GENERIC_ADAPTER, decl, target) === 'session-denied') return setPhase({ kind: 'site', host: target, denied: true });
         setPhase({ kind: 'site', host: target, denied: false });
         const ok2 = await siteAccess.ask({ pluginId: WEB_GENERIC_PLUGIN, pluginName, adapterId: WEB_GENERIC_ADAPTER, host: target, url: r.url, purpose: 'file' });
-        if (!alive) return;
+        if (!token.alive) return;
         if (!ok2) return setPhase({ kind: 'site', host: target, denied: true });
         return setN((x) => x + 1);
       }
       if (r.kind === 'error') return setPhase({ kind: 'error', title: r.status === 404 ? '找不到文件（404）' : (ERR_TITLE[r.reason] ?? '下载失败'), detail: r.detail });
       return setPhase({ kind: 'type', detail: r.detail, contentType: r.contentType, html: r.kind === 'html' });
     })();
-    return () => {
-      alive = false;
-    };
-  }, [url, n]);
+  }, [url, n, pluginsVer]);
+  useEffect(() => () => {
+    if (flight.current) flight.current.alive = false;
+  }, []);
 
   const retry = useCallback((redownload = false) => {
     force.current = redownload;

@@ -4,16 +4,13 @@
  * `entry` 用来区分「自建目录节点」和「文件条目」：文件夹节点不能落到磁盘，文件条目可以。
  */
 import type { DragEvent } from 'react';
+import { isKbDrag, readKbPayload } from '../dnd/drag';
+import type { DragFrom } from '../dnd/types';
 
 export const KB_DRAG_MIME = 'application/x-kb-resource+json';
 
 export type DragEntry = 'file' | 'vfolder-node' | 'dir-entry';
-
-export type DragFrom =
-  | { kind: 'root'; rootId: string; relPath: string }
-  | { kind: 'vfolder'; folderId: string | null }
-  | { kind: 'workspace-refs'; workspaceId: string }
-  | { kind: 'roots-list' };
+export type { DragFrom };
 
 export interface KbDragItem {
   resourceId: string;
@@ -104,12 +101,20 @@ export function peekDrag(): KbDragPayload | null {
 }
 
 export function readDrag(e: DragEvent): KbDragPayload | null {
-  const raw = e.dataTransfer.getData(KB_DRAG_MIME) || e.dataTransfer.getData('text/plain');
+  const via = readKbPayload(e.dataTransfer);
+  if (via && via.v === 1 && Array.isArray(via.items)) return via as KbDragPayload;
+  const types = [...e.dataTransfer.types];
+  // 外部文件只有 Files。不能退回上一次的树内副本。
+  if (types.includes('Files')) return null;
+  let raw = '';
+  try { raw = e.dataTransfer.getData(KB_DRAG_MIME) || e.dataTransfer.getData('text/plain'); } catch { raw = ''; }
   return parseDragPayload(raw) ?? current;
 }
 
 export function dragTypesAccept(e: DragEvent): boolean {
   const types = [...e.dataTransfer.types];
+  if (types.includes('Files')) return true;
+  if (isKbDrag(e.dataTransfer)) return true;
   return types.includes(KB_DRAG_MIME) || types.includes('text/plain') || current != null;
 }
 
@@ -120,7 +125,11 @@ export function bindDrop(target: DropTarget, setOver: (on: boolean) => void) {
       if (!dragTypesAccept(e)) return;
       e.preventDefault();
       e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
+      const payload = peekDrag();
+      const isCross =
+        e.dataTransfer.types.includes('Files') ||
+        (payload?.items && payload.items.some((it) => it.from?.kind !== 'root' && it.from?.kind !== 'vfolder'));
+      e.dataTransfer.dropEffect = isCross ? 'copy' : 'move';
       (e.currentTarget as HTMLElement).setAttribute('data-drag-over', 'true');
       setOver(true);
     },
@@ -134,9 +143,26 @@ export function bindDrop(target: DropTarget, setOver: (on: boolean) => void) {
       e.stopPropagation();
       (e.currentTarget as HTMLElement).removeAttribute('data-drag-over');
       setOver(false);
-      const payload = readDrag(e);
+      let payload = readDrag(e);
+      if (!payload && e.dataTransfer.files?.length) {
+        payload = {
+          v: 1,
+          items: Array.from(e.dataTransfer.files).map((f) => ({
+            resourceId: '',
+            sourceKind: 'file' as const,
+            from: { kind: 'explorer' as const },
+            entry: 'file' as const,
+            name: f.name,
+            absPath: (f as any).path || '',
+            size: f.size,
+          })),
+        };
+      }
       if (payload) {
-        const flags = [e.altKey ? 'alt' : '', e.ctrlKey || e.metaKey ? 'ctrl' : '', e.dataTransfer.dropEffect || 'move'].filter(Boolean);
+        const isCross =
+          e.dataTransfer.types.includes('Files') ||
+          payload.items.some((it) => it.from?.kind !== 'root' && it.from?.kind !== 'vfolder');
+        const flags = [e.altKey ? 'alt' : '', e.ctrlKey || e.metaKey ? 'ctrl' : '', e.dataTransfer.dropEffect || (isCross ? 'copy' : 'move')].filter(Boolean);
         onDropTarget(target, payload, flags.join('+'));
       }
     },

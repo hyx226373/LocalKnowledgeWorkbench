@@ -31,7 +31,7 @@ import {
 import { downloadVerified, hashFileSha512, PackageRejectedError, readGzipMagic } from '../../shared/update/download';
 import { dirpackSource, loadDirpack } from '../../shared/update/dirpack';
 import { artifactSource, resolveFeed, type FeedTarget } from '../../shared/update/feed';
-import { parseLatestYml, safeArtifactName } from '../../shared/update/latestYml';
+import { parseLatestYml, parseUpdateSignal, safeArtifactName } from '../../shared/update/latestYml';
 import { rotateBackups } from '../../shared/update/rotate';
 import { decideAfterSelfCheck, judgeSelfCheck, type SelfCheckInput } from '../../shared/update/selfCheck';
 import type { BackupRecord, ByteProgress, PendingUpdate, UpdateJournal, UpdateSettings, UpdateSnapshot } from '../../shared/update/types';
@@ -59,6 +59,8 @@ export interface UpdateHooks {
   noRelaunch: boolean;
   helperDone: string;
   relaunchPath: string | null;
+  /** 在系统浏览器打开公开下载链接。简化更新用。 */
+  openExternal: (url: string) => void | Promise<void>;
 }
 
 export const QUIT_BEFORE_UPGRADE_TITLE = '请先退出工作台';
@@ -154,6 +156,7 @@ export class UpdateService {
             size: newer.size,
             blockMapSize: newer.blockMapSize,
             unsigned: true,
+            downloadUrl: newer.downloadUrl ?? null,
           }
         : null,
       progress: this.phase === 'downloading' ? this.progress : null,
@@ -163,8 +166,8 @@ export class UpdateService {
         .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
         .map((item) => ({ id: item.id, createdAt: item.createdAt, version: item.version })),
       unsignedNotice: '未签名',
-      installOnQuit: this.journal.installOnQuit === true && !!newer?.verified,
-      downloaded: this.phase === 'ready' && !!newer?.verified && !!this.verifiedPath,
+      installOnQuit: false,
+      downloaded: !!newer?.downloadUrl,
       layout: this.hooks.applyMode === 'dirpack' ? 'dirpack' : 'nsis',
       previousVersion: this.previousFromPointer(),
     };
@@ -207,25 +210,14 @@ export class UpdateService {
   private async restoreReady(): Promise<void> {
     const available = this.journal.available;
     this.verifiedPath = null;
-    if (!available?.downloadedPath || !available.verified) return;
+    if (!available?.downloadUrl) return;
     if (!isNewer(available.version, this.hooks.currentVersion)) {
-      available.verified = false;
+      this.journal.available = undefined;
       this.journal.installOnQuit = false;
       return;
     }
-    try {
-      const digest = await hashFileSha512(available.downloadedPath);
-      if (digest !== available.sha512) {
-        available.verified = false;
-        await fs.rm(available.downloadedPath, { force: true }).catch(() => undefined);
-        return;
-      }
-      this.verifiedPath = available.downloadedPath;
-      this.phase = 'ready';
-      this.info = `已下载 ${available.version}，未签名`;
-    } catch {
-      available.verified = false;
-    }
+    this.phase = 'ready';
+    this.info = `有新版本 ${available.version} 可下载`;
   }
 
   async saveSettings(patch: Partial<UpdateSettings>): Promise<UpdateSnapshot> {
@@ -262,98 +254,43 @@ export class UpdateService {
     this.error = null;
     this.info = null;
     this.progress = null;
+    this.verifiedPath = null;
     this.journal.lastCheckAt = new Date().toISOString();
     await this.persist().catch(() => undefined);
     this.push();
     try {
       const feed = resolveFeed(this.settings.feed);
-      if (this.hooks.applyMode === 'dirpack') return await this.checkDirpack(feed);
-      const text = await this.readLatest(feed);
+      const { text, contentType } = await this.readSignal(feed);
       if (!text.trim()) return await this.markCurrent();
-      const latest = parseLatestYml(text);
-      const fileName = safeArtifactName(latest.path || latest.files[0]?.url || '');
-      const file = latest.files.find((item) => safeArtifactName(item.url) === fileName) ?? latest.files[0];
-      if (!file) throw new Error('latest.yml 没有安装包');
-      const size = file.size;
-      const sha512 = file.sha512 || latest.sha512;
-      if (!Number.isInteger(size) || size <= 0 || !sha512) throw new Error('latest.yml 缺少大小或 SHA512');
+      const signal = parseUpdateSignal(text, contentType);
       this.journal.lastCheckAt = new Date().toISOString();
-      if (!isNewer(latest.version, this.hooks.currentVersion)) {
-        this.phase = 'idle';
-        this.journal.available = undefined;
-        this.journal.installOnQuit = false;
-        this.verifiedPath = null;
-        this.info = '已是最新';
-        await this.persist();
-        this.push();
-        return this.snapshot();
+      if (!isNewer(signal.version, this.hooks.currentVersion)) {
+        return await this.markCurrent();
       }
-      const notes = latest.releaseNotes?.trim() || '';
-      const dest = path.join(this.downloadDir, fileName);
+      const downloadUrl = this.resolvePublicDownloadUrl(feed, signal.downloadHint, signal.fileName);
       this.journal.available = {
-        version: latest.version,
-        notes,
-        fileName,
-        sha512,
-        size,
-        blockMapSize: file.blockMapSize ?? null,
-        downloadedPath: dest,
+        version: signal.version,
+        notes: signal.notes,
+        fileName: signal.fileName,
+        sha512: signal.sha512,
+        size: signal.size,
+        blockMapSize: signal.blockMapSize,
+        downloadUrl,
         verified: false,
       };
-      await this.persist();
-      this.phase = 'downloading';
-      this.progress = { transferred: 0, total: size };
-      this.push();
-      this.beginLoop();
-      try {
-        await downloadVerified({
-          source: artifactSource(feed, file.url || fileName),
-          dest,
-          expectedSha512: sha512,
-          expectedSize: size,
-          rateLimitBytesPerSec: this.settings.rateLimitBytesPerSec,
-          onProgress: (progress) => {
-            this.progress = progress;
-            this.phase = 'downloading';
-            this.push();
-          },
-        });
-        if (file.blockMapSize && file.blockMapSize > 0) {
-          const blockName = `${fileName}.blockmap`;
-          const blockDest = path.join(this.downloadDir, blockName);
-          await this.copyBlockmap(feed, blockName, blockDest, file.blockMapSize);
-        }
-        this.phase = 'verifying';
-        this.progress = null;
-        this.push();
-        const digest = await hashFileSha512(dest);
-        if (digest !== sha512) {
-          await fs.rm(dest, { force: true }).catch(() => undefined);
-          throw new PackageRejectedError('SHA512 不一致，安装包已丢弃');
-        }
-      } finally {
-        this.endLoop();
-      }
-      this.journal.available.verified = true;
-      this.verifiedPath = dest;
+      this.journal.installOnQuit = false;
       this.phase = 'ready';
-      this.info = `已下载 ${latest.version}，未签名`;
+      this.info = `有新版本 ${signal.version} 可下载`;
+      this.error = null;
+      this.progress = null;
       await this.persist();
       this.push();
       return this.snapshot();
     } catch (err) {
       if (isAbsentLatest(err)) return await this.markCurrent();
-      await this.cleanupDirpackPartial(err);
       this.phase = 'failed';
       this.progress = null;
       this.verifiedPath = null;
-      if (this.journal.available) {
-        this.journal.available.verified = false;
-        if (this.journal.available.downloadedPath) {
-          await fs.rm(this.journal.available.downloadedPath, { force: true }).catch(() => undefined);
-          await fs.rm(`${this.journal.available.downloadedPath}.blockmap`, { force: true }).catch(() => undefined);
-        }
-      }
       this.error = err instanceof PackageRejectedError ? err.message : String((err as Error).message ?? err);
       await this.persist().catch(() => undefined);
       this.push();
@@ -389,11 +326,49 @@ export class UpdateService {
     return this.snapshot();
   }
 
-  private async readLatest(feed: FeedTarget): Promise<string> {
-    if (feed.kind === 'dir') return fs.readFile(feed.latestFile, 'utf8');
+  private async readSignal(feed: FeedTarget): Promise<{ text: string; contentType: string | null }> {
+    if (feed.kind === 'dir') {
+      const latestFile = feed.latestFile;
+      const jsonFile = path.join(feed.dir, 'latest.json');
+      try {
+        const text = await fs.readFile(latestFile, 'utf8');
+        return { text, contentType: null };
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      }
+      try {
+        const text = await fs.readFile(jsonFile, 'utf8');
+        return { text, contentType: 'application/json' };
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          const e = new Error(`ENOENT: no signal at ${latestFile}`) as NodeJS.ErrnoException;
+          e.code = 'ENOENT';
+          throw e;
+        }
+        throw err;
+      }
+    }
     const res = await fetch(feed.latestUrl);
-    if (!res.ok) throw new Error(`读取 latest.yml 失败 HTTP ${res.status}`);
-    return res.text();
+    if (!res.ok) throw new Error(`读取更新信号失败 HTTP ${res.status}`);
+    const contentType = res.headers.get('content-type');
+    const text = await res.text();
+    return { text, contentType };
+  }
+
+  /** 公开 https 下载地址：信号里已是 http(s) 则用之；http feed 相对名则拼 base；纯本地相对路径则失败。 */
+  private resolvePublicDownloadUrl(feed: FeedTarget, hint: string, fileName: string): string {
+    const raw = (hint || fileName || '').trim();
+    if (/^https?:\/\//i.test(raw)) return raw;
+    if (feed.kind === 'http') {
+      const built = artifactSource(feed, raw || fileName);
+      if (/^https?:\/\//i.test(built)) return built;
+    }
+    throw new Error('本地更新源没有公开 https 下载链接。请配置公开 https 源（latest.yml 或 JSON），并使 path/url/downloadUrl 为 https 地址。');
+  }
+
+  private async readLatest(feed: FeedTarget): Promise<string> {
+    const { text } = await this.readSignal(feed);
+    return text;
   }
 
   private async copyBlockmap(feed: FeedTarget, name: string, dest: string, expectedSize: number): Promise<void> {
@@ -417,121 +392,37 @@ export class UpdateService {
   }
 
   async installOnQuit(): Promise<UpdateSnapshot> {
-    if (!this.snapshot().downloaded || !this.verifiedPath) throw new Error('还没有校验通过的安装包');
-    this.journal.installOnQuit = true;
+    this.journal.installOnQuit = false;
+    this.info = '请自行下载安装包后覆盖安装；不再支持下次退出时自动升级';
     await this.persist();
-    this.info = '将在下次退出时升级';
     this.push();
     return this.snapshot();
   }
 
-  /** 托盘「立即升级」和设置页走同一条。不经过渲染进程。 */
+  /** 托盘 / 设置页「打开下载链接」。不经过本地更新器。 */
   async installNow(): Promise<void> {
     if (this.leaving) return;
-    if (!this.snapshot().downloaded || !this.verifiedPath || !this.journal.available) throw new Error('还没有校验通过的安装包');
-    const digest = await hashFileSha512(this.verifiedPath);
-    if (digest !== this.journal.available.sha512) {
-      await fs.rm(this.verifiedPath, { force: true }).catch(() => undefined);
-      this.verifiedPath = null;
-      this.journal.available.verified = false;
-      this.phase = 'failed';
-      this.error = 'SHA512 不一致，安装包已丢弃';
-      await this.persist();
-      this.push();
-      throw new PackageRejectedError(this.error);
-    }
-    const dirpack = this.hooks.applyMode === 'dirpack';
-    const title = dirpack ? RESTART_TO_UPDATE_TITLE : QUIT_BEFORE_UPGRADE_TITLE;
-    const body = dirpack ? RESTART_TO_UPDATE_BODY : QUIT_BEFORE_UPGRADE_BODY;
-    console.log('[update] confirm-quit: ' + body);
-    if (this.hooks.confirmQuit) {
-      const accepted = await this.hooks.confirmQuit(title, body);
-      if (!accepted) {
-        console.log('[update] confirm-quit: cancelled');
-        return;
-      }
-    } else {
-      await this.hooks.showReason(title, body);
-    }
-    this.phase = 'installing';
-    this.journal.installOnQuit = false;
+    const url = this.journal.available?.downloadUrl?.trim();
+    if (!url || !this.snapshot().downloaded) throw new Error('没有可打开的下载链接，请先检查更新');
+    if (!/^https?:\/\//i.test(url)) throw new Error('下载链接必须是 http(s) 地址');
+    console.log('[update] open-download ' + url);
+    await this.hooks.openExternal(url);
+    this.info = '已在浏览器打开下载链接，请自行下载后覆盖安装';
     this.error = null;
+    this.phase = 'ready';
     this.push();
-    const backup = await this.backupOrStay(this.hooks.currentVersion);
-    if (dirpack) {
-      await this.commitDirpackAndExit(backup.id);
-      return;
-    }
-    this.leaving = true;
-    const pending: PendingUpdate = {
-      fromVersion: this.hooks.currentVersion,
-      toVersion: this.journal.available.version,
-      backupId: backup.id,
-      at: new Date().toISOString(),
-    };
-    this.journal.pending = pending;
-    await this.persist();
-    await this.hooks.prepareShutdown();
-    await this.hooks.closeDatabase();
-    await this.spawnApply(this.verifiedPath, this.journal.available.version);
-    this.hooks.requestExit();
   }
 
   async prepareQuitInstall(): Promise<boolean> {
-    if (this.leaving || !this.journal.installOnQuit || !this.verifiedPath || !this.journal.available?.verified) return false;
-    if (!isNewer(this.journal.available.version, this.hooks.currentVersion)) return false;
-    const digest = await hashFileSha512(this.verifiedPath);
-    if (digest !== this.journal.available.sha512) {
-      this.error = 'SHA512 不一致，安装包已丢弃';
-      this.journal.available.verified = false;
-      this.journal.installOnQuit = false;
-      await fs.rm(this.verifiedPath, { force: true }).catch(() => undefined);
-      await this.persist();
-      return false;
-    }
-    let backup: BackupRecord;
-    try {
-      backup = await this.makeBackup(this.hooks.currentVersion);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.error = `退出时备份失败，没有升级：${message}`;
-      this.push();
-      await this.hooks.showReason('升级没有开始', this.error).catch(() => undefined);
-      return false;
-    }
-    if (this.hooks.applyMode === 'dirpack') {
-      try {
-        this.dirpackHandoff = await this.writeDirpackHandoff(backup.id);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.error = `交接文件没有写好，没有升级：${message}`;
-        this.push();
-        await this.hooks.showReason('升级没有开始', this.error).catch(() => undefined);
-        return false;
-      }
-    }
-    if (this.hooks.applyMode !== 'dirpack') {
-      this.journal.pending = {
-        fromVersion: this.hooks.currentVersion,
-        toVersion: this.journal.available.version,
-        backupId: backup.id,
-        at: new Date().toISOString(),
-      };
-    }
     this.journal.installOnQuit = false;
-    await this.persist();
-    this.leaving = true;
-    return true;
+    this.info = '请自行下载安装包后覆盖安装；不再支持退出时自动升级';
+    await this.persist().catch(() => undefined);
+    this.push();
+    return false;
   }
 
   async spawnQuitInstall(): Promise<void> {
-    if (!this.verifiedPath || !this.journal.available) return;
-    if (this.hooks.applyMode === 'dirpack') {
-      if (!this.dirpackHandoff) return;
-      await this.spawnDirpackUpdater(this.dirpackHandoff);
-      return;
-    }
-    await this.spawnApply(this.verifiedPath, this.journal.available.version);
+    // 简化更新：不再在退出时拉起 NSIS / 目录包更新器。
   }
 
   private async spawnApply(payload: string, version: string): Promise<void> {
@@ -606,6 +497,15 @@ export class UpdateService {
   }
 
   async rollback(kind: 'manual' | 'self-check', reason: string, backupId?: string): Promise<void> {
+    if (kind === 'manual') {
+      this.info = '请自行覆盖安装以回退版本；本机不再提供自动回滚';
+      this.error = null;
+      this.phase = 'idle';
+      this.push();
+      await this.hooks.showReason('请自行覆盖安装', this.info);
+      return;
+    }
+    // 遗留 pending 自检失败时仍走旧回滚路径（若 journal 里还有 pending）；新检查不会再写入 pending。
     if (this.leaving && kind === 'manual') return;
     if (this.hooks.installDir && isUnderStudyDev(this.hooks.installDir)) {
       throw new Error('拒绝在 study_dev 下回滚');

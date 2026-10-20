@@ -12,6 +12,10 @@ export const STABILITY =
 export const CURSOR_HINT =
   '读取进度小于 marker.json 的 oldestRevision 时，增量已经清掉，改读 snapshot.json，不要从头补 changes。';
 
+/** 资料树 path 的口径。ENTRY.md 与 guide.md 共用，避免两处说法打架。 */
+export const LIBRARY_READ_NOTE =
+  '资料树里的路径是本机真实绝对路径，Agent 可直接读取这些文件。';
+
 export function guideMarkdown(): string {
   return `# 使用说明
 
@@ -30,6 +34,10 @@ ${STABILITY}
 ${AGREEMENT}
 
 ${UNTRUSTED}
+
+## 资料树
+
+${LIBRARY_READ_NOTE} \`nav/structure.md\` 和 \`snapshot.json\` 的 \`libraryTree\` 各节点 \`path\` 都是这条路径：资料根的真实绝对路径再用 \`path.join\` 拼上相对路径，分隔符与本机一致。路径只来自已登记的资料根，不越出根。读这些源文件直接从磁盘读取，不用另走请求。
 
 ## 两区资料
 

@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Check } from 'lucide-react';
+import { Fragment, createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { EllipsisIcon, PlusIcon } from '../ui/shellMarks';
 import './module.css';
+
+export const ModuleColumnActions = createContext<ModuleHeadProps['moreItems']>(undefined);
 
 export type ModuleHeadProps = {
   title: string;
@@ -10,7 +13,7 @@ export type ModuleHeadProps = {
   addOpen?: boolean;
   onAddToggle?: () => void;
   addMenu?: ReactNode;
-  moreItems?: { id: string; label: string; onClick: () => void; testId?: string }[];
+  moreItems?: { id: string; label: string; onClick: () => void; testId?: string; checked?: boolean }[];
 };
 
 export function ModuleHead({
@@ -23,6 +26,8 @@ export function ModuleHead({
   addMenu,
   moreItems,
 }: ModuleHeadProps) {
+  const columnItems = useContext(ModuleColumnActions);
+  moreItems = [...(moreItems ?? []), ...(columnItems ?? [])];
   const [moreOpen, setMoreOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -63,20 +68,27 @@ export function ModuleHead({
       </div>
       {moreOpen && moreItems && moreItems.length > 0 ? (
         <div className="kb-more-menu" role="menu" data-testid="module-more-menu">
-          {moreItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="menuitem"
-              data-testid={item.testId}
-              onClick={() => {
-                setMoreOpen(false);
-                item.onClick();
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {moreItems.map((item, index) => {
+            const showCheck = moreItems.some((entry) => entry.checked !== undefined);
+            return (
+              <Fragment key={item.id}>
+                {item.id === 'hidden-items' && index > 0 ? <div className="menu-sep" role="separator" /> : null}
+                <button
+                  type="button"
+                  role={item.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+                  aria-checked={item.checked}
+                  data-testid={item.testId}
+                  onClick={() => {
+                    setMoreOpen(false);
+                    item.onClick();
+                  }}
+                >
+                  {showCheck ? <span className="kb-menu-check" aria-hidden="true">{item.checked ? <Check size={14} strokeWidth={1.5} aria-hidden="true" /> : null}</span> : null}
+                  {item.label}
+                </button>
+              </Fragment>
+            );
+          })}
         </div>
       ) : null}
       {addOpen && addMenu ? <div className="kb-add-menu" data-testid="module-add-menu">{addMenu}</div> : null}

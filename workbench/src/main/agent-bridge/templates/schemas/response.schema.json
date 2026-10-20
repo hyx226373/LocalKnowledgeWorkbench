@@ -4,24 +4,151 @@
   "title": "Agent bridge response",
   "type": "object",
   "additionalProperties": true,
-  "required": ["requestId", "status", "updatedAt"],
+  "required": [
+    "requestId",
+    "status",
+    "updatedAt"
+  ],
   "properties": {
-    "requestId": { "type": "string", "format": "uuid" },
-    "status": {
-      "enum": ["pending", "awaiting_approval", "running", "success", "failed", "conflict"]
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
     },
-    "updatedAt": { "type": "string" },
+    "status": {
+      "enum": [
+        "pending",
+        "awaiting_approval",
+        "running",
+        "success",
+        "failed",
+        "conflict"
+      ]
+    },
+    "updatedAt": {
+      "type": "string"
+    },
     "result": {},
     "error": {
       "type": "object",
-      "required": ["code", "message"],
+      "required": [
+        "code",
+        "message"
+      ],
       "properties": {
-        "code": { "type": "string" },
-        "message": { "type": "string" }
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
       }
     },
-    "planId": { "type": "string" },
-    "ignoredFields": { "type": "array", "items": { "type": "string" } },
-    "suggestedAction": { "enum": ["re-propose", "open-restore-ui", "inspect-plan"] }
+    "planId": {
+      "type": "string"
+    },
+    "ignoredFields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "suggestedAction": {
+      "enum": [
+        "re-propose",
+        "open-restore-ui",
+        "inspect-plan"
+      ]
+    },
+    "attention": {
+      "type": "array",
+      "description": "特别关注。可缺省。live snapshot.json 使用同一形状：路径、行号、字符偏移、原文。",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "absPath",
+          "startLine",
+          "endLine",
+          "startOffset",
+          "endOffset",
+          "text"
+        ],
+        "properties": {
+          "absPath": {
+            "type": "string"
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "startOffset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endOffset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "text": {
+            "type": "string"
+          },
+          "conversation": {
+            "type": "object",
+            "description": "对话来源。可缺省。path 为对话文件绝对路径，blockId 如 A3。",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "agent",
+              "title",
+              "blockId"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "agent": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "blockId": {
+                "type": "string"
+              }
+            }
+          },
+          "rebirth": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "no",
+              "title",
+              "blockIdx"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "no": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "title": {
+                "type": "string"
+              },
+              "blockIdx": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -11,7 +11,7 @@ import { UpdateService, type UpdateHooks } from '../src/main/update/service';
 import { setAppUpdateChecker } from '../src/shared/actions/packages/appUpdate';
 import { actionGate, getInvokeExecutor } from '../src/shared/actions/registry';
 import { downloadVerified, hashFileSha512 } from '../src/shared/update/download';
-import { parseLatestYml } from '../src/shared/update/latestYml';
+import { parseLatestYml, parseUpdateSignal } from '../src/shared/update/latestYml';
 import { assertRealProgress, formatByteProgress } from '../src/shared/update/progress';
 import { rotateBackups } from '../src/shared/update/rotate';
 import { decideAfterSelfCheck, judgeSelfCheck } from '../src/shared/update/selfCheck';
@@ -80,8 +80,39 @@ async function writeFeed(dir: string, version: string, body: Buffer, sha = creat
   return { name, sha, blockSize: block.length };
 }
 
-function hooks(dir: string, extra: Partial<UpdateHooks> = {}): { hooks: UpdateHooks; spawned: { file: string; args: string[]; env: NodeJS.ProcessEnv }[]; exited: boolean } {
+/** 简化更新夹具：信号内带绝对 https 下载链接，不落地安装包。 */
+async function writeSignalFeed(dir: string, version: string, downloadUrl: string, kind: 'yml' | 'json' = 'yml') {
+  await fs.mkdir(dir, { recursive: true });
+  const name = `LocalKnowledgeWorkbench-${version}-win-x64-setup.exe`;
+  if (kind === 'json') {
+    const body = {
+      version,
+      downloadUrl,
+      notes: '测试说明',
+      path: name,
+    };
+    await fs.writeFile(path.join(dir, 'latest.json'), JSON.stringify(body, null, 2), 'utf8');
+    return { name, downloadUrl };
+  }
+  const yml = [
+    `version: ${version}`,
+    'files:',
+    `  - url: ${downloadUrl}`,
+    `    sha512: 'dGVzdA=='`,
+    `    size: 1`,
+    `path: ${downloadUrl}`,
+    `sha512: 'dGVzdA=='`,
+    'releaseNotes: |',
+    '  测试说明',
+    '',
+  ].join('\n');
+  await fs.writeFile(path.join(dir, 'latest.yml'), yml, 'utf8');
+  return { name, downloadUrl };
+}
+
+function hooks(dir: string, extra: Partial<UpdateHooks> = {}): { hooks: UpdateHooks; spawned: { file: string; args: string[]; env: NodeJS.ProcessEnv }[]; exited: boolean; opened: string[] } {
   const spawned: { file: string; args: string[]; env: NodeJS.ProcessEnv }[] = [];
+  const opened: string[] = [];
   const state = { exited: false };
   const base: UpdateHooks = {
     currentVersion: '0.2.0',
@@ -105,9 +136,12 @@ function hooks(dir: string, extra: Partial<UpdateHooks> = {}): { hooks: UpdateHo
     noRelaunch: true,
     helperDone: path.join(dir, 'helper-done.txt'),
     relaunchPath: null,
+    openExternal: async (url) => {
+      opened.push(url);
+    },
     ...extra,
   };
-  return { hooks: base, spawned, get exited() { return state.exited; } } as { hooks: UpdateHooks; spawned: typeof spawned; exited: boolean };
+  return { hooks: base, spawned, opened, get exited() { return state.exited; } } as { hooks: UpdateHooks; spawned: typeof spawned; exited: boolean; opened: string[] };
 }
 
 async function seedUser(dir: string) {
@@ -179,207 +213,97 @@ describe('自检决定', () => {
 });
 
 describe('更新服务', () => {
-  it('校验失败时丢弃安装包并且不安装', async () => {
+  it('检查 yml 信号有新版时写入 downloadUrl，且不写 update-downloads', async () => {
     const dir = tmp();
     await fs.mkdir(dir, { recursive: true });
-    const body = Buffer.alloc(64 * 1024, 4);
-    const feed = path.join(dir, 'feed');
-    const good = createHash('sha512').update(Buffer.alloc(64 * 1024, 5)).digest('base64');
-    const packed = await writeFeed(feed, '0.2.1-test', body, good);
-    const box = hooks(dir);
-    const svc = new UpdateService(box.hooks);
-    await svc.init();
-    const snap = await svc.check();
-    expect(snap.phase).toBe('failed');
-    expect(snap.downloaded).toBe(false);
-    expect(snap.error).toMatch(/丢弃|不一致/);
-    await expect(fs.stat(path.join(dir, 'user', 'update-downloads', packed.name))).rejects.toThrow();
-    expect(box.spawned).toEqual([]);
-    expect(box.exited).toBe(false);
-    await expect(svc.installNow()).rejects.toThrow(/还没有校验通过的安装包/);
-    expect(box.spawned).toEqual([]);
-  });
-
-  it('下载校验通过后才会安装，改过的包在安装前被拒绝', async () => {
-    const dir = tmp();
-    await fs.mkdir(dir, { recursive: true });
-    await seedUser(dir);
-    const body = Buffer.alloc(256 * 1024, 7);
-    const feed = path.join(dir, 'feed');
-    const packed = await writeFeed(feed, '0.2.1-test', body);
-    process.env.KB_UPDATE_RATE_LIMIT = '8000000';
+    const url = 'https://example.com/releases/LocalKnowledgeWorkbench-0.2.1-test-win-x64-setup.exe';
+    await writeSignalFeed(path.join(dir, 'feed'), '0.2.1-test', url, 'yml');
     const box = hooks(dir);
     const svc = new UpdateService(box.hooks);
     await svc.init();
     const snap = await svc.check();
     expect(snap.phase).toBe('ready');
     expect(snap.downloaded).toBe(true);
-    expect(snap.unsignedNotice).toBe('未签名');
     expect(snap.available?.version).toBe('0.2.1-test');
-    expect(snap.available?.unsigned).toBe(true);
-    const dest = path.join(dir, 'user', 'update-downloads', packed.name);
-    const hash = await hashFileSha512(dest);
-    expect(hash).toBe(packed.sha);
-    const flipped = Buffer.from(body);
-    flipped[0] = flipped[0] === 7 ? 8 : 7;
-    await fs.writeFile(dest, flipped);
-    await expect(svc.installNow()).rejects.toThrow(/丢弃/);
+    expect(snap.available?.downloadUrl).toBe(url);
+    expect(snap.info).toMatch(/可下载/);
+    await expect(fs.stat(path.join(dir, 'user', 'update-downloads'))).rejects.toThrow();
     expect(box.spawned).toEqual([]);
     expect(box.exited).toBe(false);
   });
 
-  it('安装前备份只留 3 份，自检失败会启动回滚', async () => {
+  it('检查 JSON 信号并在 installNow 时调用 openExternal', async () => {
     const dir = tmp();
     await fs.mkdir(dir, { recursive: true });
-    await seedUser(dir);
-    const body = Buffer.alloc(32 * 1024, 9);
-    await writeFeed(path.join(dir, 'feed'), '0.2.1-test', body);
-    const oldIds = ['old-a', 'old-b', 'old-c'];
-    const backups = oldIds.map((id, index) => {
-      const folder = path.join(dir, 'user', 'update-backups', id);
-      return { id, createdAt: new Date(Date.UTC(2020, 0, index + 1)).toISOString(), version: '0.1.0', dir: folder };
-    });
-    for (const item of backups) {
-      await fs.mkdir(item.dir, { recursive: true });
-      await fs.writeFile(path.join(item.dir, 'marker.txt'), item.id, 'utf8');
-    }
-    await fs.writeFile(path.join(dir, 'user', 'update-journal.json'), JSON.stringify({ backups }), 'utf8');
-    process.env.KB_UPDATE_TEST_HOOK = '1';
+    const url = 'https://cdn.example.com/kb/LocalKnowledgeWorkbench-0.3.0-win-x64-setup.exe';
+    await writeSignalFeed(path.join(dir, 'feed'), '0.3.0', url, 'json');
+    // resolveFeed 本地目录默认读 latest.yml；json 夹具走 latest.json 回退
     const box = hooks(dir);
     const svc = new UpdateService(box.hooks);
     await svc.init();
-    await svc.check();
+    const snap = await svc.check();
+    expect(snap.available?.downloadUrl).toBe(url);
+    expect(snap.downloaded).toBe(true);
     await svc.installNow();
-    expect(box.exited).toBe(true);
-    expect(box.spawned).toHaveLength(1);
-    expect(box.spawned[0]?.env.KB_HELPER_MODE).toBe('apply');
-    expect(box.spawned[0]?.env.KB_HELPER_VERSION).toBe('0.2.1-test');
-    const journal = JSON.parse(await fs.readFile(path.join(dir, 'user', 'update-journal.json'), 'utf8')) as { backups: BackupRecord[]; pending?: { backupId: string; fromVersion: string } };
-    expect(journal.backups).toHaveLength(3);
-    expect(journal.backups.map((item) => item.id)).not.toContain('old-a');
-    expect(journal.pending?.fromVersion).toBe('0.2.0');
-    await expect(fs.stat(path.join(dir, 'user', 'update-backups', 'old-a'))).rejects.toThrow();
-    const backupDir = journal.backups.find((item) => item.id === journal.pending?.backupId)?.dir;
-    expect(backupDir).toBeTruthy();
-    expect(await fs.readFile(path.join(backupDir!, 'local', 'canary.json'), 'utf8')).toBe('keep-me');
-
-    let damaged = false;
-    const next = hooks(dir, {
-      currentVersion: '0.2.1-test',
-      selfCheckOverride: () => ({ windowLoaded: false, windowError: '自检被测试钩子标为失败' }),
-      damageBeforeRollback: async () => {
-        damaged = true;
-        await fs.writeFile(path.join(dir, 'user', 'canary.json'), 'damaged', 'utf8');
-      },
-    });
-    const again = new UpdateService(next.hooks);
-    await again.init();
-    again.armStartup({ dbOpened: true, migrationOk: true, windowLoaded: false });
-    again.noteWindowLoaded();
-    const started = Date.now();
-    while (!next.exited && Date.now() - started < 5000) await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(next.exited).toBe(true);
-    expect(damaged).toBe(true);
-    expect(next.spawned[0]?.env.KB_HELPER_MODE).toBe('rollback');
-    expect(next.spawned[0]?.env.KB_HELPER_LOCAL_SRC).toBe('-');
-    expect(next.spawned[0]?.env.KB_HELPER_LOCAL_DST).toBe('-');
-    expect(next.spawned[0]?.env.KB_HELPER_ROAM_SRC).toBe('-');
-    expect(next.spawned[0]?.env.KB_HELPER_ROAM_DST).toBe('-');
-    expect(next.spawned[0]?.env.KB_HELPER_LOCAL_DST).not.toBe(path.join(dir, 'user'));
-    expect(next.spawned[0]?.env.KB_HELPER_ROAM_DST).not.toBe(path.join(dir, 'roam'));
-    expect(next.spawned[0]?.env.KB_HELPER_INSTALL_DST).toBe(path.join(dir, 'install'));
-    const reason = await fs.readFile(path.join(dir, 'user', 'update-rollback-reason.txt'), 'utf8');
-    expect(reason).toContain('自检被测试钩子标为失败');
-    expect(await fs.readFile(path.join(dir, 'user', 'canary.json'), 'utf8')).toBe('damaged');
+    expect(box.opened).toEqual([url]);
+    expect(box.spawned).toEqual([]);
+    expect(box.exited).toBe(false);
+    expect(svc.snapshot().info).toMatch(/浏览器打开下载链接/);
   });
 
-  it('备份失败时不关机，清掉半成品，还可以再检查和重试', async () => {
+  it('本地相对路径信号没有 https 时检查失败', async () => {
     const dir = tmp();
     await fs.mkdir(dir, { recursive: true });
-    await seedUser(dir);
-    const asar = Buffer.from('fake-asar-bytes-not-a-real-archive');
-    await fs.writeFile(path.join(dir, 'install', 'app.asar'), asar);
-    const body = Buffer.alloc(32 * 1024, 3);
+    const body = Buffer.alloc(64, 1);
     await writeFeed(path.join(dir, 'feed'), '0.2.1-test', body);
-    const calls: string[] = [];
+    const box = hooks(dir);
+    const svc = new UpdateService(box.hooks);
+    await svc.init();
+    const snap = await svc.check();
+    expect(snap.phase).toBe('failed');
+    expect(snap.error).toMatch(/公开 https/);
+    expect(snap.downloaded).toBe(false);
+    await expect(fs.stat(path.join(dir, 'user', 'update-downloads'))).rejects.toThrow();
+  });
+
+  it('已是最新时不打开下载', async () => {
+    const dir = tmp();
+    await fs.mkdir(dir, { recursive: true });
+    const url = 'https://example.com/releases/LocalKnowledgeWorkbench-0.2.0-win-x64-setup.exe';
+    await writeSignalFeed(path.join(dir, 'feed'), '0.2.0', url, 'yml');
+    const box = hooks(dir);
+    const svc = new UpdateService(box.hooks);
+    await svc.init();
+    const snap = await svc.check();
+    expect(snap.phase).toBe('idle');
+    expect(snap.info).toBe('已是最新');
+    expect(snap.available).toBeNull();
+    await expect(svc.installNow()).rejects.toThrow(/没有可打开的下载链接/);
+    expect(box.opened).toEqual([]);
+  });
+
+  it('下次退出升级与手动回滚改为提示自行覆盖安装', async () => {
+    const dir = tmp();
+    await fs.mkdir(dir, { recursive: true });
+    const url = 'https://example.com/r/setup.exe';
+    await writeSignalFeed(path.join(dir, 'feed'), '0.9.0', url, 'yml');
     const reasons: string[] = [];
     const box = hooks(dir, {
-      installDir: path.join(dir, 'user', 'canary.json'),
-      prepareShutdown: async () => {
-        calls.push('shutdown');
-        return 'closed';
-      },
-      showReason: async (_title, detail) => {
+      showReason: async (_t, detail) => {
         reasons.push(detail);
       },
     });
     const svc = new UpdateService(box.hooks);
     await svc.init();
     await svc.check();
-    await expect(svc.installNow()).rejects.toThrow(/ENOTDIR|EPERM|EINVAL|不是|备份|cp/i);
-    expect(calls).toEqual([]);
-    expect(box.exited).toBe(false);
-    expect(reasons.join('\n')).toMatch(/备份失败，没有开始升级/);
-    expect(svc.snapshot().phase).toBe('ready');
-    expect(svc.snapshot().downloaded).toBe(true);
-    const leftovers = await fs.readdir(path.join(dir, 'user', 'update-backups')).catch(() => [] as string[]);
-    expect(leftovers).toEqual([]);
-    const journal = JSON.parse(await fs.readFile(path.join(dir, 'user', 'update-journal.json'), 'utf8')) as { backups: BackupRecord[] };
-    expect(journal.backups).toEqual([]);
-    const again = await svc.check();
-    expect(again.phase).toBe('ready');
-    expect(again.downloaded).toBe(true);
-    box.hooks.installDir = path.join(dir, 'install');
-    let sawBackup = false;
-    box.hooks.prepareShutdown = async () => {
-      calls.push('shutdown');
-      const saved = JSON.parse(await fs.readFile(path.join(dir, 'user', 'update-journal.json'), 'utf8')) as { backups: BackupRecord[] };
-      const rec = saved.backups[0];
-      expect(rec?.dir).toBeTruthy();
-      const copied = await readRaw(path.join(rec!.dir, 'install', 'app.asar'));
-      expect(Buffer.compare(copied, asar)).toBe(0);
-      sawBackup = true;
-      return 'closed';
-    };
-    await svc.installNow();
-    expect(sawBackup).toBe(true);
-    expect(calls).toEqual(['shutdown']);
-    expect(box.exited).toBe(true);
-    expect(svc.snapshot().backups).toHaveLength(1);
-  });
-
-  it('退出时备份失败不标记离开，修好目录后可以再备份', async () => {
-    const dir = tmp();
-    await fs.mkdir(dir, { recursive: true });
-    await seedUser(dir);
-    const body = Buffer.alloc(16 * 1024, 8);
-    await writeFeed(path.join(dir, 'feed'), '0.2.1-test', body);
-    const calls: string[] = [];
-    const box = hooks(dir, {
-      installDir: path.join(dir, 'user', 'canary.json'),
-      prepareShutdown: async () => {
-        calls.push('shutdown');
-        return 'closed';
-      },
-      showReason: async () => undefined,
-    });
-    const svc = new UpdateService(box.hooks);
-    await svc.init();
-    await svc.check();
-    await svc.installOnQuit();
+    const quit = await svc.installOnQuit();
+    expect(quit.installOnQuit).toBe(false);
+    expect(quit.info).toMatch(/自行.*覆盖安装/);
     expect(await svc.prepareQuitInstall()).toBe(false);
-    expect(calls).toEqual([]);
+    await svc.rollback('manual', '用户点了回滚');
+    expect(reasons.join('\n')).toMatch(/自行覆盖安装/);
+    expect(box.spawned).toEqual([]);
     expect(box.exited).toBe(false);
-    expect(svc.snapshot().error).toMatch(/退出时备份失败/);
-    expect(svc.snapshot().installOnQuit).toBe(true);
-    box.hooks.installDir = path.join(dir, 'install');
-    expect(await svc.prepareQuitInstall()).toBe(true);
-    expect(calls).toEqual([]);
-    expect(box.exited).toBe(false);
-    expect(svc.snapshot().backups).toHaveLength(1);
-    const saved = JSON.parse(await fs.readFile(path.join(dir, 'user', 'update-journal.json'), 'utf8')) as { backups: BackupRecord[]; pending?: { backupId: string } };
-    expect(saved.pending?.backupId).toBe(saved.backups[0]?.id);
-    await expect(fs.stat(path.join(saved.backups[0]!.dir, 'install', 'version.txt'))).resolves.toBeTruthy();
   });
 
   it('没有 latest.yml 时显示已是最新，并记下检查时间', async () => {
@@ -433,6 +357,38 @@ describe('更新服务', () => {
     expect(bad.phase).toBe('failed');
     expect(bad.error).toMatch(/没有配置更新源/);
     expect(bad.lastCheckAt).toBeTruthy();
+  });
+});
+
+describe('更新信号解析', () => {
+  it('解析 yml 与 JSON 信号并抽出 downloadUrl 提示', () => {
+    const yml = [
+      'version: 1.2.3',
+      'path: https://dl.example.com/a.exe',
+      "sha512: 'abc'",
+      'files:',
+      '  - url: https://dl.example.com/a.exe',
+      "    sha512: 'abc'",
+      '    size: 12',
+      '',
+    ].join('\n');
+    const fromYml = parseUpdateSignal(yml);
+    expect(fromYml.version).toBe('1.2.3');
+    expect(fromYml.downloadHint).toBe('https://dl.example.com/a.exe');
+    expect(fromYml.fileName).toBe('a.exe');
+
+    const fromJson = parseUpdateSignal(JSON.stringify({
+      version: '2.0.0',
+      downloadUrl: 'https://dl.example.com/b.exe',
+      releaseNotes: '你好',
+    }), 'application/json');
+    expect(fromJson.version).toBe('2.0.0');
+    expect(fromJson.downloadHint).toBe('https://dl.example.com/b.exe');
+    expect(fromJson.notes).toBe('你好');
+
+    const loose = parseUpdateSignal('version: 9.0.0\npath: https://x.test/c.exe\n');
+    expect(loose.version).toBe('9.0.0');
+    expect(loose.downloadHint).toBe('https://x.test/c.exe');
   });
 });
 

@@ -1,4 +1,5 @@
 import type { AgentMaterial, MaterialRef } from '../../shared/agentLive/types';
+import { DIALOG_LAST_DIR } from '../../shared/dialogLastDir';
 import type { AgentLiveAddDetail, AgentLiveAddReturn, AgentLiveClient } from './client';
 import { isMaterialLimit, MAX_MATERIALS } from './limits';
 import { isAddDetail } from './client';
@@ -8,12 +9,13 @@ import {
   MSG_CLEAR_BODY,
   MSG_CLEAR_TITLE,
   MSG_CLEARED,
+  MSG_DIR_CONFIRM_BODY,
+  MSG_DIR_CONFIRM_TITLE,
   MSG_COPIED,
   MSG_EMPTY_SESSION,
   MSG_LIMIT,
   MSG_NO_PATH,
   MSG_WEB_REJECTED,
-  MSG_NO_READING,
   MSG_NO_SELECTION,
   MSG_PINNED,
   MSG_PURPOSE_HINT,
@@ -144,11 +146,36 @@ export async function addRefs(binding: LiveBinding, refs: readonly MaterialRef[]
   }
 }
 
+/** 无阅读/无选中（尤其空树）时：选文件以 loose material 加入（resourceId null）。取消则静默返回。 */
+
+/** 含目录时先走 MSG_DIR_CONFIRM_*；取消则不加。 */
+export async function addRefsMaybeDir(binding: LiveBinding, refs: readonly MaterialRef[], opts?: { asDir?: boolean }): Promise<string> {
+  if (!refs.length) return '';
+  if (opts?.asDir) {
+    const ok = await binding.host.confirm({
+      title: MSG_DIR_CONFIRM_TITLE,
+      body: MSG_DIR_CONFIRM_BODY,
+      ok: '加入',
+      cancel: '取消',
+    });
+    if (!ok) return '';
+  }
+  return addRefs(binding, refs);
+}
+
+export async function addFromDisk(binding: LiveBinding): Promise<void> {
+  const picked = await binding.host.pickFile(DIALOG_LAST_DIR.addMaterial);
+  if (!picked) return;
+  const name = picked.replace(/[\\/]+$/, '');
+  const slash = Math.max(name.lastIndexOf('\\'), name.lastIndexOf('/'));
+  await addRefs(binding, [{ absPath: picked, name: slash >= 0 ? name.slice(slash + 1) : name, resourceId: null }]);
+}
+
 export async function addCurrent(binding: LiveBinding): Promise<void> {
   if (binding.host.hostedForeground()) return;
   const ref = binding.host.currentReading();
   if (!ref) {
-    binding.host.notify(MSG_NO_READING);
+    await addFromDisk(binding);
     return;
   }
   await addRefs(binding, [ref]);
@@ -226,7 +253,7 @@ export async function clearSession(binding: LiveBinding): Promise<void> {
 }
 
 export async function relocateMaterial(binding: LiveBinding, materialId: string): Promise<void> {
-  const picked = await binding.host.pickFile();
+  const picked = await binding.host.pickFile(DIALOG_LAST_DIR.relocateMaterial);
   if (!picked) return;
   const name = picked.replace(/[\\/]+$/, '');
   const slash = Math.max(name.lastIndexOf('\\'), name.lastIndexOf('/'));
@@ -245,8 +272,9 @@ export async function copyBridgeLink(binding: LiveBinding): Promise<void> {
 }
 
 export async function copyWorkspaceLink(binding: LiveBinding): Promise<void> {
-  const path = await binding.host.workspaceEntryPath(binding.host.workspaceId());
-  await binding.host.writeClipboard(path);
+  const entryPath = await binding.host.workspaceEntryPath(binding.host.workspaceId());
+  const rules = binding.host.residentRules ? await binding.host.residentRules(entryPath) : null;
+  await binding.host.writeClipboard(rules && rules.trim() ? rules : entryPath);
   binding.host.notify(MSG_COPIED);
 }
 

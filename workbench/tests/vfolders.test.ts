@@ -136,4 +136,22 @@ describe('全局自建目录', () => {
     expect(dumped).not.toContain('library.webStubs');
     expect(dumped).not.toContain('example.com');
   });
+
+  it('成员带真实 absPath，编排用 rootName/relPath；网页 absPath 为 null', async () => {
+    const { svc, roots, dirs } = await setup();
+    const md = svc.resourceIdFor(roots[0].id, '笔记/读书笔记.md');
+    const folder = svc.createVirtualFolder(null, '待改');
+    svc.setVfolderMembership(md, [folder.folderId]);
+    const entry = svc.listVfolderView(folder.folderId).entries.find((e) => e.resourceId === md);
+    expect(entry?.rootName).toBeTruthy();
+    expect(entry?.relPath).toBe('笔记/读书笔记.md');
+    expect(entry?.absPath?.toLowerCase()).toBe(path.join(dirs[0], '笔记', '读书笔记.md').toLowerCase());
+    const view = svc.listVfolderView(folder.folderId);
+    expect(view.folders.every((f) => !('absPath' in f))).toBe(true);
+    const wid = '22222222-2222-2222-2222-222222222222';
+    svc.rememberWebStub({ resourceId: wid, url: 'https://example.com/x', title: '网' });
+    svc.setVfolderMembership(wid, [folder.folderId]);
+    const web = svc.listVfolderView(folder.folderId).entries.find((e) => e.resourceId === wid);
+    expect(web?.absPath).toBeNull();
+  });
 });

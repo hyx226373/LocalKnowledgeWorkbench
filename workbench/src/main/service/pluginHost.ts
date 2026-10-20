@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { validateAdapterManifest, permissionDeclHash, satisfies, isAskPerSite, netAllowedHosts, netResourceHosts, withGrantedHost, withoutGrantedHost, siteHostError } from '../../shared/adapter-sdk/policy';
+import { searchProviderDeclErrors } from '../../shared/searchProvider';
 import { ADAPTER_API_VERSION, type AdapterContribution, type AdapterInstallSource, type AdapterPluginManifest, type FileStat, type FileopsPlan, type FileopsResult, type NetPermission, type PermissionGrant, type TextReadResult } from '../../shared/adapter-sdk/types';
 import { HOST_API_VERSION } from '../../shared/hostApi';
 import { adapterOf, fileScopeError, fsReadDecl, grantDecision, revokedGrant, upsertGrant } from '../../shared/grants';
@@ -172,12 +173,20 @@ export class PluginHostService {
       return { manifest: null, errors: [`manifest.json 无法读取：${(e as Error).message}`], dir };
     }
     errors.push(...validateAdapterManifest(manifest!, ADAPTER_API_VERSION, { source }));
+    const declaredSearch = (manifest?.contributes as { searchProviders?: unknown } | undefined)?.searchProviders;
+    errors.push(...searchProviderDeclErrors(declaredSearch));
     const m = manifest!;
     if (expectId && m.id !== expectId) errors.push(`manifest id ${m.id} 与安装目录不符`);
     if (typeof m.id === 'string' && RESERVED_PREFIX.test(m.id)) errors.push(`插件 id 不能以 builtin./demo./kb. 开头（保留给内置插件）：${m.id}`);
     if (m.engines?.workbench && !satisfies(HOST_API_VERSION, m.engines.workbench)) errors.push(`需要宿主 API ${m.engines.workbench}，当前为 ${HOST_API_VERSION}`);
     if (source === 'third-party') {
       for (const a of m.contributes?.adapters ?? []) if (typeof a.id === 'string' && !a.id.startsWith(`${m.id}.`)) errors.push(`适配器 id 必须以插件 id 为前缀：${a.id}`);
+      if (Array.isArray(declaredSearch)) {
+        for (const s of declaredSearch) {
+          const id = (s as { id?: unknown })?.id;
+          if (typeof id === 'string' && !id.startsWith(`${m.id}.`)) errors.push(`搜索提供者 id 必须以插件 id 为前缀：${id}`);
+        }
+      }
       // r11-A：第三方插件不能占用内置插件 / 适配器 id
       if (typeof m.id === 'string' && this.builtin.has(m.id)) errors.push(`插件 id 已被内置插件占用：${m.id}`);
       const bi = this.builtinAdapterIds();

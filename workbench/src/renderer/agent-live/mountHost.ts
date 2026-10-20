@@ -1,8 +1,10 @@
 import type { MaterialRef } from '../../shared/agentLive/types';
+import { getSidebarPrefs } from '../drawer/sidebarPrefs';
 import { kb } from '../kb';
 import { dialogs } from '../ui/dialogs';
 import { AGENT_LIVE_CHROME_KEY } from './collapse';
 import type { AgentLiveHost } from './host';
+import { postFileDrag } from '../nativeDrag/start';
 import { joinRoot } from './paths';
 
 export interface MountHostInput {
@@ -72,13 +74,24 @@ export function createMountHost(input: MountHostInput): AgentLiveHost {
     },
     bridgeEntryPath: () => kb.agentLiveEntryPath('current', input.workspaceId()),
     workspaceEntryPath: (workspaceId) => kb.agentLiveEntryPath('workspace', workspaceId),
-    pickFile: () => kb.pickFile(),
+    pickFile: (dialogKey) => kb.pickFile(dialogKey),
     startDragCopy: (request) => {
-      if (request.deleteSource !== false || !request.files.length) return;
-      void kb.agentLiveStartDrag(request.files);
+      if (request.deleteSource !== false || request.op !== 'copy' || !request.files.length) return;
+      if (getSidebarPrefs().dragOutMode === 'path') return;
+      postFileDrag(request.files);
     },
     resolve: async (ref) => {
       if (ref.absPath) return isTokenPath(ref.absPath) ? null : ref;
+      // 有根+相对路径时直接拼真实地址（松散/自建目录成员拖拽常带 sourceId+relPath）
+      if (ref.sourceId && typeof ref.relPath === 'string') {
+        const root = input.roots().find((item) => item.id === ref.sourceId);
+        if (root?.path) {
+          const absPath = joinRoot(root.path, ref.relPath);
+          if (absPath && !isTokenPath(absPath)) {
+            return { ...ref, absPath, name: ref.name || absPath.split(/[\\/]/).pop() || absPath };
+          }
+        }
+      }
       if (!ref.resourceId) return null;
       const res = await kb.getResource(ref.resourceId);
       if (!res) return null;

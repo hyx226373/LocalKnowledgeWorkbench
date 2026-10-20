@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState, useSyncExternalStore } from 'react';
 import { kb } from '../kb';
 import { dialogs } from '../ui/dialogs';
 import type { Favorite, Root, VfolderView, WorkspaceRef } from '../../shared/types';
@@ -10,6 +10,9 @@ import { rootHideKey, useHiddenRootIds } from '../tasks/RootTaskDock';
 import { beginDrag, bindDrop, endDrag, type DragFrom, type KbDragPayload } from './dnd';
 import { fileMenu, RowMenu, type MenuItem } from './RowMenu';
 import { catalogHeadings, clampSplit, virtualRootTitle, type DirViewPane, type DirViewState, type DirViewTarget } from './model';
+import { ChevronRightIcon, TreeGlyph } from '../ui/shellMarks';
+import { adapters } from '../plugin-host/registry';
+import { showNoReaderBadge } from './noReaderBadge';
 
 export interface DirViewHandle {
   toggleDual: () => void;
@@ -510,7 +513,7 @@ function RootsBody({ roots, reload }: { roots: Root[]; favorites?: Favorite[]; r
         title="根目录"
         addOpen={addOpen}
         onAddToggle={() => setAddOpen((v) => !v)}
-        addMenu={<AddRoot reload={reload} />}
+        addMenu={<AddRoot reload={reload} roots={roots} />}
       />
       <RootDirectoryBody roots={roots} reload={reload} />
     </section>
@@ -552,12 +555,14 @@ function VfolderBody({
   return (
     <>
       {empty && <div className="kb-tree-row empty">这个自建目录是空的。新建子目录，或用「按类型整理到自建目录」把资料归进来。原文件留在原地。</div>}
-      {view.folders.map((f) => (
-        <VfolderNodeRow key={f.folderId} folderId={f.folderId} name={f.name} parentId={folderId} siblings={view.folders} onOpen={() => onOpen(f.folderId)} onSelect={() => onSelectFolder(f.folderId)} onMenu={(x, y, items) => setMenu({ x, y, items })} />
-      ))}
-      {view.entries.map((e) => (
-        <VfolderFileRow key={e.resourceId} entry={e} folderId={folderId} onSelect={() => onSelectRes(e.resourceId)} onMenu={(x, y, items) => setMenu({ x, y, items })} />
-      ))}
+      <div className="kb-tree-children">
+        {view.folders.map((f) => (
+          <VfolderNodeRow key={f.folderId} folderId={f.folderId} name={f.name} parentId={folderId} siblings={view.folders} onOpen={() => onOpen(f.folderId)} onSelect={() => onSelectFolder(f.folderId)} onMenu={(x, y, items) => setMenu({ x, y, items })} />
+        ))}
+        {view.entries.map((e) => (
+          <VfolderFileRow key={e.resourceId} entry={e} folderId={folderId} onSelect={() => onSelectRes(e.resourceId)} onMenu={(x, y, items) => setMenu({ x, y, items })} />
+        ))}
+      </div>
       {menu && <RowMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />}
     </>
   );
@@ -600,6 +605,8 @@ function VfolderNodeRow({
       data-kind="vfolder-node"
       data-entry="vfolder-node"
       data-folder-id={folderId}
+      data-no-abspath="true"
+      title="虚拟目录（无磁盘路径）"
       data-drag-over={over ? 'true' : undefined}
       tabIndex={0}
       draggable
@@ -624,10 +631,24 @@ function VfolderNodeRow({
         ]);
       }}
     >
-      <span className="twisty">▸</span>
-      <span className="icon icon-dir" />
+      <span className="kb-chev" aria-hidden="true"><ChevronRightIcon /></span>
+      <TreeGlyph kind="dir" />
       <span className="name">{name}</span>
     </div>
+  );
+}
+
+function NoReaderBadge({ entry }: { entry: VfolderView['entries'][number] }) {
+  useSyncExternalStore(
+    (cb) => adapters.subscribe(cb),
+    () => adapters.getVersion(),
+    () => adapters.getVersion(),
+  );
+  if (!showNoReaderBadge(entry)) return null;
+  return (
+    <span className="p" data-testid="no-reader-badge">
+      暂无阅读器
+    </span>
   );
 }
 
@@ -674,7 +695,7 @@ function VfolderFileRow({
       data-missing={entry.missing ? 'true' : undefined}
       aria-disabled={entry.missing ? 'true' : undefined}
       aria-selected={ctx.activeResourceId === entry.resourceId ? 'true' : undefined}
-      title={entry.missing ? '原文件已不在原处。归属保留，不会自动清理。' : entry.rootName ? `${entry.rootName}/${entry.relPath}` : entry.name}
+      title={entry.missing ? '原文件已不在原处。归属保留，不会自动清理。' : entry.absPath ? `${entry.rootName ? `${entry.rootName}/${entry.relPath}` : entry.name} → ${entry.absPath}` : entry.rootName ? `${entry.rootName}/${entry.relPath}` : entry.name}
       tabIndex={0}
       draggable
       data-drag-over={over ? 'true' : undefined}
@@ -694,6 +715,7 @@ function VfolderFileRow({
             resourceId: entry.resourceId,
             title: entry.name,
             payload,
+            absPath: entry.absPath || undefined,
             missing: entry.missing,
             folderId,
             inFolder: true,
@@ -703,10 +725,10 @@ function VfolderFileRow({
         );
       }}
     >
-      <span className="twisty" />
-      <span className={'icon icon-file icon-' + entry.ext} />
+      <span className="kb-chev" aria-hidden="true" />
+      <TreeGlyph kind={entry.sourceKind === 'web' ? 'web' : entry.kind === 'dir' ? 'dir' : 'file'} ext={entry.ext} />
       <span className="name">{entry.name}</span>
-      {entry.reader === 'unsupported' && !entry.missing && <span className="p">暂无阅读器</span>}
+      <NoReaderBadge entry={entry} />
       {entry.missing && (
         <span className="act act--text" data-testid="vfolder-repair" title="失效的引用不会自动清理" onClick={(e) => { e.stopPropagation(); void kb.openMigration('repair'); }}>
           修复…

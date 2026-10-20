@@ -1,7 +1,7 @@
 {
   "name": "kb-workbench",
   "productName": "LocalKnowledgeWorkbench",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "description": "本地知识工作台",
   "author": "kb-workbench",
   "private": true,
@@ -12,6 +12,7 @@
     "@types/better-sqlite3": "^9.6.0",
     "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.4",
+    "@types/word-extractor": "1.0.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
@@ -22,6 +23,7 @@
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "iconv-lite": "^0.6.3",
+    "lucide-react": "^0.510.0",
     "markdown-it": "^15.0.2",
     "mermaid": "12.1.0",
     "pdfjs-dist": "^6.3.289",
@@ -31,7 +33,15 @@
     "resedit": "^1.7.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "buffer": "5.7.1",
+    "cfb": "1.2.2",
+    "exceljs": "4.4.0",
+    "fast-xml-parser": "5.11.2",
+    "fflate": "0.8.3",
+    "ppt": "0.0.2",
+    "word-extractor": "1.0.4",
+    "xlsx": "0.18.5"
   },
   "dependencies": {
     "@kb/agent-api": "file:../modules/agent-api",
@@ -42,7 +52,9 @@
     "@kb/sync": "file:../modules/sync",
     "better-sqlite3": "^13.0.3",
     "chokidar": "^5.0.0",
-    "katex": "0.19.0"
+    "js-yaml": "^4.3.2",
+    "katex": "0.19.0",
+    "koffi": "2.11.0"
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -100,7 +112,12 @@
       "!node_modules/roughjs/**",
       "!node_modules/stylis/**",
       "!node_modules/ts-dedent/**",
-      "!node_modules/uuid/**"
+      "!node_modules/uuid/**",
+      "!node_modules/koffi/src/**",
+      "!node_modules/koffi/vendor/**",
+      "!node_modules/koffi/doc/**",
+      "!node_modules/koffi/build/koffi/*/*.{lib,exp,pdb}",
+      "!node_modules/koffi/build/koffi/!(win32_x64)/**"
     ],
     "asar": true,
     "asarUnpack": [
@@ -109,12 +126,21 @@
       "node_modules/katex/dist/fonts/**",
       "out/**/*.woff",
       "out/**/*.woff2",
-      "out/main/reap-orphans.exe"
+      "out/main/reap-orphans.exe",
+      "node_modules/koffi/build/koffi/win32_x64/*.node"
     ],
     "extraResources": [
       {
         "from": "resources/builtin-adapters",
         "to": "builtin-adapters"
+      },
+      {
+        "from": "resources/plugin-catalog",
+        "to": "plugin-catalog"
+      },
+      {
+        "from": "resources/ctx-playbooks",
+        "to": "ctx-playbooks"
       }
     ],
     "npmRebuild": false,
@@ -167,7 +193,12 @@
         "!node_modules/roughjs/**",
         "!node_modules/stylis/**",
         "!node_modules/ts-dedent/**",
-        "!node_modules/uuid/**"
+        "!node_modules/uuid/**",
+        "!node_modules/koffi/src/**",
+        "!node_modules/koffi/vendor/**",
+        "!node_modules/koffi/doc/**",
+        "!node_modules/koffi/build/koffi/*/*.{lib,exp,pdb}",
+        "!node_modules/koffi/build/koffi/!(win32_x64)/**"
       ],
       "icon": "build/icon.ico"
     },

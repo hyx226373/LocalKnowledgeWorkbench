@@ -76,17 +76,16 @@
 .dv-groupview-floating .dv-void-container { min-width: 48px; cursor: grab; }
 .dv-groupview-floating .dv-void-container:active { cursor: grabbing; }
 
-/* float-win：圆角 14、多层阴影、细边界 */
+/* float-win：圆角 14、预览双层阴影、1px 细边。勿 overflow:hidden，否则裁掉缩放把手。 */
 .dv-resize-container {
   border-radius: 14px;
-  /* 勿 overflow:hidden：会裁掉 dockview 外扩 -2px 的缩放把手，导致浮动窗无法拉伸 */
   overflow: visible;
   background: var(--kb-color-surface);
   box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--kb-color-text) 12%, transparent),
     0 1px 2px color-mix(in srgb, var(--kb-color-text) 5%, transparent),
-    0 16px 40px color-mix(in srgb, var(--kb-color-text) 12%, transparent),
-    var(--kb-shadow-2);
-  outline: 1px solid color-mix(in srgb, var(--kb-color-border-strong) 55%, transparent);
+    0 16px 40px color-mix(in srgb, var(--kb-color-text) 12%, transparent);
+  outline: none;
 }
 /* 圆角与裁切放到内层，保留外观且不挡缩放 */
 .dv-resize-container > .dv-groupview,
@@ -98,9 +97,16 @@
 .dv-resize-container.dv-resize-container-dragging { opacity: 0.96; }
 .dv-groupview-floating .dv-tabs-and-actions-container {
   min-height: 42px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
   cursor: grab;
   background: var(--kb-color-chrome);
-  border-bottom: 1px solid var(--kb-color-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+}
+.dv-groupview-floating .dv-tab {
+  font-size: 13px;
+  font-weight: 600;
 }
 .dv-groupview-floating .dv-tabs-and-actions-container:active { cursor: grabbing; }
 
@@ -115,16 +121,30 @@
   pointer-events: auto !important;
   z-index: 20;
 }
-/* 角落把手：命中区放大并贴内边，避免被上层裁切；外观三角仍画在右下 */
+/* dockview 角落命中区保留；条纹改由预览 resize-grip 绘制，避免两套三角叠在一起 */
 .dv-resize-container .dv-resize-handle-bottomright {
   width: 18px;
   height: 18px;
   right: 0;
   bottom: 0;
+  background: transparent;
+  cursor: nwse-resize;
+}
+.resize-grip {
+  position: absolute;
+  z-index: 22;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   background:
     linear-gradient(135deg, transparent 50%, color-mix(in srgb, var(--kb-color-accent) 45%, transparent) 50%, color-mix(in srgb, var(--kb-color-accent) 45%, transparent) 62%, transparent 62%),
     linear-gradient(135deg, transparent 70%, color-mix(in srgb, var(--kb-color-accent) 45%, transparent) 70%, color-mix(in srgb, var(--kb-color-accent) 45%, transparent) 82%, transparent 82%);
   cursor: nwse-resize;
+  touch-action: none;
 }
 .dv-resize-container .dv-resize-handle-top,
 .dv-resize-container .dv-resize-handle-bottom {
@@ -136,6 +156,7 @@
 }
 
 .pm-actions { display: inline-flex; align-items: center; gap: 2px; padding: 0 var(--kb-space-1); height: 100%; }
+.pm-actions-text { display: inline-flex; align-items: center; gap: 2px; height: 100%; }
 .pm-btn {
   border: 0; background: transparent; color: var(--kb-color-text-muted); font: inherit; font-size: var(--kb-fs-xs);
   line-height: 1; width: 22px; height: 22px; border-radius: 8px; cursor: pointer; padding: 0;
@@ -145,8 +166,8 @@
 .pm-btn:focus-visible { outline: 2px solid var(--kb-color-focus-ring); outline-offset: -2px; }
 .pm-btn-hide-tabs { width: auto; min-width: 22px; padding: 0 6px; color: var(--kb-color-accent); }
 
-.pm-sidebar-bar { display: flex; align-items: center; gap: var(--kb-space-2); padding: var(--kb-space-1) var(--kb-space-2) var(--kb-space-1) var(--kb-space-3); border-bottom: 1px solid var(--kb-color-border); flex: none; }
-.pm-sidebar-title { flex: 1; font-size: var(--kb-fs-xs); color: var(--kb-color-text-muted); letter-spacing: var(--kb-ls-caps); font-weight: var(--kb-fw-strong); }
+.pm-sidebar-bar { display: flex; align-items: center; justify-content: flex-end; gap: var(--kb-space-2); padding: var(--kb-space-1) var(--kb-space-2) var(--kb-space-1) var(--kb-space-3); border-bottom: 1px solid var(--kb-color-border); flex: none; }
+.pm-sidebar-title { display: none; }
 .pm-sidebar-host { width: 100%; height: 100%; overflow: hidden; }
 .pm-sidebar-floating { width: 100% !important; height: 100%; border-right: 0; }
 
@@ -156,19 +177,33 @@
 }
 .pm-bubble-tray > * { pointer-events: auto; }
 .pm-bubble-label { display: none; }
-.pm-bubble-kind { color: var(--kb-color-text-muted); flex: none; font-size: 11px; }
+.pm-bubble-kind {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 .pm-bubble {
-  position: absolute; z-index: 15; display: inline-flex; align-items: center; gap: 4px; max-width: 200px; height: 36px;
-  padding: 0 6px 0 12px; border: 0; border-radius: 999px; background: var(--kb-color-surface-raised); color: var(--kb-color-text);
+  position: absolute; z-index: 15; display: inline-flex; align-items: center; gap: 6px; max-width: 180px; height: 36px;
+  padding: 0 4px 0 12px; border: 0; border-radius: 999px; background: var(--kb-color-surface); color: var(--kb-color-text);
   box-shadow: 0 8px 24px color-mix(in srgb, var(--kb-color-text) 12%, transparent);
   font: inherit; font-size: 12.5px; white-space: nowrap; cursor: grab; user-select: none; touch-action: none;
+  animation: pm-bubble-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
+.pm-bubble[data-phase="out"] {
+  animation: pm-bubble-out 320ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  pointer-events: none;
+}
+.pm-bubble[data-dragging="true"] { animation: none; }
 .pm-bubble:active { cursor: grabbing; }
-.pm-bubble:hover { background: var(--kb-color-hover); }
+.pm-bubble:hover {
+  background: var(--kb-color-surface);
+  box-shadow:
+    0 8px 24px color-mix(in srgb, var(--kb-color-text) 12%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--kb-color-accent) 28%, transparent);
+}
 .pm-bubble:focus-within { outline: 2px solid var(--kb-color-focus-ring); outline-offset: 2px; }
 .pm-bubble-main { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 1; overflow: hidden; pointer-events: none; }
 .pm-bubble-dot {
-  width: 14px; height: 14px; border-radius: 3px; background: transparent; color: var(--kb-color-accent);
+  width: 14px; height: 14px; border-radius: 3px; background: transparent; color: currentColor;
   flex: none; display: grid; place-items: center;
 }
 .pm-bubble-dot svg { width: 14px; height: 14px; }
@@ -187,28 +222,86 @@
 .pm-restore-tabs:hover { background: var(--kb-color-hover); }
 .pm-restore-tabs:focus-visible { outline: 2px solid var(--kb-color-focus-ring); outline-offset: 2px; }
 
-.kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection {
-  margin: 10px; border-radius: 16px; border: 0;
+/* 停靠预览：dockview 的 selection（就地）和 anchor（绝对挂载）都画成预览的 dock-preview。
+   框本身 inset 10px、圆角 16；出现走 emerge（透明度 + 独立 translate 8px）。
+   dockview 会给元素写 inline transform，所以位移放在 ::before 的 translate 上。 */
+.kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection,
+.kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor {
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--kb-color-accent);
+  font-size: 13px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  animation: pm-dock-preview-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection::before,
+.kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 10px;
+  border-radius: 16px;
   background: color-mix(in srgb, var(--kb-color-accent) 16%, transparent);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--kb-color-accent) 45%, transparent);
-  color: var(--kb-color-accent); font-size: 13px; font-weight: 600; display: grid; place-items: center;
+  animation: pm-dock-preview-slide 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
-.kb-dock.center .dv-drop-target-selection.dv-drop-target-left::after { content: "松手停靠到左侧"; }
-.kb-dock.center .dv-drop-target-selection.dv-drop-target-right::after { content: "松手停靠到右侧"; }
-.kb-dock.center .dv-drop-target-selection.dv-drop-target-top::after { content: "松手停靠到上方"; }
-.kb-dock.center .dv-drop-target-selection.dv-drop-target-bottom::after { content: "松手停靠到下方"; }
-.kb-dock.center .dv-drop-target-selection.dv-drop-target-center::after { content: "松手停靠到此组"; }
+.kb-dock.center .dv-drop-target-selection.dv-drop-target-selection-line::before,
+.kb-dock.center .dv-drop-target-anchor.dv-drop-target-anchor-line::before {
+  inset: 0;
+  border-radius: 4px;
+}
+.kb-dock.center .dv-drop-target-selection::after,
+.kb-dock.center .dv-drop-target-anchor::after {
+  position: relative;
+  z-index: 1;
+}
+.kb-dock.center .dv-drop-target-selection.dv-drop-target-left::after,
+.kb-dock.center .dv-drop-target-anchor.dv-drop-target-left::after { content: "松手停靠到左侧"; }
+.kb-dock.center .dv-drop-target-selection.dv-drop-target-right::after,
+.kb-dock.center .dv-drop-target-anchor.dv-drop-target-right::after { content: "松手停靠到右侧"; }
+.kb-dock.center .dv-drop-target-selection.dv-drop-target-top::after,
+.kb-dock.center .dv-drop-target-anchor.dv-drop-target-top::after { content: "松手停靠到上方"; }
+.kb-dock.center .dv-drop-target-selection.dv-drop-target-bottom::after,
+.kb-dock.center .dv-drop-target-anchor.dv-drop-target-bottom::after { content: "松手停靠到下方"; }
+.kb-dock.center .dv-drop-target-selection.dv-drop-target-center::after,
+.kb-dock.center .dv-drop-target-anchor.dv-drop-target-center::after { content: "松手停靠到此组"; }
+.kb-dock.center .dv-drop-target-selection.dv-drop-target-selection-line::after { content: none; }
+.kb-dock.center .dv-drop-target-anchor.dv-drop-target-anchor-line::after { content: none; }
 
 .pm-drag-shield {
   position: absolute; z-index: 30; inset: 0; pointer-events: none; background: transparent;
 }
 
-.kb-dock.center .dv-sash.dv-enabled {
+/* 分屏分隔条：预览 dock-sep 是 10px、圆角 99 的强调色 18% 胶囊。
+   悬停 / 拖动只加浓同一颜色。光标对齐预览 col-resize / row-resize。 */
+.kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled {
   border-radius: 99px;
-  background-color: color-mix(in srgb, var(--kb-color-accent) 18%, var(--kb-color-sash));
+  background-color: color-mix(in srgb, var(--kb-color-accent) 18%, transparent);
+  transition: background-color 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.kb-dock.center .dv-sash.dv-enabled:hover { background-color: var(--kb-color-sash-hover); }
-.kb-dock.center .dv-sash.dv-enabled:active { background-color: var(--kb-color-sash-dragging); }
+.kb-dock.center .dv-split-view-container.dv-horizontal > .dv-sash-container > .dv-sash.dv-enabled {
+  width: 10px;
+  margin-left: -3px;
+  cursor: col-resize;
+}
+.kb-dock.center .dv-split-view-container.dv-vertical > .dv-sash-container > .dv-sash.dv-enabled {
+  height: 10px;
+  margin-top: -3px;
+  cursor: row-resize;
+}
+.kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled:hover,
+.kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled:focus-visible {
+  background-color: color-mix(in srgb, var(--kb-color-accent) 32%, transparent);
+}
+.kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled:active,
+.kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled[data-pm-dragging="true"] {
+  background-color: color-mix(in srgb, var(--kb-color-accent) 45%, transparent);
+  transition-duration: 80ms;
+}
 
 .kb-view-toolbar.editor-toolbar,
 .kb-view-toolbar.pdf-toolbar,
@@ -226,7 +319,7 @@
 }
 .kb-view-toolbar .kb-seg .kb-button[aria-pressed="true"],
 .kb-view-toolbar .kb-mode.on {
-  background: #e7f0f5; color: var(--kb-color-accent); font-weight: var(--kb-fw-strong);
+  background: var(--kb-color-accent-soft, color-mix(in srgb, var(--kb-color-accent) 16%, transparent)); color: var(--kb-color-accent); font-weight: var(--kb-fw-strong);
 }
 .kb-view-toolbar .kb-doc-tools { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; width: 100%; }
 .kb-view-toolbar .kb-doc-crumb {
@@ -257,18 +350,74 @@
   overflow: visible;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection { transition: none; }
+@keyframes pm-dock-preview-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
-:root[data-reduce-motion="true"] .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection {
+@keyframes pm-dock-preview-slide {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes pm-bubble-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pm-bubble-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-bubble,
+  .pm-bubble[data-phase="out"],
+  .kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled,
+  .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection,
+  .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection::before,
+  .kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor,
+  .kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor::before {
+    animation: none;
+    transition: none;
+  }
+}
+:root[data-reduce-motion="true"] .pm-bubble,
+:root[data-reduce-motion="true"] .pm-bubble[data-phase="out"],
+:root[data-reduce-motion="true"] .kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled,
+:root[data-reduce-motion="true"] .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection,
+:root[data-reduce-motion="true"] .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection::before,
+:root[data-reduce-motion="true"] .kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor,
+:root[data-reduce-motion="true"] .kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor::before,
+.app[data-motion="reduce"] .pm-bubble,
+.app[data-motion="reduce"] .pm-bubble[data-phase="out"],
+.app[data-motion="reduce"] .kb-dock.center .dv-split-view-container > .dv-sash-container > .dv-sash.dv-enabled,
+.app[data-motion="reduce"] .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection,
+.app[data-motion="reduce"] .kb-dock.center .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection::before,
+.app[data-motion="reduce"] .kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor,
+.app[data-motion="reduce"] .kb-dock.center .dv-drop-target-container > .dv-drop-target-anchor::before {
+  animation: none;
   transition: none;
+}
+
+/* 停靠标签条：titleBarOverlay 固定 48px，短顶栏主题会让这一行落入系统标题区。
+   app-region 按 DOM 顺序累积，不看 pointer-events。只给可点元素 no-drag；
+   void 空白不设 drag，避免吃掉 dockview 的指针。浮动组标题栏另有规则，这里不改。 */
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container .dv-scrollable,
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container .dv-tabs-container,
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container .dv-tab,
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container .dv-pre-actions-container,
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container .dv-left-actions-container,
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container .dv-right-actions-container,
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container button,
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container [role=button],
+.kb-dock.center .dv-groupview:not(.dv-groupview-floating) > .dv-tabs-and-actions-container [role=tab],
+.kb-dock.center .pm-restore-tabs {
+  -webkit-app-region: no-drag;
 }
 
 /* r41 float drag：标题栏空白可拖；操作钮不拖；不改圆角/阴影美术 */
 .dv-groupview-floating .dv-tabs-and-actions-container {
   -webkit-app-region: no-drag;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
 }
 .dv-groupview-floating .dv-void-container {
   flex: 1 1 auto;
@@ -294,3 +443,10 @@
   flex: 0 0 64px;
   min-width: 64px;
 }
+.kb-view-toolbar .kb-doc-more-menu .kb-doc-more-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 6px 8px; border: 0; border-radius: 8px; background: transparent;
+  font: inherit; font-size: 12.5px; color: var(--kb-color-text); cursor: pointer;
+}
+.kb-view-toolbar .kb-doc-more-menu .kb-doc-more-item:hover:not(:disabled) { background: var(--kb-color-hover); }
+.kb-view-toolbar .kb-doc-more-menu .kb-doc-more-item:disabled { color: var(--kb-color-text-disabled); cursor: default; }

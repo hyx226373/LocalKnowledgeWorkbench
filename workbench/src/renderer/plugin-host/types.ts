@@ -13,6 +13,7 @@ import type { ResourceInfo, TextContent } from '../../shared/types';
 import type { SaveOutcome, SavePreview, TextSnapshot, UndoOutcome, WriteRecord } from '../../shared/textEdit';
 import type { DisplayMode, LayoutPresetTemplate, SourceKind, WorkspaceItem } from './layoutModel';
 import type { AdapterContribution as SdkAdapterContribution, PermissionDecl } from '../../shared/adapter-sdk/types';
+import type { SearchProviderContribution, SearchProviderRegistration } from '../../shared/searchProvider';
 
 export { HOST_API_VERSION } from '../../shared/hostApi';
 
@@ -53,6 +54,8 @@ export interface PluginManifest {
     chromeThemes?: { id: string; label: string }[];
     readingThemes?: { id: string; label: string }[];
     layoutPresets?: { id: string; label: string }[];
+    /** 辅助搜索。只新增。没声明时搜索框不出现插件插槽。 */
+    searchProviders?: SearchProviderContribution[];
   };
 }
 
@@ -242,6 +245,8 @@ export interface PluginApi {
   };
   /** 插件私有存储（插件全局设置；应用数据目录内按插件 id 隔离，随备份导出）。视图状态请用 setState 存进工作区。 */
   storage: { get<T = unknown>(key: string): Promise<T | null>; set(key: string, value: unknown): Promise<void> };
+  /** 辅助搜索。id 必须出现在 manifest contributes.searchProviders。 */
+  search: { registerProvider(provider: SearchProviderRegistration): Disposable };
 }
 
 export interface TextEditApi {

@@ -7,6 +7,7 @@ export {
   DRAWER_WIDTH_DEFAULT,
   DRAWER_WIDTH_MAX,
   DRAWER_WIDTH_MIN,
+  RIBBON_STRIP_WIDTH,
   clampDrawerWidth,
   initialDrawerSelection,
   isDrawerModuleId,

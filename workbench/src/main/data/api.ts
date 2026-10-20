@@ -16,6 +16,11 @@ import type { AppHost } from '../adapters/appHost';
 import type { WebResourceStore } from '../webResources';
 import type { AppHarness } from '../adapters/appHarness';
 import { stallNote } from '../startupTrace';
+import { openInsideRoots } from '../../shared/shellReveal';
+import { PluginCatalogInstaller } from '../service/pluginCatalogInstall';
+import { DIALOG_LAST_DIR } from '../../shared/dialogLastDir';
+import { createBlankFile, createFileWithContent } from '../service/blankFile';
+import { CONTENT_SEARCH_UNAVAILABLE_NOTICE, isContentBodyIndexEnabled } from '../../shared/contentIndexScope';
 
 export type AskMain = (method: string, args: unknown[]) => Promise<unknown>;
 
@@ -67,13 +72,34 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
       if (r.alias) return r;
       backend.onRootAdded(r.id, r.name, r.path);
       watchers.sync();
-      if (!watched.has(r.id)) backend.indexContent(r.id, r.path);
+      if (isContentBodyIndexEnabled() && !watched.has(r.id)) backend.indexContent(r.id, r.path);
       return r;
     },
     addFileSource: (p: string, name?: string, extensions?: unknown) => {
       const r = svc.addFileSource(p, name, asExtList(extensions));
       if (!r.alias && r.kind === 'file') watchers.sync();
       return r;
+    },
+    createBlankFile: async (input: unknown) => {
+      if (!input || typeof input !== 'object') throw new Error('参数不正确');
+      const body = input as { dir?: unknown; name?: unknown; ext?: unknown };
+      if (typeof body.dir !== 'string' || typeof body.name !== 'string' || typeof body.ext !== 'string') throw new Error('参数不正确');
+      const created = await createBlankFile(svc, { dir: body.dir, name: body.name, ext: body.ext });
+      if (created.placed === 'source') watchers.sync();
+      return created;
+    },
+    createFileWithContent: async (input: unknown) => {
+      if (!input || typeof input !== 'object') throw new Error('参数不正确');
+      const body = input as { dir?: unknown; name?: unknown; ext?: unknown; content?: unknown };
+      if (typeof body.dir !== 'string' || typeof body.name !== 'string' || typeof body.content !== 'string') throw new Error('参数不正确');
+      const created = await createFileWithContent(svc, {
+        dir: body.dir,
+        name: body.name,
+        ext: typeof body.ext === 'string' ? body.ext : 'md',
+        content: body.content,
+      });
+      if (created.placed === 'source') watchers.sync();
+      return created;
     },
     removeRoot: (id: string) => {
       svc.removeRoot(String(id));
@@ -89,6 +115,11 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
       watchers.sync();
       return receipt;
     },
+    trashInsideRoot: (rootId: string, rel: string) => svc.trashInsideRoot(String(rootId), String(rel)),
+    hideFromRoot: (rootId: string, rel: string) => svc.hideFromRoot(String(rootId), String(rel)),
+    restoreHidden: (rootId: string, rel: string) => svc.restoreHidden(String(rootId), String(rel)),
+    restoreAllHidden: (rootId: string) => svc.restoreAllHidden(String(rootId)),
+    listHiddenItems: () => svc.listHiddenItems(),
     listRootTasks: () => svc.listRootTasks(),
     cancelRootTask: (id: string) => {
       svc.cancelRootTask(String(id));
@@ -104,13 +135,14 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
       const r = svc.remapRoot(id, p);
       backend.onRootAdded(r.id, r.name, r.path);
       watchers.restart(id);
-      backend.indexContent(r.id, r.path, { existingOnly: true });
+      if (isContentBodyIndexEnabled()) backend.indexContent(r.id, r.path, { existingOnly: true });
       return r;
     },
     listFavorites: () => svc.listFavorites(),
     addFavorite: (rid: string) => svc.addFavorite(rid),
     removeFavorite: (id: number) => svc.removeFavorite(id),
     listDir: (rootId: string, rel: string) => svc.listDir(rootId, rel, { showIgnored: svc.getLayout('settings.showIgnored') === true }),
+    listDirAbs: (absPath: string) => svc.listDirAbs(String(absPath ?? ''), { showIgnored: svc.getLayout('settings.showIgnored') === true }),
     getShowIgnored: () => svc.getLayout('settings.showIgnored') === true,
     setShowIgnored: (on: boolean) => svc.setLayout('settings.showIgnored', !!on),
     getResource: (rid: string) => svc.getResource(rid),
@@ -120,7 +152,7 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
     rescan: (rootId: string) => {
       const root = svc.listRoots().find((r) => r.id === rootId);
       void svc.scanRoot(rootId);
-      if (root && root.kind !== 'file') backend.indexContent(root.id, root.path);
+      if (isContentBodyIndexEnabled() && root && root.kind !== 'file') backend.indexContent(root.id, root.path);
     },
     cancelScan: (rootId: string) => {
       svc.cancelScan(rootId);
@@ -146,12 +178,27 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
         matches: h.matches,
       }));
     },
-    searchGrouped: (q: string, o?: { limit?: number; rootIds?: string[] }) => {
+    searchGrouped: async (q: string, o?: { limit?: number; rootIds?: string[]; scope?: string }) => {
+      if (!isContentBodyIndexEnabled() && o?.scope === 'content') {
+        return { hits: [], truncated: false, degraded: true, notice: CONTENT_SEARCH_UNAVAILABLE_NOTICE };
+      }
       const allowed = svc.rootsToWatch().map((root) => root.id);
       const allow = new Set(allowed);
       const requested = Array.isArray(o?.rootIds) ? o.rootIds.map(String) : null;
       const rootIds = requested ? requested.filter((id) => allow.has(id)) : allowed;
-      return backend.search.search(String(q), { ...(o ?? {}), rootIds });
+      const scope = o?.scope === 'name' || o?.scope === 'content' || o?.scope === 'all' ? o.scope : undefined;
+      const result = await backend.search.search(String(q), {
+        limit: typeof o?.limit === 'number' ? o.limit : undefined,
+        rootIds,
+        ...(scope ? { scope } : {}),
+      });
+      if (scope !== 'content') return result;
+      const hits = result.hits.filter((h) => h.matchKind === 'content' || h.matchKind === 'heading');
+      const health = backend.getHealth();
+      const unavailable = health.engine === 'local-fallback' || (!health.contentSearch && health.engine !== 'starting');
+      if (!unavailable) return { ...result, hits };
+      if (hits.length > 0) return { ...result, hits, degraded: true };
+      return { ...result, hits: [], degraded: true, notice: result.notice || CONTENT_SEARCH_UNAVAILABLE_NOTICE };
     },
     opsPropose: (title: string, ops: unknown[]) => uiOps.propose(String(title), Array.isArray(ops) ? (ops as never) : []),
     opsPending: () => uiOps.pending(),
@@ -185,9 +232,20 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
     indexRebuild: (rootId?: string) => {
       const roots = rootId ? svc.listRoots().filter((r) => r.id === rootId) : svc.rootsToWatch();
       if (!roots.length) return { ok: false, detail: '无根可重建' };
+      if (!isContentBodyIndexEnabled()) {
+        for (const r of roots) void svc.scanRoot(r.id);
+        return { ok: true, detail: `已重新扫描 ${roots.length} 个根的文件名。本软件只按文件名搜索。` };
+      }
       for (const r of roots) {
         void svc.scanRoot(r.id);
         backend.indexContent(r.id, r.path);
+      }
+      const h = backend.getHealth();
+      if (h.engine === 'local-fallback' || !h.contentSearch) {
+        return {
+          ok: false,
+          detail: `已重新扫描 ${roots.length} 个根的文件名，但全文索引后端没有启动，正文仍不能搜。原因：${h.reason || '未知'}。重建无法修复这个问题，请重启应用；仍不行请把这段原因发给开发者。`,
+        };
       }
       return { ok: true, detail: `已触发 ${roots.length} 个根的扫描与正文索引` };
     },
@@ -203,9 +261,24 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
     listAdapterPlugins: () => svc.plugins.list(),
     installAdapterPluginFromFolder: async () => {
       if (svc.getLayout('settings.devMode') !== true) throw new Error('请先在插件管理中打开“开发者模式”');
-      const picked = await ask('pickDirectory', [{ title: '选择插件文件夹（包含 manifest.json 与打包后的 main）' }]);
+      const picked = await ask('pickDirectory', [{ title: '选择插件文件夹（包含 manifest.json 与打包后的 main）', dialogKey: DIALOG_LAST_DIR.pluginFolder }]);
       if (typeof picked !== 'string' || !picked) return null;
       return svc.plugins.installFromFolder(picked);
+    },
+    listPluginCatalog: async () => {
+      const installer = makePluginCatalogInstaller(svc, deps.packaged);
+      return installer.loadCatalog();
+    },
+    installPluginFromCatalog: async (entryId: string) => {
+      const installer = makePluginCatalogInstaller(svc, deps.packaged);
+      const d = await installer.installFromCatalog(String(entryId));
+      deps.publishPlugins();
+      return d;
+    },
+    setPluginCatalogUrl: (url: string | null) => {
+      const v = url == null || String(url).trim() === '' ? null : String(url).trim();
+      svc.setLayout('settings.pluginCatalogUrl', v);
+      return v;
     },
     setAdapterPluginEnabled: async (id: string, on: boolean) => {
       svc.plugins.setEnabled(id, on);
@@ -267,6 +340,11 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
     pluginStorageGet: (id: string, k: string) => svc.pluginStorageGet(id, k),
     pluginStorageSet: (id: string, k: string, v: unknown) => svc.pluginStorageSet(id, k, v),
     showInFolder: (rid: string) => ask('showItem', [svc.resolveResourcePath(rid)]),
+    openWithDefaultApp: (rid: string) => openInsideRoots(svc.resolveResourcePath(String(rid)), svc.listRoots().map((root) => root.path), {
+      pathLib: path,
+      caseInsensitive: process.platform === 'win32' || process.platform === 'darwin',
+      openPath: (target) => ask('openPath', [target]) as Promise<string | void>,
+    }),
     listWorkspaces: () => svc.listWorkspaces(),
     getWorkspace: (id: string) => svc.getWorkspace(id),
     createWorkspace: (name: string, project: string, layout: unknown, items?: unknown[]) => svc.createWorkspace(name, project, layout, items),
@@ -312,6 +390,7 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
       const safe = data.workspace.name.replace(/[\\/:*?"<>|]/g, '_');
       const picked = await ask('saveFile', [{
         title: '导出工作区布局',
+        dialogKey: DIALOG_LAST_DIR.exportWorkspace,
         defaultPath: `${safe}.kblayout.json`,
         filters: [{ name: '工作区布局', extensions: ['kblayout.json', 'json'] }],
       }]);
@@ -320,7 +399,7 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
       return path.basename(picked);
     },
     importWorkspaceFromFile: async () => {
-      const picked = await ask('pickFile', [{ title: '导入工作区布局', filters: [{ name: '工作区布局', extensions: ['json'] }] }]);
+      const picked = await ask('pickFile', [{ title: '导入工作区布局', dialogKey: DIALOG_LAST_DIR.importWorkspace, filters: [{ name: '工作区布局', extensions: ['json'] }] }]);
       if (typeof picked !== 'string' || !picked) return null;
       const st = fs.statSync(picked);
       if (st.size > 2 * 1024 * 1024) throw new Error('布局文件过大');
@@ -328,7 +407,7 @@ export function createDataApi(deps: DataApiDeps): Record<string, (...a: any[]) =
     },
     listThemePacks: () => svc.listThemePacks(themeDevDirs()),
     installThemePackFromFolder: async () => {
-      const picked = await ask('pickDirectory', [{ title: '选择主题包文件夹（包含 theme.json）' }]);
+      const picked = await ask('pickDirectory', [{ title: '选择主题包文件夹（包含 theme.json）', dialogKey: DIALOG_LAST_DIR.themePack }]);
       if (typeof picked !== 'string' || !picked) return null;
       return svc.installThemePack(picked);
     },
@@ -384,4 +463,31 @@ export function lastUsedOf(svc: WorkbenchService): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const plugin of svc.plugins.webPlugins()) out[plugin.pluginId] = svc.getLayout(`web.lastUsed.${plugin.pluginId}`);
   return out;
+}
+
+
+function makePluginCatalogInstaller(svc: WorkbenchService, packaged: boolean): PluginCatalogInstaller {
+  return new PluginCatalogInstaller(svc, svc.plugins, () => resolveFixturePluginCatalog(packaged));
+}
+
+/** 内置 fixture：开发时仓库 resources/plugin-catalog；打包后 resourcesPath/plugin-catalog */
+function resolveFixturePluginCatalog(packaged: boolean): string | null {
+  const fromEnv = (process.env.KB_PLUGIN_CATALOG_FIXTURE ?? '').trim();
+  if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
+  try {
+    if (packaged && typeof process.resourcesPath === 'string') {
+      const p = path.join(process.resourcesPath, 'plugin-catalog', 'fixture-catalog.json');
+      if (fs.existsSync(p)) return p;
+    }
+  } catch { /* ignore */ }
+  // 从 cwd / 本文件相对位置向上找
+  let dir = process.cwd();
+  for (let i = 0; i < 6; i++) {
+    const p = path.join(dir, 'resources', 'plugin-catalog', 'fixture-catalog.json');
+    if (fs.existsSync(p)) return p;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
 }

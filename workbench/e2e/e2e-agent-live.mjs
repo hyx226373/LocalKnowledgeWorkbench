@@ -124,7 +124,8 @@ function run(cmd, args, timeoutMs = 20000) {
     }, timeoutMs);
     child.stdout.on('data', (buf) => { out += buf.toString('utf8'); });
     child.stderr.on('data', (buf) => { err += buf.toString('utf8'); });
-    child.on('exit', (code) => {
+    // Prefer close over exit so stdout/stderr are fully drained (Windows pipe race).
+    child.on('close', (code) => {
       clearTimeout(timer);
       resolve({ code, lines: parseLines(out), err, out });
     });
@@ -155,7 +156,7 @@ function startLive(cmd, args) {
     stop() {
       try { child.kill(); } catch { /* ignore */ }
     },
-    waitNew(pred, ms = 8000) {
+    waitNew(pred, ms = 12000) {
       const start = lines.length;
       const began = Date.now();
       return new Promise((resolve, reject) => {

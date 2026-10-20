@@ -18,8 +18,11 @@ import { defaultFindExe, defaultIsAlive } from '../adapters/appLauncher';
 import { verifyExeWindows } from '../adapters/winVerify';
 import { createAppHarness, type AppHarness } from '../adapters/appHarness';
 import { READ_METHODS, errorText, isRendererDataMethod } from '../../shared/dataMethods';
+import { allowListFromCatalog } from '../../shared/nativeDragPolicy';
+import type { AgentMaterial } from '../../shared/agentLive/types';
 import { accessSnapshots, createDataApi, lastUsedOf, type AskMain } from './api';
 import { startAgentLive } from '../agentLive/wire';
+import { resolveAgentDataRoot } from '../agentPanel/paths';
 import { createWriteBatcher } from './writeBatch';
 import type { IndexerChild, IndexerForkOptions } from '@kb/indexer/fork';
 
@@ -42,6 +45,9 @@ parentPort.on('message', (event) => {
   const ports = event.ports ?? [];
   if (data?.t === 'boot' && ports[0] && ports[1]) void boot(data, ports[0], ports[1]).catch((err) => {
     console.error('[data] 启动失败', err);
+    try {
+      parentPort?.postMessage({ t: 'boot-failed', error: err instanceof Error ? err.message : String(err) });
+    } catch { /* port closed */ }
     process.exit(1);
   });
 });
@@ -189,6 +195,9 @@ async function boot(bootMsg: Boot, control: Electron.MessagePortMain, renderer: 
   watchers.setSelfPaths([bootMsg.dataDir, process.env.KB_STALL_LOG || '']);
   svc.setBeforeMutate((abs) => { void watchers.release(abs); });
   svc.setBeforeRootDelete((abs) => watchers.release(abs));
+  svc.setTrashItem(async (abs) => {
+    await ask('trashItem', [abs]);
+  });
   svc.setAfterMutate(() => { watchers.sync(); });
   const webMain = createWebResourcesMain({
     svc,
@@ -225,14 +234,63 @@ async function boot(bootMsg: Boot, control: Electron.MessagePortMain, renderer: 
     publishHarness,
   });
   webMain.wrap(api);
+  const agentData = resolveAgentDataRoot();
   const agentLive = startAgentLive({
     svc,
     watchers,
     dataDir: bootMsg.dataDir,
     version: bootMsg.version,
     notify: (workspaceId) => post({ t: 'event', channel: 'kb:agent-live', payload: { workspaceId } }),
+    ...(agentData ? { agentDataDir: agentData.root, agentAnchorDir: agentData.anchor } : {}),
+    trashItem: async (abs) => {
+      await ask('trashItem', [abs]);
+    },
   });
   Object.assign(api, agentLive.methods);
+  api.nativeDragAllow = () => allowListFromCatalog({
+    rootsToWatch: () => svc.rootsToWatch().map((root) => ({ path: root.path, kind: root.kind })),
+    currentWorkspaceId: () => {
+      const cur = svc.getLayout('workspace.current');
+      if (typeof cur !== 'string' || !cur) return null;
+      try {
+        svc.getWorkspace(cur);
+        return cur;
+      } catch {
+        return null;
+      }
+    },
+    openFileResourceIds: (workspaceId) => {
+      try {
+        return svc.getWorkspace(workspaceId).items.filter((item) => item.sourceKind === 'file' && item.ref).map((item) => item.ref);
+      } catch {
+        return [];
+      }
+    },
+    workspaceFileResourceIds: (workspaceId) => {
+      try {
+        return svc.listWorkspaceRefs(workspaceId)
+          .filter((ref) => !ref.missing && ref.sourceKind !== 'web' && ref.kind !== 'dir')
+          .map((ref) => ref.resourceId);
+      } catch {
+        return [];
+      }
+    },
+    resourceAbsPath: (resourceId) => {
+      try {
+        return svc.resolveResourcePath(resourceId);
+      } catch {
+        return null;
+      }
+    },
+    agentFilePaths: (workspaceId) => {
+      try {
+        const rows = agentLive.methods.agentLiveList(workspaceId) as AgentMaterial[];
+        return rows.map((row) => row.absPath).filter((abs) => typeof abs === 'string' && abs.trim());
+      } catch {
+        return [];
+      }
+    },
+  });
   const setWorkspace = api.setCurrentWorkspace;
   api.setCurrentWorkspace = (id: string) => {
     const result = setWorkspace(id);
@@ -384,6 +442,7 @@ async function boot(bootMsg: Boot, control: Electron.MessagePortMain, renderer: 
     void Promise.allSettled(scans).then(() => {
       startupMark('deferred:scans-done');
       for (const root of svc.rootsToWatch()) {
+        try { backend.reconcileContentRoot(root.id); } catch (err) { console.error('[data] 启动对账正文索引', err); }
         if (root.kind === 'file') continue;
         backend.indexContent(root.id, root.path);
       }

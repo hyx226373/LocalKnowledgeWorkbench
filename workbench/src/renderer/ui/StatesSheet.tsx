@@ -9,6 +9,7 @@ import { COMPONENTS, STATES, TOKENS, THEME_CONTRACT_VERSION } from '../theme/con
 export const RENDERED_COMPONENT_IDS = () => Object.keys(RENDER);
 import { HOST_API_VERSION } from '../plugin-host/types';
 import '../settings/kb-toggle.css';
+import { BubbleCloseIcon, StarIcon, TreeGlyph } from './shellMarks';
 
 type Cell = React.ReactNode | null;
 const F = (s: string) => ({ 'data-force-state': s === 'focus-visible' ? 'focus' : s }) as Record<string, string>;
@@ -54,10 +55,10 @@ function TreeRow({ st, label = '读书笔记.md' }: { st: string; label?: string
   return (
     <div className="kb-sidebar" style={{ width: 200, padding: '4px 0' }}>
       <div className="kb-tree-row" {...p}>
-        <span className="twisty" />
-        <span className="icon icon-file icon-md" />
+        <span className="kb-chev" aria-hidden="true" />
+        <TreeGlyph kind="file" ext="md" />
         <span className="name">{label}</span>
-        <span className="act on">★</span>
+        <span className="act on"><StarIcon filled /></span>
       </div>
     </div>
   );
@@ -342,10 +343,10 @@ function CollectionRow({ st }: { st: string }) {
     <div className="kb-sidebar" style={{ width: 220, padding: '4px 0' }}>
       <div className="kb-collection">
         <div className="kb-collection-row" data-open={st === 'selected' ? 'true' : undefined} {...p}>
-          <span className="icon icon-file icon-pdf" />
+          <TreeGlyph kind="file" ext="pdf" />
           <span className="name">讲义.pdf</span>
           <span className="p">论文库</span>
-          <span className="act">✕</span>
+          <span className="act"><BubbleCloseIcon /></span>
         </div>
       </div>
     </div>

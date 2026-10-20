@@ -8,13 +8,15 @@ export const DRAWER_MODULE_LABEL: Record<DrawerModuleId, string> = {
   fav: '收藏',
   web: '网络资料',
   bench: '工作台资料',
-  agent: 'Agent资料',
+  agent: 'Agent 资料',
   plugin: '插件',
 };
 
 export const DRAWER_WIDTH_DEFAULT = 360;
-export const DRAWER_WIDTH_MIN = 300;
-export const DRAWER_WIDTH_MAX = 440;
+export const DRAWER_WIDTH_MIN = 240;
+export const DRAWER_WIDTH_MAX = 480;
+/** list 模式收起后左侧满高 ribbon 的宽度。抽屉和侧栏都收到这个宽度，主区随之变宽。 */
+export const RIBBON_STRIP_WIDTH = 44;
 
 const ID_SET = new Set<string>(DRAWER_MODULE_IDS);
 

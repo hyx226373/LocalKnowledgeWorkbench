@@ -16,6 +16,7 @@ import crypto from 'node:crypto';
 import type { DB } from './db';
 import { extOf } from './paths';
 import { extensionsFromFilterJson, inAccessScope, normalizeExtensions, type AccessScope } from '../../shared/sourceFilter';
+import { hiddenRelSet, isHiddenRel, seedHiddenSeen } from './rootHidden';
 
 export const HASH_MAX_BYTES = 4 * 1024 * 1024;
 export const DEFAULT_IGNORES = new Set(['.git', 'node_modules', '$RECYCLE.BIN', 'System Volume Information', '.DS_Store', 'Thumbs.db', 'desktop.ini']);
@@ -77,7 +78,12 @@ interface ResRow {
 
 function setFts(db: DB, id: string, rootId: string, rel: string, name: string) {
   db.prepare('DELETE FROM resources_fts WHERE resource_id = ?').run(id);
-  if (rel !== '') db.prepare('INSERT INTO resources_fts(resource_id, root_id, rel_path, name) VALUES (?,?,?,?)').run(id, rootId, rel, name);
+  // 文件夹根的空相对路径仍不进文件名索引。单文件来源 rel 为空，用文件名本身入 resources_fts。
+  if (rel === '') {
+    const row = db.prepare('SELECT kind FROM resources WHERE id=?').get(id) as { kind?: string } | undefined;
+    if (row?.kind !== 'file' || !name) return;
+  }
+  db.prepare('INSERT INTO resources_fts(resource_id, root_id, rel_path, name) VALUES (?,?,?,?)').run(id, rootId, rel, name);
 }
 
 function pathGone(rootPath: string, rel: string): boolean {
@@ -240,6 +246,7 @@ export async function reconcileScan(db: DB, rootId: string, rootPath: string, op
   const scanStart = Date.now();
   const res: ScanResult = { processed: 0, cancelled: false, missing: 0, renamed: 0, created: 0, changed: [] };
   const seen = new Set<string>();
+  const hidden = seedHiddenSeen(db, rootId, rootPath, seen);
   let batch: { rel: string; abs: string }[] = [];
 
   const flush = () => {
@@ -301,6 +308,7 @@ export async function reconcileScan(db: DB, rootId: string, rootPath: string, op
     for (const e of ents) {
       if (isIgnoredName(e.name) || e.isSymbolicLink()) continue;
       const childRel = rel === '' ? e.name : `${rel}/${e.name}`;
+      if (isHiddenRel(hidden, childRel)) continue;
       batch.push({ rel: childRel, abs: path.join(abs, e.name) });
       if (e.isDirectory()) stack.push(childRel);
       if (batch.length >= batchSize) {
@@ -352,6 +360,7 @@ export function applyEvents(db: DB, rootId: string, rootPath: string, events: Fs
   let renamed = 0;
   const changed: ScanChange[] = [];
   adds.sort((a, b) => a.relPath.split('/').length - b.relPath.split('/').length);
+  const hidden = hiddenRelSet(db, rootId);
   const prepared = adds.map((e) => ({ e, st: statForIndex(path.join(rootPath, ...e.relPath.split('/')), false) }));
   // Windows 递归监听只报“变了”。文件已经不在，就按删除处理，好让改名仍能先配对再标缺失。
   const gone = [
@@ -363,6 +372,7 @@ export function applyEvents(db: DB, rootId: string, rootPath: string, events: Fs
     const findExisting = db.prepare('SELECT id FROM resources WHERE root_id=? AND rel_path=?');
     for (const { e, st } of prepared) {
       if (!st) continue;
+      if (isHiddenRel(hidden, e.relPath)) continue;
       if (!extensionGate(scope, st.kind, e.relPath) && !findExisting.get(rootId, e.relPath)) continue;
       const r = upsertSeen(db, rootId, rootPath, e.relPath, st);
       if (r.renamedFrom !== undefined) renamed++;
@@ -408,7 +418,7 @@ interface FilterNode {
 }
 
 /** 磁盘上要纳入的节点。DEFAULT_IGNORES 与符号链接不进入列表，和 reconcileScan 一样。 */
-function listInScopeNodes(rootPath: string, allowed: readonly string[]): FilterNode[] {
+function listInScopeNodes(rootPath: string, allowed: readonly string[], hidden: readonly string[] = []): FilterNode[] {
   const rootStat = statForIndex(rootPath);
   if (!rootStat || rootStat.kind !== 'dir') throw new Error(`根目录不可访问: ${rootPath}`);
   const out: FilterNode[] = [{ rel: '', abs: rootPath, stat: rootStat }];
@@ -425,6 +435,7 @@ function listInScopeNodes(rootPath: string, allowed: readonly string[]): FilterN
     for (const e of ents) {
       if (isIgnoredName(e.name) || e.isSymbolicLink()) continue;
       const childRel = rel === '' ? e.name : `${rel}/${e.name}`;
+      if (isHiddenRel(hidden, childRel)) continue;
       const childAbs = path.join(abs, e.name);
       const st = statForIndex(childAbs);
       if (!st) continue;
@@ -469,7 +480,8 @@ export function reconcileFilter(db: DB, rootId: string, extensions: readonly str
     if (!st || st.kind !== 'file') continue;
     excludeIds.push(row.id);
   }
-  const nodes = listInScopeNodes(rootPath, allowed);
+  const hidden = hiddenRelSet(db, rootId);
+  const nodes = listInScopeNodes(rootPath, allowed, hidden);
 
   db.transaction(() => {
     const markOut = db.prepare('UPDATE resources SET out_of_scope=1 WHERE id=?');

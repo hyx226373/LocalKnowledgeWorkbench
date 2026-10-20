@@ -111,12 +111,16 @@ class VisibleContentTracker {
     clearTimeout(this.timeout);
     this.doneAt = performance.now();
     // 两帧之后：内容已经画到屏幕上
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        kb.startupMark(timedOut ? 'visible-content-timeout' : 'visible-content-loaded');
-        backgroundLoader.openGate();
-      }),
-    );
+    // startup-ready-race v3: rAF is paused while the window is occluded/minimized; a timer fallback keeps the mark from being lost.
+    let sent = false;
+    const go = () => {
+      if (sent) return;
+      sent = true;
+      kb.startupMark(timedOut ? 'visible-content-timeout' : 'visible-content-loaded');
+      backgroundLoader.openGate();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(go));
+    setTimeout(go, 1000);
   }
   state() {
     return { expected: this.expected ? [...this.expected] : null, ready: [...this.ready], done: this.done };

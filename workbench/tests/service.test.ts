@@ -583,3 +583,41 @@ describe('目录树与索引使用同一套忽略规则', () => {
     expect(svc.search('index.js')).toEqual([]);
   });
 });
+
+describe('listDirAbs 松散目录', () => {
+  it('命中已登记 folder 根时走 listDir', async () => {
+    const { svc, root, rootDir } = await setup();
+    const nested = path.join(rootDir, '笔记');
+    const kids = svc.listDirAbs(nested);
+    expect(kids.map((e) => e.name).sort()).toEqual(['待办.txt', '读书笔记.md'].sort());
+    expect(kids.every((e) => e.rootId === root.id && !!e.resourceId)).toBe(true);
+    const located = svc.locateRootRel(nested);
+    expect(located).toEqual({ sourceId: root.id, relPath: '笔记' });
+  });
+
+  it('未命中任何根时浅层 readdir，resourceId/rootId 空串；忽略默认 ignored', async () => {
+    const { svc } = await makeService();
+    cleanups.push(() => svc.close());
+    const loose = tmpDir('kb-loose-');
+    write(path.join(loose, 'a.txt'), 'hi');
+    fs.mkdirSync(path.join(loose, 'sub'));
+    write(path.join(loose, 'node_modules/x.js'), 'x');
+    const kids = svc.listDirAbs(loose);
+    expect(kids.map((e) => e.name).sort()).toEqual(['a.txt', 'sub']);
+    expect(kids.find((e) => e.name === 'a.txt')).toMatchObject({ kind: 'file', resourceId: '', rootId: '', relPath: 'a.txt', ext: 'txt' });
+    expect(kids.find((e) => e.name === 'sub')).toMatchObject({ kind: 'dir', resourceId: '', rootId: '', relPath: 'sub', ext: '' });
+    expect(svc.locateRootRel(loose)).toBeNull();
+  });
+
+  it('showIgnored 时根外也能看到 ignored 名', async () => {
+    const { svc } = await makeService();
+    cleanups.push(() => svc.close());
+    const loose = tmpDir('kb-loose-ign-');
+    write(path.join(loose, 'ok.md'), 'x');
+    fs.mkdirSync(path.join(loose, '.git'));
+    const hidden = svc.listDirAbs(loose);
+    expect(hidden.map((e) => e.name)).toEqual(['ok.md']);
+    const shown = svc.listDirAbs(loose, { showIgnored: true });
+    expect(shown.filter((e) => e.ignored).map((e) => e.name)).toEqual(['.git']);
+  });
+});

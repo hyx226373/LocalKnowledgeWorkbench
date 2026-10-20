@@ -1,0 +1,48 @@
+{
+  "id": "catalog.hello",
+  "name": "Catalog Hello",
+  "version": "0.1.0",
+  "publisher": "catalog-fixture",
+  "description": "plugin catalog first-cut fixture",
+  "engines": {
+    "workbench": "^0.2.0",
+    "adapterApi": "^0.1.0"
+  },
+  "main": "dist/index.js",
+  "activationEvents": [
+    "onAdapter:catalog.hello.reader"
+  ],
+  "sandbox": "iframe",
+  "contributes": {
+    "adapters": [
+      {
+        "id": "catalog.hello.reader",
+        "title": "Catalog Hello",
+        "sourceKinds": [
+          "file"
+        ],
+        "displayMode": "in-app-reader",
+        "match": {
+          "file": {
+            "extensions": [
+              "hello-catalog"
+            ]
+          },
+          "priority": 10
+        },
+        "permissions": [
+          {
+            "id": "read",
+            "kind": "fs.read",
+            "scope": "ask-per-root",
+            "extensions": [
+              "hello-catalog"
+            ],
+            "reason": "read .hello-catalog"
+          }
+        ],
+        "stateSchemaVersion": 1
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * 更新动作。检查是只读的，桥可以直接执行。
- * 安装和回滚必须在人机界面批准，这里不注册执行体。
+ * 打开下载链接与回滚提示必须在人机界面批准，这里不注册执行体。
  */
 import { registerActions, registerInvokeExecutor, type ActionInvokeResult } from '../registry';
 import type { ActionInput } from '../types';
@@ -15,11 +15,11 @@ export const APP_UPDATE_ACTIONS: readonly ActionInput[] = [
     source: 'app',
     bridgeInvokable: true,
     approvalRequired: false,
-    argsSchema: { type: 'object', additionalProperties: false, description: '只读检查更新源。不安装。' },
+    argsSchema: { type: 'object', additionalProperties: false, description: '只读检查公开版本信号。不下载、不安装。' },
   },
   {
     actionId: 'app.installUpdate',
-    title: '安装更新',
+    title: '打开下载链接',
     category: '更新',
     source: 'app',
     bridgeInvokable: true,
@@ -28,7 +28,7 @@ export const APP_UPDATE_ACTIONS: readonly ActionInput[] = [
       type: 'object',
       additionalProperties: false,
       properties: { when: { enum: ['now', 'quit'] } },
-      description: '立即重启并升级，或下次退出时升级。桥只提出，不安装。',
+      description: '在浏览器打开公开下载链接；用户自行覆盖安装。桥只提出，不安装。',
     },
   },
   {
@@ -38,7 +38,7 @@ export const APP_UPDATE_ACTIONS: readonly ActionInput[] = [
     source: 'app',
     bridgeInvokable: true,
     approvalRequired: true,
-    argsSchema: { type: 'object', additionalProperties: false, description: '恢复最近一份升级前备份。桥只提出，不回滚。' },
+    argsSchema: { type: 'object', additionalProperties: false, description: '简化更新后不再自动回滚；请用户自行覆盖安装。桥只提出。' },
   },
 ];
 

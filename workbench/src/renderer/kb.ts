@@ -4,4 +4,4 @@ declare global {
     kb: KbApi;
   }
 }
-export const kb: KbApi = window.kb;
+export const kb: KbApi = (typeof window !== 'undefined' ? window.kb : undefined) as KbApi;

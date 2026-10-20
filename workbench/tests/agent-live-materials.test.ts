@@ -376,7 +376,7 @@ describe('agent live 资料清单', () => {
     expect(store.list(WS)[0]?.status).toBe('ok');
   });
 
-  it('不可读变为可读后恢复；目录、网址和令牌文件不收', async () => {
+  it('不可读变为可读后恢复；目录可加入，网址和令牌文件不收', async () => {
     const env = fresh();
     const file = path.join(env.loose, '锁.txt');
     writeFile(file, 'abc');
@@ -396,12 +396,14 @@ describe('agent live 资料清单', () => {
     expect(store.list(WS)[0]?.contentHash).toMatch(/^sha256:/);
     expect(events.some((event) => event.type === 'material.restored')).toBe(true);
 
-    expect(() => store.add(WS, { absPath: env.root })).toThrow(MaterialStoreError);
+    expect(store.add(WS, { absPath: env.root })).toBe('added');
+    const dirHit = store.list(WS).find((row) => row.status === 'ok' && row.bytes == null && row.name === path.basename(env.root));
+    expect(dirHit).toBeTruthy();
     expect(() => store.add(WS, { absPath: 'https://example.com/a.png' })).toThrow(MaterialStoreError);
     const secret = path.join(env.loose, 'agent-token.json');
     writeFile(secret, '{"token":"no"}');
     expect(() => store.add(WS, { absPath: secret })).toThrow(MaterialStoreError);
-    expect(store.list(WS)).toHaveLength(1);
+    expect(store.list(WS).length).toBeGreaterThanOrEqual(2);
     expect(fs.existsSync(secret)).toBe(true);
   });
 

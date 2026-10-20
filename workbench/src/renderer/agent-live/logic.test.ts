@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentMaterial, MaterialRef } from '../../shared/agentLive/types';
 import { AGENT_LIVE_ACTIONS } from '../../shared/agentLive/types';
-import { addCurrent, addRefs, clearSession, copyBridgeLink } from './actions';
+import { addCurrent, addFromDisk, addRefs, addRefsMaybeDir, clearSession, copyBridgeLink } from './actions';
 import { applyCopyDrag, AGENT_COPY_MIME, nativeCopyDrag, parseCopyDrag } from './dragPolicy';
 import { piecesFromPayload, piecesFromTransfer, partitionPieces } from './dropIn';
-import { formatSectionHeading, formatSectionTotals, tokenBudgetHint, TOKEN_HINT_THRESHOLD } from './format';
+import { formatSectionHeading, formatSectionTotals, isDirMaterial, tokenBudgetHint, TOKEN_HINT_THRESHOLD } from './format';
 import type { AgentLiveHost } from './host';
 import { entryPaths } from './host';
 import { createMemoryAgentLive } from './memoryClient';
@@ -275,8 +275,34 @@ describe('加入反馈', () => {
   });
 });
 
+describe('空树一键加资料', () => {
+  it('无 reading 时 pickFile 加入 loose material', async () => {
+    const client = createMemoryAgentLive();
+    const { host, notes } = harness({
+      currentReading: () => null,
+      pickFile: async () => 'D:\\从磁盘选.md',
+    });
+    await addCurrent({ client, host });
+    const rows = await client.list('ws');
+    expect(rows.some((item) => item.absPath === 'D:\\从磁盘选.md' && item.resourceId == null)).toBe(true);
+    expect(notes.at(-1)).toBe(MSG_ADDED);
+  });
+
+  it('取消 pickFile 不加入也不报错', async () => {
+    const client = createMemoryAgentLive();
+    const { host, notes } = harness({
+      currentReading: () => null,
+      pickFile: async () => null,
+    });
+    await addCurrent({ client, host });
+    await addFromDisk({ client, host });
+    expect(await client.list('ws')).toHaveLength(0);
+    expect(notes).toEqual([]);
+  });
+});
+
 describe('拖入', () => {
-  it('拒绝网页和文件夹，文件留下引用', () => {
+  it('网页与文件留下引用，文件夹也作为引用（确认在 panel）', () => {
     const payload: DragPayload = {
       v: 1,
       items: [
@@ -285,10 +311,12 @@ describe('拖入', () => {
         { resourceId: 'file-1', sourceKind: 'file', from: { kind: 'root', rootId: 'root', relPath: '章/实验.md' }, entry: 'file', name: '实验.md', relPath: '章/实验.md' },
       ],
     };
-    const parts = partitionPieces(piecesFromPayload(payload));
-    expect(parts.reject).toBe('dir');
-    expect(parts.refs.map((r) => r.resourceId)).toEqual(['web-1', 'file-1']);
-    expect(parts.refs[1]).toEqual({ resourceId: 'file-1', relPath: '章/实验.md', name: '实验.md', absPath: '' });
+    const pieces = piecesFromPayload(payload);
+    const parts = partitionPieces(pieces);
+    expect(parts.reject).toBeNull();
+    expect(parts.refs.map((r) => r.resourceId)).toEqual(['web-1', 'dir-1', 'file-1']);
+    expect(pieces.find((p) => p.ref?.resourceId === 'dir-1')?.kind).toBe('dir');
+    expect(parts.refs[2]).toEqual({ resourceId: 'file-1', relPath: '章/实验.md', name: '实验.md', absPath: '' });
     const fromUri = piecesFromTransfer(['text/uri-list'], () => 'file:///D:/%E8%AE%BA%E6%96%87/%E5%AE%9E%E9%AA%8C.md\r\n');
     expect(fromUri[0]?.ref?.absPath).toBe('D:\\论文\\实验.md');
   });
@@ -320,3 +348,60 @@ describe('路径键', () => {
     expect(pathKey('D:\\论文\\实验.md\\')).toBe(pathKey('d:/论文/实验.md'));
   });
 });
+
+describe('isDirMaterial', () => {
+  it('目录材料：ok 且无 bytes/hash/readable', () => {
+    expect(isDirMaterial(material({ materialId: 'd', absPath: 'D:\\chap', bytes: null, contentHash: null, readable: null }))).toBe(true);
+  });
+  it('文件材料：有 bytes 不算目录', () => {
+    expect(isDirMaterial(material({ materialId: 'f', absPath: 'D:\\a.md', bytes: 12, contentHash: null, readable: null }))).toBe(false);
+  });
+  it('失效材料不算可展开目录', () => {
+    expect(isDirMaterial(material({ materialId: 'm', absPath: 'D:\\gone', status: 'missing', bytes: null }))).toBe(false);
+  });
+});
+
+describe('addRefsMaybeDir', () => {
+  it('asDir 时先确认，取消则不加', async () => {
+    const client = createMemoryAgentLive();
+    const asks: string[] = [];
+    const h = harness({
+      confirm: async (spec) => {
+        asks.push(spec.title);
+        return false;
+      },
+      resolve: async (ref) => ({ ...ref, absPath: ref.absPath || 'D:\\chap' }),
+    });
+    const msg = await addRefsMaybeDir({ client, host: h.host }, [{ resourceId: 'd1', absPath: '', name: '章' }], { asDir: true });
+    expect(msg).toBe('');
+    expect(asks.length).toBe(1);
+    expect(await client.list('ws')).toHaveLength(0);
+  });
+
+  it('asDir 确认后加入', async () => {
+    const client = createMemoryAgentLive();
+    const h = harness({
+      confirm: async () => true,
+      resolve: async (ref) => ({ ...ref, absPath: 'D:\\chap', name: '章' }),
+    });
+    await addRefsMaybeDir({ client, host: h.host }, [{ resourceId: 'd1', absPath: '', name: '章' }], { asDir: true });
+    const list = await client.list('ws');
+    expect(list.length).toBe(1);
+  });
+
+  it('非目录不弹确认', async () => {
+    const client = createMemoryAgentLive();
+    let confirms = 0;
+    const h = harness({
+      confirm: async () => {
+        confirms += 1;
+        return true;
+      },
+      resolve: async (ref) => ({ ...ref, absPath: 'D:\\a.md', name: 'a.md' }),
+    });
+    await addRefsMaybeDir({ client, host: h.host }, [{ resourceId: 'f1', absPath: '', name: 'a.md' }], { asDir: false });
+    expect(confirms).toBe(0);
+    expect(await client.list('ws')).toHaveLength(1);
+  });
+});
+

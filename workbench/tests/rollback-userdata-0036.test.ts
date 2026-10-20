@@ -151,15 +151,24 @@ describe('回滚不覆盖用户数据', () => {
     expect(Buffer.compare(await fs.readFile(path.join(install, 'current.json')), beforePointer)).toBe(0);
   });
 
-  it('安装根在 study_dev 下拒绝，且不改用户标记', async () => {
+  it('安装根在 study_dev 下手动回滚只提示覆盖安装，且不改用户标记', async () => {
     const dir = tmp();
     const { marker, bytes } = await seedMarker(dir);
-    const box = boxOf(dir, { installDir: 'D:\\study_dev\\kb-g36-not-real' });
+    const reasons: string[] = [];
+    const box = boxOf(dir, {
+      installDir: 'D:\\study_dev\\kb-g36-not-real',
+      showReason: async (_title, detail) => {
+        reasons.push(detail);
+      },
+    });
     const svc = new UpdateService(box.hooks);
     await svc.init();
-    await expect(svc.rollback('manual', '手动回滚到上一版')).rejects.toThrow(/study_dev/);
+    await svc.rollback('manual', '手动回滚到上一版');
+    expect(reasons.join('\n')).toMatch(/自行覆盖安装/);
+    expect(svc.snapshot().phase).toBe('idle');
     expect(box.spawned).toEqual([]);
     expect(box.exited).toBe(false);
+    expect(box.order).toEqual([]);
     expect(Buffer.compare(await fs.readFile(marker), bytes)).toBe(0);
   });
 });

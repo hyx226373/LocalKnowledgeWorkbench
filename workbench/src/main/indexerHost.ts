@@ -1,3 +1,4 @@
+import path from 'node:path';
 /**
  * r11-E：为 @kb/indexer 注入 Electron 兼容的子进程拉起方式。
  * 打包态（runAsNode fuse = false）禁止 child_process.fork，改用 utilityProcess.fork。
@@ -9,7 +10,8 @@
 import { app, utilityProcess, type UtilityProcess } from 'electron';
 import { disownPid, ownPid } from './ownedPids';
 import type { IndexerChild, IndexerForkFn, IndexerForkOptions } from '@kb/indexer/fork';
-import { setIndexerFork } from '@kb/indexer/fork';
+import { getIndexerFork, setIndexerFork } from '@kb/indexer/fork';
+export { getIndexerFork };
 
 function adaptUtilityProcess(child: UtilityProcess, readOnly: boolean): IndexerChild {
   const listeners = new Map<string, Set<(...args: any[]) => void>>();
@@ -89,8 +91,9 @@ function adaptUtilityProcess(child: UtilityProcess, readOnly: boolean): IndexerC
 function createUtilityFork(): IndexerForkFn {
   return (modulePath: string, _args: string[], options: IndexerForkOptions): IndexerChild => {
     // utilityProcess.fork 不接受 ipc 槽位的 stdio 数组；用 pipe 拿 stderr 便于诊断
-    const child = utilityProcess.fork(modulePath, [], {
-      env: options.env,
+    // 索引脚本按 child_process 写，经 indexerShim 把 process.send 接到 parentPort。
+    const child = utilityProcess.fork(path.join(__dirname, 'indexerShim.js'), [], {
+      env: { ...(options.env ?? process.env), KB_INDEXER_TARGET: modulePath },
       execArgv: options.execArgv,
       cwd: options.cwd,
       stdio: 'pipe',

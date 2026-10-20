@@ -1,0 +1,581 @@
+/* 阅读台外壳。数值来自预览 tabstrip / pane-bar / doc-tools / crumb。颜色走 --kb-*。 */
+
+.kb-dock.center .dockview-theme-dark {
+  --dv-tabs-and-actions-container-height: 42px;
+  --dv-tabs-and-actions-container-font-size: 13px;
+  --dv-tabs-and-actions-container-background-color: var(--kb-color-bg);
+  --dv-activegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-activegroup-hiddenpanel-tab-color: var(--kb-color-text-muted);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--kb-color-text-muted);
+  --dv-activegroup-visiblepanel-tab-color: var(--kb-color-tab-active-fg);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--kb-color-tab-active-fg);
+  --dv-tab-margin: 0;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tabs-and-actions-container {
+  height: 42px;
+  min-height: 42px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 12px 0 10px;
+  background: var(--kb-color-bg);
+  border-bottom: 0;
+  user-select: none;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tabs-container {
+  gap: 4px;
+  align-items: flex-end;
+  height: 100%;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-tabs-container,
+.kb-dock.center .dockview-theme-dark .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-scrollable {
+  flex-grow: 0;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-tabs-container .dv-tab {
+  flex-grow: 0;
+  padding: 0 6px 0 10px;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tabs-and-actions-container.dv-single-tab.dv-full-width-single-tab .dv-void-container {
+  flex-grow: 1;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-void-container {
+  flex: 1 1 auto;
+  min-width: 8px;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tab {
+  max-width: 220px;
+  height: 32px;
+  margin: 0;
+  padding: 0 6px 0 10px;
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--kb-color-text-muted);
+  font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei UI", "Noto Sans CJK SC", "Segoe UI Symbol", "Cambria Math", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-groupview.dv-active-group > .dv-tabs-and-actions-container .dv-tabs-container > .dv-tab.dv-inactive-tab,
+.kb-dock.center .dockview-theme-dark .dv-groupview.dv-inactive-group > .dv-tabs-and-actions-container .dv-tabs-container > .dv-tab.dv-inactive-tab {
+  background: transparent;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-dock.center .dockview-theme-dark .dv-groupview.dv-active-group > .dv-tabs-and-actions-container .dv-tabs-container > .dv-tab.dv-active-tab,
+.kb-dock.center .dockview-theme-dark .dv-groupview.dv-inactive-group > .dv-tabs-and-actions-container .dv-tabs-container > .dv-tab.dv-active-tab {
+  background: var(--kb-color-tab-active-bg);
+  color: var(--kb-color-tab-active-fg);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tab:hover {
+  background: transparent;
+  color: var(--kb-color-text);
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tab.dv-active-tab:hover {
+  background: var(--kb-color-tab-active-bg);
+  color: var(--kb-color-tab-active-fg);
+}
+
+.kb-dock.center .dockview-theme-dark .dv-tab .tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.kb-dock.center .dv-tab > .dv-react-part {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+.kb-dock .dv-tab .dv-default-tab .tab-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  padding: 0;
+  text-align: start;
+  cursor: inherit;
+}
+
+.kb-dock .dv-tab .dv-default-tab .dv-default-tab-content {
+  margin-right: 0;
+}
+
+.kb-dock.center .dv-tab.dv-inactive-tab .dv-default-tab .dv-default-tab-action,
+.kb-dock.center .dv-tab.dv-active-tab .dv-default-tab .dv-default-tab-action {
+  visibility: visible;
+}
+
+.kb-dock .dv-tab .dv-default-tab .tab-x {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--kb-color-text-faint);
+  flex: none;
+  cursor: pointer;
+}
+
+.kb-dock .dv-tab.dv-active-tab .dv-default-tab .tab-x {
+  color: var(--kb-color-text-muted);
+}
+
+.kb-dock .dv-tab .dv-default-tab .tab-x svg {
+  width: 12px;
+  height: 12px;
+}
+
+.kb-dock .dv-tab .dv-default-tab .tab-x:hover {
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+}
+
+.kb-dock.center .dockview-theme-dark .dv-right-actions-container,
+.kb-dock.center .dockview-theme-dark .dv-left-actions-container {
+  align-self: center;
+}
+
+.kb-dock.center .pm-btn-hide-tabs {
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  margin-bottom: 4px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--kb-color-text);
+}
+
+.kb-dock.center .pm-btn-hide-tabs:hover {
+  background: color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+  color: var(--kb-color-text);
+}
+
+.kb-dock.center .pm-btn-hide-tabs svg {
+  transform-origin: center;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.kb-dock.center .pm-btn-hide-tabs:active svg {
+  transform: scale(0.9);
+}
+
+/* 显示标签已由面板层绝对定位在 left:18 / top:10，等价于预览 margin。这里只改 ghost 外形。 */
+.kb-dock .pm-restore-tabs {
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kb-color-text);
+  font-size: 13px;
+}
+
+.kb-dock .pm-restore-tabs:hover {
+  background: color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+}
+
+.kb-editor > .kb-view-toolbar.pane-bar,
+.kb-reading.pdf > .kb-view-toolbar.pane-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-height: 42px;
+  padding: 4px 8px 4px 4px;
+  border-bottom: 1px solid var(--kb-color-border);
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei UI", "Noto Sans CJK SC", "Segoe UI Symbol", "Cambria Math", sans-serif;
+}
+
+.kb-reading.pdf > .kb-view-toolbar.pdf-toolbar.pane-bar {
+  background: var(--kb-read-pdf-backdrop);
+}
+
+.kb-editor[data-conflict="true"] > .kb-view-toolbar.pane-bar {
+  border-bottom: 1px solid var(--kb-color-warning);
+}
+
+.kb-view-toolbar.pane-bar > .doc-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.kb-view-toolbar.pane-bar .modes {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  height: 28px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--kb-color-chrome-alt);
+  box-shadow: inset 0 0 0 1px var(--kb-color-border);
+}
+
+.kb-view-toolbar.pane-bar .modes .mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--kb-color-text-muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.kb-view-toolbar.pane-bar .modes .mode.on {
+  background: var(--kb-color-surface);
+  color: var(--kb-color-accent);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--kb-color-border);
+}
+
+.kb-view-toolbar.pane-bar .doc-tools > .crumb {
+  margin-left: auto;
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 42%;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--kb-color-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kb-view-toolbar.pane-bar > .kb-doc-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  flex: none;
+  min-width: 0;
+}
+
+/* 预览 pane-bar 最右：浮动 / 收成气泡。高度 28、圆角 8、字号 12、强调色。 */
+.kb-view-toolbar.pane-bar > .pm-pane-actions {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  height: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.kb-view-toolbar.pane-bar > .pm-pane-actions .pm-actions-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: auto;
+}
+
+.kb-view-toolbar.pane-bar > .pm-pane-actions .pm-btn {
+  width: auto;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kb-color-accent);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  box-shadow: none;
+  filter: none;
+}
+
+.kb-view-toolbar.pane-bar > .pm-pane-actions .pm-btn:hover {
+  background: color-mix(in srgb, var(--kb-color-text) 6%, transparent);
+  color: var(--kb-color-accent);
+  filter: none;
+}
+
+.kb-view-toolbar.pane-bar .kb-doc-actions .kb-button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--kb-color-border);
+  border-radius: 6px;
+  background: var(--kb-color-surface);
+  color: var(--kb-color-text);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: none;
+  filter: none;
+}
+
+.kb-view-toolbar.pane-bar .kb-doc-actions .kb-button:hover {
+  background: var(--kb-color-hover);
+  filter: none;
+  border-color: var(--kb-color-border-strong);
+}
+
+.kb-view-toolbar.pane-bar .kb-doc-actions .kb-button:active {
+  background: var(--kb-color-active);
+  filter: none;
+}
+
+.kb-view-toolbar.pane-bar .kb-doc-actions .kb-button:disabled,
+.kb-view-toolbar.pane-bar .kb-doc-actions .kb-button[aria-disabled="true"] {
+  background: transparent;
+  color: var(--kb-color-text-disabled);
+  border-color: transparent;
+  box-shadow: none;
+  filter: none;
+}
+
+.kb-view-toolbar.pane-bar .kb-doc-actions .kb-button[aria-pressed="true"] {
+  background: var(--kb-color-accent-soft, color-mix(in srgb, var(--kb-color-accent) 16%, transparent));
+  color: var(--kb-color-accent);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.kb-view-toolbar.pane-bar button:focus-visible {
+  outline: 2px solid var(--kb-color-accent);
+  outline-offset: 2px;
+}
+
+.kb-view-toolbar.pane-bar .state {
+  font-size: 12px;
+  color: var(--kb-color-text-faint);
+}
+
+.kb-view-toolbar.pane-bar .pdf-pageno {
+  flex: none;
+  min-width: 0;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-editor > .kb-editor-body.paper {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+@media (max-width: 860px) {
+  .kb-view-toolbar.pane-bar .crumb {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-dock.center .pm-btn-hide-tabs svg {
+    transition: none;
+  }
+}
+
+.app[data-motion="reduce"] .kb-dock.center .pm-btn-hide-tabs svg,
+[data-reduce-motion="true"] .kb-dock.center .pm-btn-hide-tabs svg,
+:root[data-reduce-motion="true"] .kb-dock.center .pm-btn-hide-tabs svg {
+  transition: none;
+}
+
+/* r23-C：用户 Markdown 预览 / 编辑 / 更多。浅色主色只盖这一支。 */
+:root[data-kb-scheme="light"] .kb-editor {
+  --kb-color-accent: #2563EB;
+  --kb-color-accent-soft: #EFF4FF;
+  --kb-color-focus-ring: #2563EB;
+}
+
+/* r23-D：原点暗色阅读层级。压过上面的 1.6 行高。 */
+:root[data-kb-scheme="dark"][data-kb-chrome="origin"] .kb-editor {
+  --kb-color-accent: #2563EB;
+  --kb-color-accent-soft: #1C2C4C;
+  --kb-color-focus-ring: #3B82F6;
+}
+
+:root[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-editor .kb-reading .kb-md {
+  line-height: 1.7;
+  color: #9CA3AF;
+}
+
+:root[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-editor .kb-reading .kb-md h1,
+:root[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-editor .kb-reading .kb-md h2,
+:root[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-editor .kb-reading .kb-md h3 {
+  color: #F3F4F6;
+}
+
+:root[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-editor .kb-reading .kb-md pre {
+  margin: 20px 0;
+}
+
+:root[data-kb-scheme="dark"][data-kb-chrome="origin"][data-kb-reading="origin"] .kb-editor .kb-reading .kb-md pre code {
+  background: #0E0F12;
+  color: #E5E7EB;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.kb-editor {
+  font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei UI", "Noto Sans CJK SC", "Segoe UI Symbol", "Cambria Math", sans-serif;
+}
+
+.kb-editor .kb-reading .kb-md {
+  line-height: 1.6;
+  font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei UI", "Noto Sans CJK SC", "Segoe UI Symbol", "Cambria Math", sans-serif;
+}
+
+.kb-editor .kb-reading .kb-md h1 {
+  font-size: calc(18px * var(--content-zoom, 1));
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.kb-editor .kb-reading .kb-md h2 {
+  font-size: calc(14px * var(--content-zoom, 1));
+  font-weight: 600;
+  margin: 12px 0 8px;
+}
+
+.kb-editor .kb-reading .kb-md p {
+  margin: 12px 0;
+}
+
+.kb-editor .kb-reading .kb-md-toc {
+  background: var(--kb-color-surface-sunken, var(--kb-color-bg));
+  border: 1px solid var(--kb-color-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.kb-editor .kb-reading .kb-md[data-backtoc="on"] .kb-md-backtoc {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--kb-color-text-faint);
+  opacity: 1;
+}
+
+.kb-editor .kb-editor-text {
+  font-family: "JetBrains Mono", Consolas, "Cambria Math", "Noto Sans CJK SC", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding-left: 24px;
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu {
+  min-width: 200px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--kb-color-border);
+  background: var(--kb-color-surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu label,
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-doc-more-item {
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--kb-color-text);
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-check input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: none;
+  border: 1.5px solid var(--kb-color-border-strong);
+  border-radius: 4px;
+  background: var(--kb-color-surface) center / 16px 16px no-repeat;
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-check input[type="checkbox"]:checked {
+  border-color: var(--kb-color-accent);
+  background-color: var(--kb-color-accent);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'><path d='M4 8.2 6.8 11 12 5' stroke='white' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-doc-more-item::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: currentColor;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3 5h10M6 5V3.5h4V5M5.5 5l.4 8h4.2l.4-8'/></svg>") center / 16px 16px no-repeat;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M3 5h10M6 5V3.5h4V5M5.5 5l.4 8h4.2l.4-8'/></svg>") center / 16px 16px no-repeat;
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-preview-switch {
+  width: 32px;
+  height: 18px;
+  min-width: 32px;
+  min-height: 18px;
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-preview-switch .knob {
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+}
+
+.kb-editor .kb-view-toolbar .kb-doc-more-menu .kb-preview-switch[aria-checked="true"] .knob {
+  transform: translateX(14px);
+}

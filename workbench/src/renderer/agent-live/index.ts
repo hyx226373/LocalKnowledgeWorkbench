@@ -1,7 +1,9 @@
 export { AGENT_LIVE_ACTION_CATALOG } from './actionCatalog';
 export {
   addCurrent,
+  addFromDisk,
   addRefs,
+  addRefsMaybeDir,
   addSelection,
   bindAgentLive,
   clearSession,

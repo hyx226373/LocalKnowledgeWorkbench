@@ -2,7 +2,9 @@
  * 工作区总览的纯视图模型。不写库、不发 IPC、不启动应用。
  * 悬停没有回调。单击只改选中。进入只走「进入」或双击。
  * 临时现场不进收藏、最近、搜索和项目/标签分组。
+ * 项目、标签只来自 boards。工作区自身的 project、tags 字段不参与分组。
  */
+import { parseOverviewBoards, type OverviewBoards } from './overviewBoards';
 import { WORKSPACE_CARD_CLASS, type LayoutThumbModel, type WorkspaceCounts, type WorkspaceDetail, type WorkspaceSummary } from './types';
 
 export const OVERVIEW_UNGROUPED_PROJECT = '未分组';
@@ -48,6 +50,8 @@ export interface OverviewInput {
   overviewHidden: boolean;
   presets: readonly OverviewPresetRef[];
   ui: OverviewUiState;
+  /** 用户自建的项目/标签，以及全部、收藏的顺序。缺省为空。 */
+  boards?: OverviewBoards | null;
 }
 
 export interface OverviewActions {
@@ -55,6 +59,7 @@ export interface OverviewActions {
   onCopy?: (workspaceId: string) => void;
   onExport?: (workspaceId: string) => void;
   onRename?: (workspaceId: string, name: string) => void;
+  onDelete?: (workspaceId: string) => void;
   onFavorite?: (workspaceId: string, favorite: boolean) => void;
   onCreate?: (name: string) => void;
   onCreateFirst?: (name: string) => void;
@@ -71,6 +76,7 @@ export type OverviewIntent =
   | { type: 'copy'; id: string }
   | { type: 'export'; id: string }
   | { type: 'rename'; id: string; name: string }
+  | { type: 'delete'; id: string }
   | { type: 'favorite'; id: string; favorite: boolean }
   | { type: 'create'; name: string }
   | { type: 'create-first'; name: string }
@@ -118,7 +124,7 @@ export interface OverviewEditButtonModel {
 }
 
 export interface OverviewServiceActionModel {
-  id: 'enter' | 'copy' | 'export' | 'rename';
+  id: 'enter' | 'copy' | 'export' | 'rename' | 'delete';
   label: string;
   enabled: boolean;
 }
@@ -148,6 +154,12 @@ export interface OverviewModel {
   welcome: OverviewWelcomeModel | null;
   unsaved: OverviewCardModel | null;
   sections: OverviewSectionModel[];
+  /** 「全部」页要画的卡片，已按搜索过滤，顺序跟 allOrderIds 一致。 */
+  allCards: OverviewCardModel[];
+  /** 全部已保存工作区的当前顺序，不含搜索过滤。拖动时以此为底。 */
+  allOrderIds: string[];
+  /** 收藏的当前顺序，不含搜索过滤。 */
+  favoriteOrderIds: string[];
   presets: readonly OverviewPresetRef[];
   createEnabled: boolean;
   selectedId: string | null;
@@ -279,6 +291,91 @@ function compareName(a: OverviewCardModel, b: OverviewCardModel): number {
   return a.id.localeCompare(b.id, 'en');
 }
 
+function compareRecent(a: NormalizedEntry, b: NormalizedEntry): number {
+  const delta = (b.summary.lastUsedAt ?? 0) - (a.summary.lastUsedAt ?? 0);
+  if (delta !== 0) return delta;
+  return a.summary.name.localeCompare(b.summary.name, 'zh') || a.id.localeCompare(b.id, 'en');
+}
+
+function applyCardOrder(list: readonly OverviewCardModel[], order: readonly string[]): OverviewCardModel[] {
+  if (!order.length) return [...list];
+  const byId = new Map(list.map((card) => [card.id, card]));
+  const seen = new Set<string>();
+  const out: OverviewCardModel[] = [];
+  for (const id of order) {
+    const card = byId.get(id);
+    if (!card || seen.has(id)) continue;
+    seen.add(id);
+    out.push(card);
+  }
+  for (const card of list) {
+    if (!seen.has(card.id)) out.push(card);
+  }
+  return out;
+}
+
+/** 旧的「全部」默认顺序：当前、收藏、最近，再用工作区 project 字段补上没出现过的。只用来排全部，不生成项目页。 */
+function defaultAllCards(saved: readonly NormalizedEntry[], byId: ReadonlyMap<string, OverviewCardModel>, currentId: string | null): OverviewCardModel[] {
+  const seen = new Set<string>();
+  const out: OverviewCardModel[] = [];
+  const push = (card: OverviewCardModel | undefined) => {
+    if (!card || seen.has(card.id)) return;
+    seen.add(card.id);
+    out.push(card);
+  };
+  if (currentId) push(byId.get(currentId));
+  const favorites = saved
+    .filter((entry) => entry.summary.favorite)
+    .map((entry) => byId.get(entry.id))
+    .filter((card): card is OverviewCardModel => card != null)
+    .sort(compareName);
+  favorites.forEach(push);
+  const recent = saved.filter((entry) => entry.summary.lastUsedAt != null).slice().sort(compareRecent);
+  recent.forEach((entry) => push(byId.get(entry.id)));
+  const buckets = new Map<string, OverviewCardModel[]>();
+  for (const entry of saved) {
+    const card = byId.get(entry.id);
+    if (!card) continue;
+    const key = card.project.trim() ? card.project : '';
+    const list = buckets.get(key);
+    if (list) list.push(card);
+    else buckets.set(key, [card]);
+  }
+  const groups = [...buckets.entries()].sort((a, b) => {
+    if (!a[0]) return 1;
+    if (!b[0]) return -1;
+    return a[0].localeCompare(b[0], 'zh') || a[0].localeCompare(b[0], 'en');
+  });
+  for (const [, groupCards] of groups) groupCards.slice().sort(compareName).forEach(push);
+  return out;
+}
+
+function boardSection(
+  id: 'projects' | 'tags',
+  title: string,
+  groups: OverviewBoards['projects'],
+  byId: ReadonlyMap<string, OverviewCardModel>,
+  matchedIds: ReadonlySet<string>,
+  searchActive: boolean,
+): OverviewSectionModel | null {
+  const built: OverviewGroupModel[] = [];
+  for (const group of groups) {
+    const seen = new Set<string>();
+    const cards: OverviewCardModel[] = [];
+    for (const workspaceId of group.workspaceIds) {
+      if (seen.has(workspaceId) || !matchedIds.has(workspaceId)) continue;
+      const card = byId.get(workspaceId);
+      if (!card) continue;
+      seen.add(workspaceId);
+      cards.push(card);
+    }
+    if (searchActive && cards.length === 0) continue;
+    built.push({ key: group.id, label: group.name, cards });
+  }
+  if (!built.length) return null;
+  return { id, title, cards: null, groups: built };
+}
+
 function toCard(entry: NormalizedEntry, selectedId: string | null): OverviewCardModel {
   const summary = entry.summary;
   const project = summary.project.trim();
@@ -313,7 +410,7 @@ function flatSection(
   return { id, title, cards, groups: null };
 }
 
-function serviceActions(card: OverviewCardModel | null): OverviewServiceActionModel[] {
+function serviceActions(card: OverviewCardModel | null, savedCount: number): OverviewServiceActionModel[] {
   const selected = card != null;
   const saved = selected && !card.temporary;
   return [
@@ -321,6 +418,7 @@ function serviceActions(card: OverviewCardModel | null): OverviewServiceActionMo
     { id: 'copy', label: '复制', enabled: saved },
     { id: 'export', label: '导出', enabled: saved },
     { id: 'rename', label: '重命名', enabled: saved },
+    { id: 'delete', label: '删除', enabled: saved && savedCount > 1 },
   ];
 }
 
@@ -372,13 +470,16 @@ export function buildOverview(input: OverviewInput): OverviewModel {
       welcome: null,
       unsaved: null,
       sections: [],
+      allCards: [],
+      allOrderIds: [],
+      favoriteOrderIds: [],
       presets: [],
       createEnabled: false,
       selectedId,
       search,
       detail: null,
       editButtons: EDIT_BUTTONS,
-      serviceActions: serviceActions(null),
+      serviceActions: serviceActions(null, saved.length),
       ...FLAGS,
     };
   }
@@ -389,65 +490,47 @@ export function buildOverview(input: OverviewInput): OverviewModel {
   const matched = saved.filter((entry) => overviewMatchesQuery(entry.summary, search));
   const cards = new Map(matched.map((entry) => [entry.id, toCard(entry, selectedId)]));
 
+  const boards = parseOverviewBoards(input.boards ?? null);
+  const searchActive = search.trim() !== '';
+  let allCards: OverviewCardModel[] = [];
+  let allOrderIds: string[] = [];
+  let favoriteOrderIds: string[] = [];
   const sections: OverviewSectionModel[] = [];
   if (!welcome) {
+    const savedById = new Map(saved.map((entry) => [entry.id, toCard(entry, selectedId)]));
+    const matchedIds = new Set(matched.map((entry) => entry.id));
+    const visibleCards = (ids: readonly string[]) => ids.filter((id) => matchedIds.has(id)).map((id) => savedById.get(id)!);
+
+    const orderedAll = applyCardOrder(defaultAllCards(saved, savedById, input.currentId), boards.allOrder);
+    allOrderIds = orderedAll.map((card) => card.id);
+    allCards = visibleCards(allOrderIds);
+
+    const defaultFavorites = saved
+      .filter((entry) => entry.summary.favorite)
+      .map((entry) => savedById.get(entry.id)!)
+      .sort(compareName);
+    favoriteOrderIds = applyCardOrder(defaultFavorites, boards.favoriteOrder).map((card) => card.id);
+
     const current = input.currentId ? cards.get(input.currentId) : undefined;
     const currentSection = current ? flatSection('current', '当前', [current]) : null;
     if (currentSection) sections.push(currentSection);
 
-    const favorites = matched
-      .filter((entry) => entry.summary.favorite)
-      .map((entry) => cards.get(entry.id)!)
-      .sort(compareName);
+    const favorites = visibleCards(favoriteOrderIds);
     const favoriteSection = flatSection('favorites', '收藏', favorites);
     if (favoriteSection) sections.push(favoriteSection);
 
     const recent = matched
       .filter((entry) => entry.summary.lastUsedAt != null)
       .slice()
-      .sort((a, b) => {
-        const delta = (b.summary.lastUsedAt ?? 0) - (a.summary.lastUsedAt ?? 0);
-        if (delta !== 0) return delta;
-        return a.summary.name.localeCompare(b.summary.name, 'zh') || a.id.localeCompare(b.id, 'en');
-      })
+      .sort(compareRecent)
       .map((entry) => cards.get(entry.id)!);
     const recentSection = flatSection('recent', '最近', recent);
     if (recentSection) sections.push(recentSection);
 
-    const projectBuckets = new Map<string, OverviewCardModel[]>();
-    for (const entry of matched) {
-      const card = cards.get(entry.id)!;
-      const key = card.project.trim() ? card.project : '';
-      const list = projectBuckets.get(key);
-      if (list) list.push(card);
-      else projectBuckets.set(key, [card]);
-    }
-    const projectGroups = [...projectBuckets.entries()]
-      .map(([key, groupCards]) => ({
-        key,
-        label: key ? key : OVERVIEW_UNGROUPED_PROJECT,
-        cards: groupCards.slice().sort(compareName),
-      }))
-      .sort((a, b) => {
-        if (!a.key) return 1;
-        if (!b.key) return -1;
-        return a.label.localeCompare(b.label, 'zh') || a.key.localeCompare(b.key, 'en');
-      });
-    if (projectGroups.length) sections.push({ id: 'projects', title: '按项目', cards: null, groups: projectGroups });
-
-    const tagBuckets = new Map<string, OverviewCardModel[]>();
-    for (const entry of matched) {
-      const card = cards.get(entry.id)!;
-      for (const tag of card.tags) {
-        const list = tagBuckets.get(tag);
-        if (list) list.push(card);
-        else tagBuckets.set(tag, [card]);
-      }
-    }
-    const tagGroups = [...tagBuckets.entries()]
-      .map(([key, groupCards]) => ({ key, label: key, cards: groupCards.slice().sort(compareName) }))
-      .sort((a, b) => a.label.localeCompare(b.label, 'zh') || a.key.localeCompare(b.key, 'en'));
-    if (tagGroups.length) sections.push({ id: 'tags', title: '按标签', cards: null, groups: tagGroups });
+    const projectSection = boardSection('projects', '项目', boards.projects, savedById, matchedIds, searchActive);
+    if (projectSection) sections.push(projectSection);
+    const tagSection = boardSection('tags', '标签', boards.tags, savedById, matchedIds, searchActive);
+    if (tagSection) sections.push(tagSection);
   }
 
   const selectedEntry = entries.find((entry) => entry.id === selectedId) ?? null;
@@ -459,13 +542,16 @@ export function buildOverview(input: OverviewInput): OverviewModel {
     welcome: welcome ? WELCOME : null,
     unsaved,
     sections,
+    allCards,
+    allOrderIds,
+    favoriteOrderIds,
     presets,
     createEnabled: !welcome,
     selectedId,
     search,
     detail: detailOf(selectedEntry, selectedCard),
     editButtons: EDIT_BUTTONS,
-    serviceActions: serviceActions(selectedCard),
+    serviceActions: serviceActions(selectedCard, saved.length),
     ...FLAGS,
   };
 }
@@ -537,6 +623,11 @@ export function dispatchOverview(
       const name = trimmedName(intent.name);
       if (!name || !gate.savedIds.has(intent.id) || !actions.onRename) return { ui, called: false };
       actions.onRename(intent.id, name);
+      return { ui, called: true };
+    }
+    case 'delete': {
+      if (gate.savedIds.size <= 1 || !gate.savedIds.has(intent.id) || !actions.onDelete) return { ui, called: false };
+      actions.onDelete(intent.id);
       return { ui, called: true };
     }
     case 'favorite': {

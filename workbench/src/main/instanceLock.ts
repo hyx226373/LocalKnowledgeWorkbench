@@ -35,7 +35,7 @@ export function isProtectedInstall(row: ProcRow): boolean {
 }
 
 /**
- * 上次进程是被杀掉的：这次不要再搬 GPU/HTTP 磁盘缓存，GPU 改走进程内。
+ * 上次进程是被杀掉的：这次不要再搬 GPU/HTTP 磁盘缓存。不要改走进程内 GPU。
  * 活着的实例、没有锁、以及已安装数据目录都不走这条路径。
  */
 export function restartSkipsDiskCache(dataDir: string, selfPid = process.pid): boolean {
@@ -314,24 +314,45 @@ export async function reapRecordedChildren(dataDir: string, holder = 0): Promise
 }
 
 /** 另一个活着的进程正用着这个数据目录时返回 false。调用方不要再打开数据库。 */
+/** 抢锁：死 PID 或 exiting 超时/僵死时清除残留并允许启动；活着且未 exiting 的持有者仍拒绝。 */
 export async function acquireInstance(dataDir: string): Promise<{ ok: boolean; reaped: number[] }> {
   fs.mkdirSync(dataDir, { recursive: true });
   const lockFile = path.join(dataDir, 'instance.lock');
   const parsed = readLock(dataDir);
   let holder = typeof parsed?.pid === 'number' ? parsed.pid : 0;
-  if (holder && holder !== process.pid && alive(holder)) {
-    if (parsed?.exiting === true && !waitedDirs.has(dirKey(dataDir))) {
-      const deadline = Date.now() + EXITING_WAIT_MS;
-      while (alive(holder) && Date.now() < deadline) await pause(40);
+  if (holder && holder !== process.pid) {
+    if (alive(holder)) {
+      if (parsed?.exiting === true && !waitedDirs.has(dirKey(dataDir))) {
+        waitedDirs.add(dirKey(dataDir));
+        const deadline = Date.now() + EXITING_WAIT_MS;
+        while (alive(holder) && Date.now() < deadline) await pause(40);
+      }
+      if (alive(holder) && parsed?.exiting === true) {
+        // L1/P0: do not steal lock from a still-alive exiting holder (dual DB write).
+        // Ask it to die, wait briefly; only clear lock once dead. If still alive, refuse.
+        try { process.kill(holder); } catch { /* already gone */ }
+        const killDeadline = Date.now() + EXITING_WAIT_MS;
+        while (alive(holder) && Date.now() < killDeadline) await pause(40);
+        if (alive(holder)) {
+          return { ok: false, reaped: [] };
+        }
+        try {
+          fs.rmSync(lockFile, { force: true });
+        } catch {
+          /* 下一写覆盖 */
+        }
+        holder = 0;
+      } else if (alive(holder)) {
+        return { ok: false, reaped: [] };
+      }
     }
-    if (alive(holder)) return { ok: false, reaped: [] };
+    // holder 已死：视为陈旧 lock，下面直接覆盖
   }
   const reaped = holder && holder !== process.pid ? await reapRecordedChildren(dataDir, holder) : [];
   fs.writeFileSync(lockFile, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
   setOwnedPidFile(path.join(dataDir, 'child-pids.json'));
   return { ok: true, reaped };
 }
-
 export function releaseInstance(dataDir: string) {
   const lockFile = path.join(dataDir, 'instance.lock');
   try {
@@ -344,7 +365,12 @@ export function releaseInstance(dataDir: string) {
 
 /** 先清掉自己的子进程和监听留下的 electron / node，再放开锁。 */
 export async function finishInstance(dataDir: string): Promise<void> {
-  if (!dataDir || isAmyLiveDataDir(dataDir)) return;
+  if (!dataDir) return;
+  // 真库目录不 reap 子进程，但仍必须释放 instance.lock，否则 markInstanceExiting 留下 exiting:true 死锁
+  if (isAmyLiveDataDir(dataDir)) {
+    releaseInstance(dataDir);
+    return;
+  }
   await reapRecordedChildren(dataDir, process.pid);
   const exe = process.platform === 'win32' ? helperExe() : null;
   const ownExeName = path.basename(process.execPath);

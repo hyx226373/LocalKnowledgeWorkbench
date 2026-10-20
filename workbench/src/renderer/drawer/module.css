@@ -138,6 +138,7 @@
   font: inherit;
   color: inherit;
   cursor: pointer;
+  user-select: none;
 }
 
 .kb-ref-row .kb-ref-main:hover {
@@ -163,6 +164,44 @@
   font-size: 12px;
   color: var(--kb-color-text-faint);
   font-weight: 400;
+}
+
+.kb-ref-row > .kb-linkish,
+.kb-ref-row > .act--text {
+  flex: none;
+  white-space: nowrap;
+}
+
+.kb-ref-row[aria-selected="true"] .kb-ref-main {
+  background: var(--kb-color-selected);
+  color: var(--kb-color-selected-fg);
+}
+
+.kb-ref-row[aria-disabled="true"] .kb-ref-main {
+  cursor: default;
+}
+
+.kb-ref-row[data-missing="true"] .kb-ref-name,
+.kb-ref-row[aria-disabled="true"] .kb-ref-name {
+  color: var(--kb-color-text-disabled);
+  font-style: italic;
+  text-decoration: none;
+}
+
+.kb-ref-row[data-open="true"] .kb-ref-name {
+  font-weight: 600;
+}
+
+.kb-ref-row .act--text {
+  color: var(--kb-color-warning);
+  font-size: var(--kb-fs-xs, 11px);
+  cursor: pointer;
+}
+
+.kb-ref-row:focus-visible,
+.kb-ref-row .kb-ref-main:focus-visible {
+  outline: 2px solid var(--kb-color-focus-ring);
+  outline-offset: -2px;
 }
 
 .kb-group-label {
@@ -214,6 +253,100 @@
   justify-content: flex-start;
 }
 
+.kb-new-file-drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 4px;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--kb-color-surface);
+  box-shadow: inset 0 0 0 1px var(--kb-color-border);
+}
+
+.kb-new-file-tree {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.kb-new-file-drawer .kb-tree-row {
+  margin: 0;
+  height: 26px;
+  gap: 2px;
+}
+
+.kb-new-file-expand {
+  width: 16px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+}
+
+button.kb-new-file-expand {
+  cursor: pointer;
+}
+
+button.kb-new-file-expand:hover {
+  background: var(--kb-color-hover);
+}
+
+.kb-new-file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kb-new-file-name .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-new-file-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.kb-new-file-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-new-file-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-new-file-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .kb-more-menu {
   position: absolute;
   z-index: 20;
@@ -245,6 +378,23 @@
 
 .kb-more-menu button:hover {
   background: var(--kb-color-hover);
+}
+
+.kb-more-menu button:disabled,
+.kb-more-menu button[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.kb-more-menu button:disabled:hover,
+.kb-more-menu button[aria-disabled="true"]:hover {
+  background: transparent;
+}
+
+.kb-root-more {
+  position: relative;
+  flex: none;
+  display: inline-flex;
 }
 
 .kb-module-h-wrap {
@@ -365,9 +515,69 @@
   gap: 4px;
 }
 
+/* 只压过抽屉里的插件行。设置页和插件管理仍走全局 .kb-plugin-row。 */
+.kb-drawer .kb-plugin-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.kb-drawer .kb-plugin-row:hover {
+  background: var(--kb-color-hover);
+}
+
+.kb-drawer .kb-plugin-row .name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.kb-drawer .kb-plugin-row .faint {
+  margin-left: 6px;
+  max-width: none;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--kb-color-text-muted);
+}
+
+.kb-drawer .kb-plugin-row > .kb-preview-toggle,
+.kb-drawer .kb-plugin-row > .kb-plugin-status,
+.kb-drawer .kb-plugin-row > .kb-plugin-switch-slot {
+  margin-left: auto;
+  flex: none;
+}
+
+.kb-menu-check {
+  width: 20px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kb-module-h-wrap > .kb-more-menu {
+  top: 32px;
+  right: 12px;
+  left: auto;
+}
+
 .kb-chev {
+  width: 16px;
+  height: 16px;
   color: var(--kb-color-text-faint);
   flex: none;
+  display: inline-grid;
+  place-items: center;
   transition: transform 150ms ease;
 }
 
@@ -380,3 +590,12 @@
     transition: none;
   }
 }
+
+/* Opacity preserves keyboard access; focus within reveals both row actions. */
+.kb-root-action { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--kb-color-text-muted); cursor: pointer; opacity: 0; }
+.root-row:hover .kb-root-action,
+.root-row:focus-within .kb-root-action { opacity: 1; }
+.root-row .kb-root-more > .kb-root-action { opacity: 1; }
+.kb-root-action.danger { color: var(--kb-color-danger); }
+.kb-root-action:hover { background: var(--kb-color-hover); }
+.kb-root-action:focus-visible { outline: 2px solid var(--kb-color-focus-ring); outline-offset: -2px; }

@@ -2,8 +2,9 @@
  * 数据迁移的 Electron 接线：迁移窗口（导出 / 导入并映射根目录 / 根目录与缺失文件 / 备份与回退）与 kb-migration IPC。
  * index.ts 只需调用 registerMigration(...)，菜单项调用 openMigrationWindow(tab)。
  */
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+import { migrationDialogKey, openDialogWithMemory, saveDialogWithMemory } from '../dialogLastDir';
 import { PACKAGE_EXT } from './format';
 import { MIGRATION_HTML } from './ui';
 
@@ -63,19 +64,21 @@ function registerIpc() {
     pickSave: async () => {
       const d = new Date();
       const name = `本地知识工作台-迁移-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.${PACKAGE_EXT}`;
-      const r = await dialog.showSaveDialog(parent()!, { title: '导出数据迁移包', defaultPath: path.join(app.getPath('documents'), name), filters: [{ name: '迁移包', extensions: ['zip'] }] });
+      const r = await saveDialogWithMemory(migrationDialogKey('save'), parent() ?? null, { title: '导出数据迁移包', defaultPath: path.join(app.getPath('documents'), name), filters: [{ name: '迁移包', extensions: ['zip'] }] });
       return r.canceled ? null : r.filePath;
     },
     pickPackage: async () => {
-      const r = await dialog.showOpenDialog(parent()!, { title: '选择数据迁移包', properties: ['openFile'], filters: [{ name: '迁移包', extensions: ['zip'] }] });
+      const r = await openDialogWithMemory(migrationDialogKey('package'), parent() ?? null, { title: '选择数据迁移包', properties: ['openFile'], filters: [{ name: '迁移包', extensions: ['zip'] }] });
       return r.canceled ? null : r.filePaths[0];
     },
     pickFolder: async (title?: string) => {
-      const r = await dialog.showOpenDialog(parent()!, { title: String(title ?? '选择文件夹'), properties: ['openDirectory'] });
+      const label = String(title ?? '选择文件夹');
+      const r = await openDialogWithMemory(migrationDialogKey('folder', label), parent() ?? null, { title: label, properties: ['openDirectory'] });
       return r.canceled ? null : r.filePaths[0];
     },
     pickFile: async (title?: string) => {
-      const r = await dialog.showOpenDialog(parent()!, { title: String(title ?? '选择文件'), properties: ['openFile'] });
+      const label = String(title ?? '选择文件');
+      const r = await openDialogWithMemory(migrationDialogKey('file', label), parent() ?? null, { title: label, properties: ['openFile'] });
       return r.canceled ? null : r.filePaths[0];
     },
     exportTo: async (file: string) => {

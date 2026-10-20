@@ -15,7 +15,11 @@ import {
 describe('统一设置页', () => {
   it('分类含阅读，数据分类和不依赖数据的分类分开', () => {
     expect(SETTINGS_CATEGORIES.map((c) => c.label)).toContain('阅读');
+    expect(SETTINGS_CATEGORIES.map((c) => c.label)).toContain('Agent 数据');
+    expect(SETTINGS_CATEGORIES.map((c) => c.label)).toContain('AI 写入通道');
+    expect(categoryNeedsData('aiWrite')).toBe(false);
     expect(categoryNeedsData('reading')).toBe(false);
+    expect(categoryNeedsData('agentData')).toBe(false);
     expect(categoryNeedsData('update')).toBe(false);
     expect(categoryNeedsData('appearance')).toBe(false);
     expect(categoryNeedsData('keybindings')).toBe(false);

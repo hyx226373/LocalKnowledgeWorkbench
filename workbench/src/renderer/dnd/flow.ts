@@ -1,7 +1,7 @@
 import { MENU_REMOVE_FOLDER, MENU_REMOVE_WORKSPACE, WILL_MOVE_FILE } from './copy';
 import { joinRel, uniqueName } from './names';
 import { ROOT_ORDER_KEY, rootOrderValue } from './rootOrder';
-import type { DropDecision, MoveOp } from './types';
+import type { AgentRefDrop, CopyReviewOp, DropDecision, MoveOp } from './types';
 
 export interface ProposedMove {
   kind: 'move';
@@ -48,6 +48,13 @@ export interface FlowPorts {
   listMembership?(resourceId: string): Promise<string[]>;
   setMembership?(resourceId: string, folderIds: string[]): Promise<unknown>;
   removeMembership?(resourceId: string, folderId: string | null): Promise<unknown>;
+  planDrop?(ops: CopyReviewOp[]): Promise<unknown>;
+  agentRepoMove?(to: string): Promise<unknown>;
+  reorderMaterials?(workspaceId: string, ids: string[]): Promise<unknown>;
+  addCategory?(categoryId: string, workspaceId: string): Promise<unknown>;
+  addAgentRefs?(workspaceId: string, refs: AgentRefDrop[]): Promise<unknown>;
+  linkPaths?(workspaceId: string, paths: string[]): Promise<unknown>;
+  openReadonly?(path: string): Promise<unknown>;
 }
 
 export type FlowResult = { status: 'done' | 'cancel' | 'rejected'; message: string };
@@ -114,43 +121,76 @@ export async function performDrop(decision: DropDecision, ports: FlowPorts): Pro
     }
     return { status: 'done', message: decision.hint };
   }
-  let ops = a.ops;
-  if (ops.length) {
-    const names = new Set(ports.childNames ? await ports.childNames(ops[0].toRootId, parentOf(ops[0].toRelPath)) : []);
-    if (batchClashes(ops, names)) {
-      const choice = await ports.confirmMove(moveDialogModel(ops, a.crossRoot, true, await refNote(ports, ops)));
-      if (choice !== 'rename') return { status: 'cancel', message: '目标已有同名，未覆盖' };
-      ops = withRenames(ops, names);
+  if (a.type === 'copy-review') {
+    if (ports.planDrop) await ports.planDrop(a.ops);
+    return { status: 'done', message: decision.hint };
+  }
+  if (a.type === 'agent-repo-move') {
+    if (ports.agentRepoMove) await ports.agentRepoMove(a.to);
+    return { status: 'done', message: decision.hint };
+  }
+  if (a.type === 'reorder-materials') {
+    if (ports.reorderMaterials) await ports.reorderMaterials(a.workspaceId, a.ids);
+    return { status: 'done', message: decision.hint };
+  }
+  if (a.type === 'add-category') {
+    if (ports.addCategory) await ports.addCategory(a.categoryId, a.workspaceId);
+    return { status: 'done', message: decision.hint };
+  }
+  if (a.type === 'add-agent') {
+    if (ports.addAgentRefs) await ports.addAgentRefs(a.workspaceId, a.refs);
+    return { status: 'done', message: decision.hint };
+  }
+  if (a.type === 'link-paths') {
+    if (ports.linkPaths) await ports.linkPaths(a.workspaceId, a.paths);
+    return { status: 'done', message: decision.hint };
+  }
+  if (a.type === 'open-readonly') {
+    if (ports.openReadonly) {
+      for (const p of a.paths) await ports.openReadonly(p);
     }
+    return { status: 'done', message: decision.hint };
   }
-  const note = await refNote(ports, ops);
-  const proposed = await ports.propose(
-    WILL_MOVE_FILE,
-    ops.map((o) => ({
-      kind: 'move' as const,
-      resourceId: o.resourceId,
-      toRelPath: o.toRelPath,
-      ...(o.toRootId !== o.fromRootId ? { toRootId: o.toRootId } : {}),
-    })),
-  );
-  const model = moveDialogModel(ops, ops.some((o) => o.fromRootId !== o.toRootId), false, note);
-  const go = await ports.confirmMove(model);
-  if (go !== 'move') return { status: 'cancel', message: '已取消，未批准计划' };
-  try {
-    await ports.approve(proposed.planId, proposed.ops.map((o) => o.opId), proposed.contentHash);
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    await ports.alert('移动没有完成', message);
-    return { status: 'rejected', message };
-  }
-  if (ports.dualDbCheck) {
+  if (a.type === 'move') {
+    let ops = a.ops;
+    if (ops.length) {
+      const names = new Set(ports.childNames ? await ports.childNames(ops[0].toRootId, parentOf(ops[0].toRelPath)) : []);
+      if (batchClashes(ops, names)) {
+        const choice = await ports.confirmMove(moveDialogModel(ops, a.crossRoot, true, await refNote(ports, ops)));
+        if (choice !== 'rename') return { status: 'cancel', message: '目标已有同名，未覆盖' };
+        ops = withRenames(ops, names);
+      }
+    }
+    const note = await refNote(ports, ops);
+    const proposed = await ports.propose(
+      WILL_MOVE_FILE,
+      ops.map((o: MoveOp) => ({
+        kind: 'move' as const,
+        resourceId: o.resourceId,
+        toRelPath: o.toRelPath,
+        ...(o.toRootId !== o.fromRootId ? { toRootId: o.toRootId } : {}),
+      })),
+    );
+    const model = moveDialogModel(ops, ops.some((o: MoveOp) => o.fromRootId !== o.toRootId), false, note);
+    const go = await ports.confirmMove(model);
+    if (go !== 'move') return { status: 'cancel', message: '已取消，未批准计划' };
     try {
-      await ports.dualDbCheck();
-    } catch {
-      /* E 未合入或检查失败：不回滚已批准的移动，由 REPORT 标待补 */
+      await ports.approve(proposed.planId, proposed.ops.map((o: { opId: string }) => o.opId), proposed.contentHash);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      await ports.alert('移动没有完成', message);
+      return { status: 'rejected', message };
     }
+    if (ports.dualDbCheck) {
+      try {
+        await ports.dualDbCheck();
+      } catch {
+        /* E 未合入或检查失败：不回滚已批准的移动，由 REPORT 标待补 */
+      }
+    }
+    return { status: 'done', message: `${WILL_MOVE_FILE}：${ops.length} 项` };
   }
-  return { status: 'done', message: `${WILL_MOVE_FILE}：${ops.length} 项` };
+  return { status: 'done', message: decision.hint };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await ports.alert('没有完成', message);

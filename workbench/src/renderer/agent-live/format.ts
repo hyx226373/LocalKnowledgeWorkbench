@@ -81,3 +81,9 @@ export function tokenBudgetHint(items: readonly AgentMaterial[]): string | null 
   if (knownTokens <= TOKEN_HINT_THRESHOLD) return null;
   return '合计超过 150k tokens，仍可继续使用';
 }
+
+/** 目录材料：登记时 bytes/contentHash/readable 均为空；不改 AgentMaterial schema。 */
+export function isDirMaterial(material: AgentMaterial): boolean {
+  return material.status === 'ok' && material.bytes == null && material.contentHash == null && material.readable == null;
+}
+

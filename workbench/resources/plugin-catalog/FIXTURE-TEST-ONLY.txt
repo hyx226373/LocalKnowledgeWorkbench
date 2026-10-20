@@ -1,0 +1,2 @@
+This catalog and packages are TEST FIXTURES ONLY. Not for production distribution.
+仅测试用，非生产分发。

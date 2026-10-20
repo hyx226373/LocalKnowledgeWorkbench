@@ -4,8 +4,9 @@
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { buildManifest, initBridgeTree } from '../src/main/agent-bridge/initBridge';
 import { startAgentLive, type AgentLiveWire } from '../src/main/agentLive/wire';
 import { WorkbenchService } from '../src/main/service/WorkbenchService';
@@ -17,7 +18,7 @@ import { duplicateMessage, MSG_CLEAR_BODY, MSG_CLEAR_TITLE, MSG_COPIED } from '.
 import type { AgentLiveClient } from '../src/renderer/agent-live/client';
 import type { AgentLiveHost } from '../src/renderer/agent-live/host';
 
-const LOG = 'D:\\kb-r13-work\\agent-live-0025';
+const LOG = process.platform === 'win32' ? 'D:\\kb-r13-work\\agent-live-0025' : fs.mkdtempSync(path.join(os.tmpdir(), 'agent-live-wire-'));
 const USER_ROOT = path.join(LOG, 'userdata');
 const REPO = path.resolve(process.cwd());
 const BLOCKS = ['## 1. 工作区', '## 2. 已打开的资料', '## 3. 工作资料', '## 4. 导航', '## 5. 版本', '## 6. 接入约定'];
@@ -159,7 +160,7 @@ describe('agent live 公共接线', () => {
         at = next;
       }
       expect(bootText).toContain('### 本轮资料');
-      expect(bootText).toContain('### 固定资料');
+      expect(bootText).not.toContain('### 固定资料'); // r18 omits the empty pinned section.
       const marker = JSON.parse(fs.readFileSync(path.join(bridge, 'live', 'current', 'marker.json'), 'utf8')) as { appVersion?: string };
       expect(marker.appVersion).toBe('0.2.3');
 
@@ -209,7 +210,7 @@ describe('agent live 公共接线', () => {
 
       const addedText = fs.readFileSync(entryPath, 'utf8');
       expect(addedText).toContain('### 本轮资料');
-      expect(addedText).toContain('### 固定资料');
+      expect(addedText).not.toContain('### 固定资料');
       expect(addedText).toContain('笔记.md');
 
       const row = rowsOf(live, ws)[0]!;
@@ -358,4 +359,130 @@ describe('agent live 公共接线', () => {
       fs.writeFileSync(path.join(LOG, 'v1-v3.json'), JSON.stringify(evidence, null, 2), 'utf8');
     }
   }, 90000);
+
+  it('noteScene appends reading.changed into revision + ENTRY', async () => {
+    const savedBridge = process.env.KB_AGENT_BRIDGE_ROOT;
+    delete process.env.KB_AGENT_BRIDGE_ROOT;
+    fs.mkdirSync(USER_ROOT, { recursive: true });
+    const dataDir = fs.mkdtempSync(path.join(USER_ROOT, 'reading-'));
+    assertIsolated(dataDir);
+    const library = path.join(LOG, 'files', path.basename(dataDir));
+    const note = path.join(library, 'reading-doc.md');
+    fs.mkdirSync(library, { recursive: true });
+    fs.writeFileSync(note, 'hello reading\n', 'utf8');
+    try {
+      svc = new WorkbenchService({ dataDir });
+      const ws = svc.getCurrentWorkspaceId();
+      svc.addRoot(library, 'lib');
+      watchers = new RootWatchers(svc, 40);
+      watchers.sync();
+      await waitFor('indexed', () => svc!.resolveMaterialIdentity(note) !== null);
+      const bridge = path.join(dataDir, 'agent-bridge');
+      initBridgeTree(bridge, buildManifest());
+      live = startAgentLive({
+        svc,
+        watchers,
+        dataDir,
+        version: '0.2.3',
+        notify: () => undefined,
+      });
+      const entryPath = path.join(bridge, 'live', 'current', 'ENTRY.md');
+      await waitFor('boot entry', () => fs.existsSync(entryPath));
+      const markerPath = path.join(bridge, 'live', 'current', 'marker.json');
+      await waitFor('boot marker', () => fs.existsSync(markerPath));
+      const before = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { revision: number };
+      live.methods.agentLiveNoteScene({
+        workspaceId: ws,
+        reading: { panelId: 'active', name: 'reading-doc.md', absPath: note, materialId: 'm-read' },
+        panels: [{ panelId: 'active', name: 'reading-doc.md', absPath: note, materialId: 'm-read' }],
+      });
+      await waitFor('reading.changed jsonl', () => {
+        const changesDir = path.join(bridge, 'live', 'ws', ws, 'changes');
+        if (!fs.existsSync(changesDir)) return false;
+        for (const name of fs.readdirSync(changesDir)) {
+          if (!name.endsWith('.jsonl')) continue;
+          const text = fs.readFileSync(path.join(changesDir, name), 'utf8');
+          if (text.includes('"reading.changed"')) return true;
+        }
+        return false;
+      });
+      await waitFor('ENTRY shows reading', () => {
+        const text = fs.readFileSync(entryPath, 'utf8');
+        return text.includes('reading-doc.md');
+      });
+      const after = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { revision: number };
+      expect(after.revision).toBeGreaterThan(before.revision);
+      const revAfterFirst = after.revision;
+      live.methods.agentLiveNoteScene({
+        workspaceId: ws,
+        reading: { panelId: 'active', name: 'reading-doc.md', absPath: note, materialId: 'm-read' },
+        panels: [{ panelId: 'active', name: 'reading-doc.md', absPath: note, materialId: 'm-read' }],
+      });
+      await delay(500);
+      const dup = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { revision: number };
+      expect(dup.revision).toBe(revAfterFirst);
+      live.methods.agentLiveNoteScene({
+        workspaceId: ws,
+        reading: null,
+        panels: [],
+      });
+      await waitFor('clear reading bumps rev', () => {
+        const m = JSON.parse(fs.readFileSync(markerPath, 'utf8')) as { revision: number };
+        return m.revision > revAfterFirst;
+      });
+    } finally {
+      if (savedBridge === undefined) delete process.env.KB_AGENT_BRIDGE_ROOT;
+      else process.env.KB_AGENT_BRIDGE_ROOT = savedBridge;
+    }
+  }, 60000);
+
+
+  it('loadScene embeds catalogForWorkspace into nav/structure.md', async () => {
+    const savedBridge = process.env.KB_AGENT_BRIDGE_ROOT;
+    delete process.env.KB_AGENT_BRIDGE_ROOT;
+    fs.mkdirSync(USER_ROOT, { recursive: true });
+    const dataDir = fs.mkdtempSync(path.join(USER_ROOT, 'nav-'));
+    assertIsolated(dataDir);
+    const library = path.join(LOG, 'files', path.basename(dataDir));
+    const note = path.join(library, '结构笔记.md');
+    fs.mkdirSync(library, { recursive: true });
+    fs.writeFileSync(note, 'nav catalog\n', 'utf8');
+    try {
+      svc = new WorkbenchService({ dataDir });
+      const ws = svc.getCurrentWorkspaceId();
+      svc.addRoot(library, '库');
+      watchers = new RootWatchers(svc, 40);
+      watchers.sync();
+      await waitFor('indexed', () => svc!.resolveMaterialIdentity(note) !== null);
+      const identity = svc.resolveMaterialIdentity(note);
+      expect(identity?.resourceId).toBeTruthy();
+      const folder = svc.createVirtualFolder(null, '论文夹');
+      const catalogId = svc.catalogForWorkspace(ws).catalogId;
+      svc.addCatalogRef(catalogId, folder.folderId, identity!.resourceId);
+      expect(svc.catalogForWorkspace(ws).folders.some((f) => f.name === "论文夹")).toBe(true);
+      const bridge = path.join(dataDir, "agent-bridge");
+      initBridgeTree(bridge, buildManifest());
+      live = startAgentLive({ svc, watchers, dataDir, version: "0.2.3", notify: () => undefined });
+      await live.methods.agentLiveEntryPath("workspace", ws);
+      const structurePath = path.join(bridge, "live", "ws", ws, "nav", "structure.md");
+      await waitFor("structure has folder", () => fs.existsSync(structurePath) && fs.readFileSync(structurePath, "utf8").includes("论文夹"));
+      const structure = fs.readFileSync(structurePath, "utf8");
+      expect(structure).toContain("论文夹");
+      expect(structure).toContain("结构笔记.md");
+      const markerPath = path.join(bridge, "live", "current", "marker.json");
+      await waitFor("marker", () => fs.existsSync(markerPath));
+      const before = JSON.parse(fs.readFileSync(markerPath, "utf8")).revision as number;
+      svc.createVirtualFolder(null, "续作夹");
+      await waitFor("catalog reset bumps rev", () => JSON.parse(fs.readFileSync(markerPath, "utf8")).revision > before);
+      await waitFor("structure has next folder", () => fs.readFileSync(structurePath, "utf8").includes("续作夹"));
+    } finally {
+      if (savedBridge === undefined) delete process.env.KB_AGENT_BRIDGE_ROOT;
+      else process.env.KB_AGENT_BRIDGE_ROOT = savedBridge;
+    }
+  }, 60000);
+});
+
+// review-fix：非 Windows 的临时隔离目录用完删掉（Windows 路径不动）
+afterAll(() => {
+  if (process.platform !== 'win32') fs.rmSync(LOG, { recursive: true, force: true });
 });

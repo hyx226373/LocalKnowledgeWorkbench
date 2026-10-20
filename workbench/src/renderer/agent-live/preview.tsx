@@ -5,7 +5,6 @@ import '../styles.css';
 import './agent-live.css';
 import { clearSession } from './actions';
 import { AgentLiveProvider } from './context';
-import { ConnectAgentButton } from './connectButton';
 import type { AgentLiveHost } from './host';
 import { createMemoryAgentLive } from './memoryClient';
 import { MSG_CLEAR_BODY, MSG_CLEAR_TITLE } from './messages';
@@ -142,7 +141,7 @@ function Preview() {
       <div className="app al-preview-frame" data-testid="agent-live-preview">
         <header className="kb-topbar">
           <span className="title">本地知识工作台</span>
-          <ConnectAgentButton defaultOpen={params.get('menu') === '1'} />
+
           <div className={'search al-preview-search'}>
             <input className="kb-input" readOnly value="实验" aria-label="搜索" />
             {showSearch && <div className="kb-popover kb-search-results" data-testid="search-results">

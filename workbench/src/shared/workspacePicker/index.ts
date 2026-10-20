@@ -73,6 +73,26 @@ export type {
 } from './overview';
 export { assessSnapshotCapture, guardSnapshotWrite } from './snapshotGuard';
 export type { SnapshotCaptureDecision, SnapshotGuardReason, SnapshotGuardResult } from './snapshotGuard';
-export { decideSnapshotCapture, snapshotPngSampleXor, WORKSPACE_SNAPSHOT_CAPTURE_CHANNEL } from './snapshotCapture';
-export type { SnapshotPixelSource, WorkspaceSnapshotRequest } from './snapshotCapture';
+export { decideSnapshotCapture, snapshotPngSampleXor, WORKSPACE_SNAPSHOT_CAPTURE_CHANNEL, WORKSPACE_SNAPSHOT_LOAD_CHANNEL, WORKSPACE_SNAPSHOT_DELETE_CHANNEL } from './snapshotCapture';
+export type { SnapshotPixelSource, WorkspaceSnapshotRequest, WorkspaceSnapshotLoadEntry, WorkspaceSnapshotLoadResult } from './snapshotCapture';
 export { planSnapshotCacheDelete, snapshotCacheFileName } from './snapshotCache';
+export {
+  EMPTY_OVERVIEW_BOARDS,
+  OVERVIEW_BOARDS_KEY,
+  addOverviewCategory,
+  addWorkspacesToCategory,
+  cleanBoardName,
+  deleteOverviewCategory,
+  formatPickerStamp,
+  formatRelativeStamp,
+  isDefaultOverviewCategory,
+  listOverviewCategories,
+  nextCategoryName,
+  parseOverviewBoards,
+  removeWorkspaceFromCategory,
+  renameOverviewCategory,
+  retainOverviewWorkspaces,
+  serializeOverviewBoards,
+  sortPickerWorkspaces,
+} from './overviewBoards';
+export type { OverviewBoardGroup, OverviewBoardKind, OverviewBoards, OverviewCategory, PickerWorkspace } from './overviewBoards';

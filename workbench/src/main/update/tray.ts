@@ -22,7 +22,7 @@ export function createUpdateTray(opts: { onCheck: () => void; onInstall: () => v
       tray.setContextMenu(
         Menu.buildFromTemplate([
           { label: '检查更新', click: () => opts.onCheck() },
-          { label: '立即升级', enabled: opts.installEnabled(), click: () => opts.onInstall() },
+          { label: '打开下载链接', enabled: opts.installEnabled(), click: () => opts.onInstall() },
         ]),
       );
     };

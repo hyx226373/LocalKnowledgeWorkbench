@@ -6,7 +6,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ipcMain, type BrowserWindow } from 'electron';
-import { decideSnapshotCapture, WORKSPACE_SNAPSHOT_CAPTURE_CHANNEL, type SnapshotCaptureDecision } from '../shared/workspacePicker/snapshotCapture';
+import {
+  decideSnapshotCapture,
+  WORKSPACE_SNAPSHOT_CAPTURE_CHANNEL,
+  WORKSPACE_SNAPSHOT_DELETE_CHANNEL,
+  WORKSPACE_SNAPSHOT_LOAD_CHANNEL,
+  type SnapshotCaptureDecision,
+  type WorkspaceSnapshotLoadResult,
+} from '../shared/workspacePicker/snapshotCapture';
+import { snapshotCacheFileName } from '../shared/workspacePicker/snapshotCache';
+import { resolveInRoot, PathEscapeError } from './service/paths';
 
 export { WORKSPACE_SNAPSHOT_CAPTURE_CHANNEL };
 
@@ -172,8 +181,96 @@ export async function captureWorkspaceSnapshot(
   }
 }
 
+
+/** 按工作区 id 读已落盘 PNG，填回总览卡片。缺文件则跳过。 */
+export async function loadWorkspaceSnapshots(
+  getDir: () => string,
+  workspaceIds: unknown,
+): Promise<WorkspaceSnapshotLoadResult> {
+  const out: WorkspaceSnapshotLoadResult = {};
+  try {
+    const dir = getDir();
+    if (typeof dir !== 'string' || !dir.trim()) return out;
+    const ids = Array.isArray(workspaceIds) ? workspaceIds : [];
+    for (const id of ids) {
+      if (typeof id !== 'string' || !id) continue;
+      const fileName = snapshotCacheFileName(id);
+      if (!writableName(fileName)) continue;
+      const target = path.join(dir, fileName);
+      if (path.basename(target) !== fileName) continue;
+      try {
+        const st = await fs.promises.stat(target);
+        if (!st.isFile() || st.size <= 0) continue;
+        const bytes = await fs.promises.readFile(target);
+        if (!Buffer.isBuffer(bytes) || bytes.length === 0) continue;
+        let takenAt: string | null = null;
+        try {
+          takenAt = new Date(st.mtimeMs).toLocaleString('zh-CN', { hour12: false });
+        } catch {
+          takenAt = null;
+        }
+        out[id] = {
+          fileName,
+          dataUrl: `data:image/png;base64,${bytes.toString('base64')}`,
+          takenAt,
+        };
+      } catch {
+        /* 单文件失败不影响其它工作区 */
+      }
+    }
+  } catch {
+    return out;
+  }
+  return out;
+}
+
+/** 只删 getDir 下的相对文件名（resolveInRoot 围栏）。返回实际删掉的名字。 */
+export async function deleteWorkspaceSnapshots(
+  getDir: () => string,
+  relativeNames: unknown,
+): Promise<string[]> {
+  const deleted: string[] = [];
+  try {
+    const dir = getDir();
+    if (typeof dir !== 'string' || !dir.trim()) return deleted;
+    const names = Array.isArray(relativeNames) ? relativeNames : [];
+    for (const raw of names) {
+      if (typeof raw !== 'string') continue;
+      // 快过滤：明显非法名直接跳过
+      if (!writableName(raw)) continue;
+      let target: string;
+      try {
+        target = resolveInRoot(dir, raw);
+      } catch (e) {
+        if (e instanceof PathEscapeError) continue;
+        continue;
+      }
+      try {
+        await fs.promises.rm(target, { force: true });
+        deleted.push(raw);
+      } catch {
+        /* 继续删下一个 */
+      }
+      for (const extra of [`${raw}.part`, `${raw}.bak`]) {
+        if (!writableName(extra)) continue;
+        try {
+          const extraPath = resolveInRoot(dir, extra);
+          await fs.promises.rm(extraPath, { force: true });
+        } catch {
+          /* PathEscape 或删失败都忽略 */
+        }
+      }
+    }
+  } catch {
+    return deleted;
+  }
+  return deleted;
+}
+
 export function registerWorkspaceSnapshot(host: WorkspaceSnapshotHost): () => void {
   const channel = WORKSPACE_SNAPSHOT_CAPTURE_CHANNEL;
+  const loadChannel = WORKSPACE_SNAPSHOT_LOAD_CHANNEL;
+  const deleteChannel = WORKSPACE_SNAPSHOT_DELETE_CHANNEL;
   ipcMain.handle(channel, async (_event, payload: unknown) => {
     try {
       return await captureWorkspaceSnapshot(host.getWindow(), payload, () => host.getSnapshotDir());
@@ -181,7 +278,23 @@ export function registerWorkspaceSnapshot(host: WorkspaceSnapshotHost): () => vo
       return decideSnapshotCapture(null, null);
     }
   });
+  ipcMain.handle(loadChannel, async (_event, workspaceIds: unknown) => {
+    try {
+      return await loadWorkspaceSnapshots(() => host.getSnapshotDir(), workspaceIds);
+    } catch {
+      return {};
+    }
+  });
+  ipcMain.handle(deleteChannel, async (_event, relativeNames: unknown) => {
+    try {
+      return await deleteWorkspaceSnapshots(() => host.getSnapshotDir(), relativeNames);
+    } catch {
+      return [];
+    }
+  });
   return () => {
     ipcMain.removeHandler(channel);
+    ipcMain.removeHandler(loadChannel);
+    ipcMain.removeHandler(deleteChannel);
   };
 }

@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "name": "fixture plugin catalog（仅测试）",
+  "testOnly": true,
+  "updatedAt": "2026-10-13T12:00:00Z",
+  "plugins": [
+    {
+      "id": "catalog.hello",
+      "name": "Catalog Hello",
+      "version": "0.1.0",
+      "description": "【仅测试】一键安装 fixture（zip + sha256 + ed25519 签名）",
+      "packageUrl": "./fixtures/catalog.hello.zip",
+      "sha256": "28c6b804d74bc86d14fa4c245f34f95079289575d2129a6e87238372be7841c3",
+      "signature": "ed25519:kuvd+hqryUqqZEOWJWCkDyzSGOTrONUpvf9Cx9ne0HYFluGoiIDh9havOLTzHvGrAAso68bhTUSruv2oTJ5sDA=="
+    },
+    {
+      "id": "catalog.hello-dir",
+      "name": "Catalog Hello (local folder)",
+      "version": "0.1.0",
+      "description": "【仅测试】本地文件夹源；安装为 catalog.hello；无 sha256/签名",
+      "packageUrl": "./fixtures/catalog.hello",
+      "sha256": null,
+      "signature": null
+    }
+  ]
+}

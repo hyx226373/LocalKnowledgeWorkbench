@@ -317,9 +317,11 @@ function createReaderMarkdown(deps: MarkdownDeps): InstanceType<typeof MarkdownI
 }
 
 export function renderMarkdown(source: string, deps: MarkdownDeps): RenderedMarkdown {
+  // Sync path for small docs only — caller must gate with LARGE_MD_CHARS so this while cannot
+  // monopolize the renderer on large/complex MD (those use startMarkdownStream + slices).
   const stream = startMarkdownStream(source, deps);
   let html = '';
-  while (!stream.done()) html += stream.step().html;
+  while (!stream.done()) html += stream.step(SLICE_BUDGET_MS).html;
   return { html: stream.toc() + html, headings: stream.headings(), formulas: stream.formulas() };
 }
 

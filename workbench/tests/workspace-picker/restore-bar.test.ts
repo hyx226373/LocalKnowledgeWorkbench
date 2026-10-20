@@ -360,7 +360,7 @@ describe('进入与恢复条', () => {
     ]);
 
     const root = process.cwd();
-    const app = readFileSync(path.join(root, 'src/renderer/App.tsx'), 'utf8');
+    const app = readFileSync(path.join(root, 'src/renderer/MainShell.tsx'), 'utf8');
     const feedSrc = readFileSync(path.join(root, 'src/renderer/workspace-picker/restoreFeed.ts'), 'utf8');
     const barSrc = readFileSync(path.join(root, 'src/renderer/workspace-picker/RestoreBar.tsx'), 'utf8');
     const css = readFileSync(path.join(root, 'src/renderer/styles.css'), 'utf8');

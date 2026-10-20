@@ -227,6 +227,11 @@ async function readOptions(win) {
 }
 
 async function openMenu(win) {
+  // 弹层入口在「更多」中；已打开时不重复切换父菜单。
+  if (!(await win.locator('[data-testid="top-more-menu"]').count())) {
+    await win.locator('[data-testid="top-more"]').evaluate((button) => button.click());
+  }
+  await win.waitForSelector('[data-testid="appearance-button"]', { timeout: 10000 });
   const clicked = await win.evaluate(() => {
     const button = document.querySelector('[data-testid="appearance-button"]');
     if (!(button instanceof HTMLElement)) return false;
@@ -254,7 +259,7 @@ function snapshotDir(dir) {
 }
 
 async function ready(win, expectAmy) {
-  await win.waitForSelector('[data-testid="appearance-button"]', { timeout: 90000 });
+  await win.waitForSelector('[data-testid="top-more"]', { timeout: 90000 });
   await win.waitForFunction(() => {
     const kb = window.__kb;
     return !!kb && typeof kb.pluginStatus === 'function' && typeof kb.themeReport === 'function';

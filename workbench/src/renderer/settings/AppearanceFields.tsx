@@ -24,17 +24,65 @@ export function AppearanceFields({
   onChange,
   idPrefix = 'appearance',
   showSchemeSun = false,
+  cards = false,
+  part = 'all',
 }: {
   value: Appearance;
   onChange: (next: Appearance) => void;
   idPrefix?: string;
   /** 设置外观页展示太阳胶囊；顶栏菜单可关以免重复 */
   showSchemeSun?: boolean;
+  /** 设置页把三段明暗画成预览卡片。顶栏菜单保持分段按钮。 */
+  cards?: boolean;
+  /** 设置页把明暗和主题下拉拆进不同卡片。 */
+  part?: 'all' | 'scheme' | 'themes';
 }) {
   const chrome = useRegistry(chromeThemes, () => chromeThemes.all());
   const reading = useRegistry(readingThemes, () => readingThemes.all());
+  const showScheme = part !== 'themes';
+  const showThemes = part !== 'scheme';
   return (
-    <div data-testid={`${idPrefix}-fields`}>
+    <div data-testid={part === 'themes' ? undefined : `${idPrefix}-fields`}>
+      {showScheme ? (
+        <div className="kb-set-block">
+          <div className="kb-set-label" id={`${idPrefix}-scheme-label`}>
+            明暗
+          </div>
+          <div
+            className={cards ? 'kb-seg kb-scheme-cards' : 'kb-seg'}
+            role="radiogroup"
+            aria-labelledby={`${idPrefix}-scheme-label`}
+            data-testid={`${idPrefix}-scheme`}
+          >
+            {(['light', 'dark', 'system'] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={value.scheme === id}
+                className={(value.scheme === id ? 'kb-seg-btn on' : 'kb-seg-btn') + (cards ? ' kb-scheme-card' : '')}
+                data-testid={`${idPrefix}-scheme-${id}`}
+                onClick={() => onChange({ ...value, scheme: id })}
+              >
+                {cards ? <span className={`kb-scheme-swatch kb-scheme-swatch--${id}`} aria-hidden="true" /> : null}
+                <span>{SCHEME_LABEL[id]}</span>
+                {cards ? <span className="kb-scheme-radio" aria-hidden="true" /> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {showScheme && showSchemeSun ? (
+        <div className="kb-set-row" data-testid={`${idPrefix}-scheme-sun-row`}>
+          <div>
+            <b>深色外观</b>
+            <p>{value.scheme === 'system' ? '正在跟随系统，此开关已停用。' : '滑块在右为深色，在左为浅色。'}</p>
+          </div>
+          <SchemeSunToggle scheme={value.scheme} onScheme={(scheme) => onChange({ ...value, scheme })} testId={`${idPrefix}-scheme-sun`} />
+        </div>
+      ) : null}
+      {showThemes ? (
+        <>
       <div className="kb-set-row">
         <div>
           <b>外框样式</b>
@@ -75,34 +123,7 @@ export function AppearanceFields({
           ))}
         </select>
       </div>
-      <div className="kb-set-block">
-        <div className="kb-set-label" id={`${idPrefix}-scheme-label`}>
-          明暗
-        </div>
-        <div className="kb-seg" role="radiogroup" aria-labelledby={`${idPrefix}-scheme-label`} data-testid={`${idPrefix}-scheme`}>
-          {(['light', 'dark', 'system'] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              role="radio"
-              aria-checked={value.scheme === id}
-              className={value.scheme === id ? 'kb-seg-btn on' : 'kb-seg-btn'}
-              data-testid={`${idPrefix}-scheme-${id}`}
-              onClick={() => onChange({ ...value, scheme: id })}
-            >
-              {SCHEME_LABEL[id]}
-            </button>
-          ))}
-        </div>
-      </div>
-      {showSchemeSun ? (
-        <div className="kb-set-row" data-testid={`${idPrefix}-scheme-sun-row`}>
-          <div>
-            <b>深色外观</b>
-            <p>{value.scheme === 'system' ? '正在跟随系统，此开关已停用。' : '滑块在右为深色，在左为浅色。'}</p>
-          </div>
-          <SchemeSunToggle scheme={value.scheme} onScheme={(scheme) => onChange({ ...value, scheme })} testId={`${idPrefix}-scheme-sun`} />
-        </div>
+        </>
       ) : null}
     </div>
   );

@@ -4,7 +4,8 @@
  * 叠层默认色跟现有窗口 backgroundColor（#1e1e1e）。不要把浅色主题色写成唯一窗口色。
  */
 
-export const WINDOW_CHROME_OVERLAY_HEIGHT = 40;
+/** 与预览顶栏 48px 对齐，系统最小化/最大化/关闭叠层盖住整条顶栏。 */
+export const WINDOW_CHROME_OVERLAY_HEIGHT = 48;
 export const WINDOW_CHROME_DEFAULT_COLOR = '#1e1e1e';
 export const WINDOW_CHROME_DEFAULT_SYMBOL = '#e6e6e6';
 

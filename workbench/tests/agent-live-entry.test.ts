@@ -94,8 +94,10 @@ describe('agent live 入口', () => {
     const live = open(box.bridge, { workspaceName: '论文第三章' });
     await live.render('ws-m', 1);
     const text = readEntry(box.bridge);
-    const bytes = Buffer.byteLength(text);
-    expect(text.startsWith('<!-- kb-live schemaVersion=1 revision=1 generatedAt=2026-10-08T07:00:00.000Z -->\n')).toBe(true);
+    const marker = '<!-- kb-live schemaVersion=1 revision=1 generatedAt=2026-10-08T07:00:00.000Z -->\n';
+    expect(text).toContain(marker);
+    expect(text.indexOf('## 规则（必须遵守）')).toBeLessThan(text.indexOf(marker));
+    expect(text).not.toContain('## 上下文底座');
     expect(text.indexOf('## 1. 工作区')).toBeLessThan(text.indexOf('## 2. 已打开的资料'));
     expect(text.indexOf('## 2. 已打开的资料')).toBeLessThan(text.indexOf('## 3. 工作资料'));
     expect(text.indexOf('## 3. 工作资料')).toBeLessThan(text.indexOf('## 4. 导航'));
@@ -109,10 +111,21 @@ describe('agent live 入口', () => {
     expect(text).toContain('nav/structure.md');
     expect(text).toContain('../../../AGENT_START_HERE.md');
     expect(text).toContain('0 项 · 0B · 约 0 tokens');
-    expect(bytes).toBeLessThanOrEqual(3072);
+    const legacyStart = text.indexOf(marker);
+    expect(text).not.toContain('历史摘录');
+    expect(text).not.toContain('对话目录');
+    expect(Buffer.byteLength(text.slice(legacyStart))).toBeLessThanOrEqual(3072);
     expect(fs.existsSync(path.join(box.bridge, 'live', 'ws', 'ws-m', 'marker.json'))).toBe(false);
     const guide = fs.readFileSync(path.join(box.bridge, 'live', 'ws', 'ws-m', 'nav', 'guide.md'), 'utf8');
     expect(guide).toContain(STABILITY);
+    expect(text).toContain('可直接读取');
+    expect(guide).toContain('可直接读取');
+    expect(guide).toContain('本机真实绝对路径');
+    expect(guide).toContain('不用另走请求');
+    expect(text).not.toContain('不能直接读');
+    expect(guide).not.toContain('不能直接读');
+    expect(text).not.toContain('须走请求');
+    expect(guide).not.toContain('须走请求');
     expect(guide).toContain('监视 `live/<scope>/` 这个目录，不要只监视 `marker.json` 这一个文件');
     expect(guide).toContain('300ms');
     expect(guide).toContain(CURSOR_HINT);
@@ -263,7 +276,7 @@ describe('agent live 入口', () => {
     const structure = fs.readFileSync(path.join(box.bridge, 'live', 'ws', 'ws-m', 'nav', 'structure.md'), 'utf8');
     expect(structure).toContain('实验.md');
     expect(structure).not.toContain('noise-999');
-    expect(structure).toContain('没有遍历根目录');
+    expect(structure).not.toContain('没有遍历根目录');
     const entry = readEntry(box.bridge);
     expect(entry).not.toContain('正文不应被入口读入');
     expect(entry).toContain('内容生成中');
@@ -464,7 +477,7 @@ describe('agent live 入口', () => {
 
 describe('入口体积', () => {
   it('记录空清单、10 项、50 项的字节和估算 token', async () => {
-    async function measure(count: number, id: string): Promise<{ bytes: number; estTokens: number }> {
+    async function measure(count: number, id: string): Promise<{ bytes: number; legacyBytes: number; estTokens: number }> {
       const box = fresh();
       const materials: AgentMaterial[] = [];
       for (let i = 1; i <= count; i++) {
@@ -476,12 +489,15 @@ describe('入口体积', () => {
       const live = open(box.bridge, { workspaceName: '论文第三章', materials });
       await live.render(id, 1);
       const text = readEntry(box.bridge, id);
-      return { bytes: Buffer.byteLength(text), estTokens: estimateTokens(text) };
+      const start = text.indexOf('<!-- kb-live ');
+      const end = text.indexOf('\n## 历史摘录（仅作参考）');
+      const legacy = start >= 0 ? text.slice(start, end > start ? end : undefined) : text;
+      return { bytes: Buffer.byteLength(text), legacyBytes: Buffer.byteLength(legacy), estTokens: estimateTokens(text) };
     }
     const empty = await measure(0, 'ws-empty');
     const n10 = await measure(10, 'ws-n10');
     const n50 = await measure(50, 'ws-n50');
-    expect(empty.bytes).toBeLessThanOrEqual(3072);
+    expect(empty.legacyBytes).toBeLessThanOrEqual(3072);
     expect(n10.bytes).toBeGreaterThan(empty.bytes);
     expect(n50.bytes).toBeGreaterThan(n10.bytes);
     const out = {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { kb } from '../kb';
 import type { RootTask } from '../../shared/rootTask';
+import { createRootTaskVisibility } from './rootTaskVisibility';
 
 const hiddenIds = new Set<string>();
 let hiddenSnap: ReadonlySet<string> = new Set();
@@ -74,23 +75,25 @@ export function RootTaskDock({ onReveal }: { onReveal?: (rootId: string) => void
   useEffect(() => {
     let alive = true;
     let seenEvent = false;
+    const visibility = createRootTaskVisibility(setTasks);
     const off = kb.onRootTasks((next) => {
       if (!alive) return;
       seenEvent = true;
-      setTasks(asTasks(next));
+      visibility.accept(asTasks(next));
     });
     kb.listRootTasks().then(
       (list) => {
         if (!alive || seenEvent) return;
-        setTasks(asTasks(list));
+        visibility.accept(asTasks(list), true);
       },
       () => {
         if (!alive || seenEvent) return;
-        setTasks([]);
+        visibility.accept([], true);
       },
     );
     return () => {
       alive = false;
+      visibility.dispose();
       off();
     };
   }, []);
