@@ -22,5 +22,34 @@
   "release_validation": {
     "checksums": "verified",
     "native_database_gate": "failed_in_supplied_packaging_report; not rerun during upload"
-  }
+  },
+  "current_release": {
+    "version": "0.3.1",
+    "application_commit": "ff94831",
+    "workbench_source_commit": "ff94831",
+    "based_on": {
+      "version": "0.3.0",
+      "application_commit": "c11f33a"
+    },
+    "official_internal_build": "0.3.1",
+    "public_main_corresponds_to": "0.3.1",
+    "modules_pin": {
+      "documented_commit": "fbff09c1cb02924b025c98f3bd961d52862a32b9",
+      "live_fork_tip": "7631af3",
+      "exported_modules_commit": "af836564b5dc22b17fa9e355537f2652e16f4290",
+      "status": "mismatch: modules/ still exported at 0.2.5; pinned sources not available for re-export"
+    },
+    "sanitized": "local paths, user names and personal category names replaced with neutral placeholders"
+  },
+  "history": [
+    {
+      "version": "0.2.5",
+      "application_commit": "84e1dd5a6e2d07ad0f8574f2f8b2bc241a07d10e"
+    },
+    {
+      "version": "0.3.0",
+      "application_commit": "c11f33a",
+      "public_commit": "fa1c634"
+    }
+  ]
 }
