@@ -15,7 +15,7 @@ const staging = process.env.KB_RELEASE_STAGING
 const manifestPath = path.join(staging, 'native-abi-manifest.json');
 const electronExe = path.join(repoRoot, 'node_modules', 'electron', 'dist', 'electron.exe');
 const electronDist = path.join(repoRoot, 'node_modules', 'electron', 'dist');
-const shared12 = path.join('D:\\STUDY MATERIAL\\项目\\知识库', 'node_modules', 'better-sqlite3');
+const shared12 = path.join('D:\\workspace\\kb', 'node_modules', 'better-sqlite3');
 
 function gitShort() {
   const r = spawnSync('git', ['rev-parse', '--short=12', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' });
@@ -238,8 +238,8 @@ function extractNode(tarPath, destNode) {
 function place12(destDir, nodeFile) {
   removeGenerated(staging, destDir);
   copyPhysical(shared12, destDir);
-  const bindings = path.join('D:\\STUDY MATERIAL\\项目\\知识库', 'node_modules', 'bindings');
-  const fileUri = path.join('D:\\STUDY MATERIAL\\项目\\知识库', 'node_modules', 'file-uri-to-path');
+  const bindings = path.join('D:\\workspace\\kb', 'node_modules', 'bindings');
+  const fileUri = path.join('D:\\workspace\\kb', 'node_modules', 'file-uri-to-path');
   copyPhysical(bindings, path.join(destDir, 'node_modules', 'bindings'));
   copyPhysical(fileUri, path.join(destDir, 'node_modules', 'file-uri-to-path'));
   // 打包器不收集 better-sqlite3 里的 node_modules，所以把 bindings 收进 lib，避免解包后找不到它。

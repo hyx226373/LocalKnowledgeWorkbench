@@ -42,7 +42,7 @@ const CONTENT_ONLY: KeyCommandLike = {
 };
 
 const ENTRIES: QuickSwitchEntry[] = [
-  { id: 'a', name: '论文', purpose: '写文献综述', tags: ['考研'] },
+  { id: 'a', name: '论文', purpose: '写文献综述', tags: ['示例分类'] },
   { id: 'b', name: '英语', purpose: '单词', tags: ['每日'] },
   { id: 'c', name: '空', purpose: '', tags: [] },
 ];

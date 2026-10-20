@@ -724,7 +724,7 @@ describe('N-1 · panel-focus only on focus enter from outside', () => {
   });
 });
 
-describe('Amy 03 · pending activation on restore', () => {
+describe('the user 03 · pending activation on restore', () => {
   it('restore → pending + idle + needsReselect; never interacting; serialize omits activation', () => {
     const restored = restoreNativeAppHostState(
       toPersistPayload({ hostPath: FAKE_NPP.path, titleHint: FAKE_NPP.title }),
@@ -768,7 +768,7 @@ describe('Amy 03 · pending activation on restore', () => {
   });
 });
 
-describe('Amy 03 · exit interaction when content-only ends', () => {
+describe('the user 03 · exit interaction when content-only ends', () => {
   it('contentOnly true→false: interacting → attached; false→true does not force change', () => {
     expect(interactionAfterLayoutChrome('interacting', true, false)).toBe('attached');
     expect(interactionAfterLayoutChrome('attached', true, false)).toBe('attached');

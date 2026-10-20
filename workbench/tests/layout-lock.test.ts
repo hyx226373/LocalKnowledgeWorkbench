@@ -41,6 +41,6 @@ describe('保存布局碰到写锁', () => {
     const ret = svc.saveWorkspaceLayout(ws.id, { schema: 4, dock: null, shell: { sidebarWidth: 280 } }, []);
     expect(ret).toBeUndefined();
     expect((svc.getWorkspace(ws.id).layout as { shell: { sidebarWidth: number } }).shell.sidebarWidth).toBe(280);
-    expect(() => svc.saveWorkspaceLayout(ws.id, { schema: 4, dock: null, shell: { leaked: 'D:\\STUDY MATERIAL\\a.pdf' } }, [])).toThrow(/绝对路径/);
+    expect(() => svc.saveWorkspaceLayout(ws.id, { schema: 4, dock: null, shell: { leaked: 'D:\\Example Docs\\a.pdf' } }, [])).toThrow(/绝对路径/);
   });
 });

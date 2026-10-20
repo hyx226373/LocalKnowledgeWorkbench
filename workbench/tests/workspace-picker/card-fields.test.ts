@@ -262,10 +262,10 @@ describe('布局 JSON 仍走现有校验', () => {
     const before = svc.getWorkspace(id);
     const clean = { schema: 4, dock: null, shell: { sidebarWidth: 280 } };
     const item = { itemId: 'x', sourceKind: 'file', adapterId: 'auto', ref: 'res-1', displayMode: 'in-app-reader' };
-    expect(() => svc.saveWorkspaceLayout(id, { ...clean, shell: { sidebarWidth: 280, leaked: 'D:\\STUDY MATERIAL\\a.pdf' } }, [])).toThrow(/绝对路径/);
+    expect(() => svc.saveWorkspaceLayout(id, { ...clean, shell: { sidebarWidth: 280, leaked: 'D:\\Example Docs\\a.pdf' } }, [])).toThrow(/绝对路径/);
     expect(svc.getWorkspace(id).layout).toEqual(before.layout);
     expect(() =>
-      svc.saveWorkspaceLayout(id, clean, [{ ...item, state: { v: 1, data: { file: 'D:\\STUDY MATERIAL\\a.pdf' } } }]),
+      svc.saveWorkspaceLayout(id, clean, [{ ...item, state: { v: 1, data: { file: 'D:\\Example Docs\\a.pdf' } } }]),
     ).toThrow(/绝对路径/);
     expect(svc.getWorkspace(id).layout).toEqual(before.layout);
     expect(svc.getWorkspace(id).items).toEqual([]);
@@ -273,7 +273,7 @@ describe('布局 JSON 仍走现有校验', () => {
     const saved = svc.getWorkspace(id);
     expect(saved.layout).toMatchObject({ schema: 4, shell: { sidebarWidth: 281 } });
     expect(saved.items.map((i) => i.ref)).toEqual(['res-1']);
-    expect(JSON.stringify(saved)).not.toContain('STUDY MATERIAL');
+    expect(JSON.stringify(saved)).not.toContain('Example Docs');
     expect(saved.lastOpenedAt).toBeNull();
   });
 });

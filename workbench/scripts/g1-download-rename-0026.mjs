@@ -12,8 +12,8 @@ import { build } from 'esbuild';
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const LOG_DIR = 'D:\\kb-r13-work\\upgrade-0026\\g1';
-const DOWNLOAD_DIR = 'D:\\kb-r13-work\\upgrade-0026\\g1-downloads';
+const LOG_DIR = 'D:\\workspace\\kb-work\\upgrade-0026\\g1';
+const DOWNLOAD_DIR = 'D:\\workspace\\kb-work\\upgrade-0026\\g1-downloads';
 const RUN_LOG = path.join(LOG_DIR, 'g1-run.log');
 const RESULT = path.join(LOG_DIR, 'g1-result.json');
 const ENTRY = path.join(root, 'src', 'shared', 'update', 'download.ts');
@@ -25,7 +25,7 @@ const uncaught = [];
 
 function assertSafe(dir) {
   const resolved = path.resolve(dir);
-  if (/study_dev/i.test(resolved)) throw new Error(`拒绝写入 study_dev：${resolved}`);
+  if (/example_dev/i.test(resolved)) throw new Error(`拒绝写入 example_dev：${resolved}`);
   return resolved;
 }
 

@@ -6,7 +6,7 @@
 
 本脚本是模拟 agent（独立进程读文件）。必须显式传入隔离的 `--bridge` 或 `--user-data-dir`。没有默认桥目录，也不读 `KB_AGENT_BRIDGE`。
 
-路径落在 `%LOCALAPPDATA%\LocalKnowledgeWorkbench` 或 `D:\study_dev` 时直接退出，打印拒绝原因，不写入。应用自己的桥根仍是 0.1 的用户数据目录，但这个示例不会去写它。
+路径落在 `%LOCALAPPDATA%\LocalKnowledgeWorkbench` 或 `D:\example_dev` 时直接退出，打印拒绝原因，不写入。应用自己的桥根仍是 0.1 的用户数据目录，但这个示例不会去写它。
 
 ```text
 node tools/kb-agent-watch/watch.mjs --bridge <隔离目录>\agent-bridge --agent <id> --scope current
@@ -30,4 +30,4 @@ PowerShell 5.1 用同目录的 `watch.ps1`（ASCII），参数见 `README.md`。
 
 ## 合并后
 
-本工作树基于 `7d8730a`，没有 `e2e/perf-startup.mjs`，也没有 `node_modules`。本组没有跑启动性能脚本，也没有启动 Electron。合并进已修好监视的 0.2.1 树之后，由集成组复跑 `e2e/perf-startup.mjs`。门禁仍是交互时间小于 2000ms、事件循环 p99 小于 100ms、操作 p95 小于 200ms。验收副本用 `D:\kb-r13-work\userdata` 拷到 `userdata-accept`，不要动 Amy 的原库。
+本工作树基于 `7d8730a`，没有 `e2e/perf-startup.mjs`，也没有 `node_modules`。本组没有跑启动性能脚本，也没有启动 Electron。合并进已修好监视的 0.2.1 树之后，由集成组复跑 `e2e/perf-startup.mjs`。门禁仍是交互时间小于 2000ms、事件循环 p99 小于 100ms、操作 p95 小于 200ms。验收副本用 `D:\workspace\kb-work\userdata` 拷到 `userdata-accept`，不要动 用户的原库。

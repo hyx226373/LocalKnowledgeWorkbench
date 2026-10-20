@@ -16,13 +16,13 @@ export interface ProcRow {
   command: string;
 }
 
-const INSTALLED = /study_dev[\\/]+LocalKnowledgeWorkbench/i;
+const INSTALLED = /example_dev[\\/]+LocalKnowledgeWorkbench/i;
 
-export function isAmyLiveDataDir(dataDir: string, env: NodeJS.ProcessEnv = process.env): boolean {
+export function isOwnerLiveDataDir(dataDir: string, env: NodeJS.ProcessEnv = process.env): boolean {
   const local = env.LOCALAPPDATA;
   if (!local) return false;
-  const amy = path.resolve(local, 'LocalKnowledgeWorkbench');
-  return path.resolve(dataDir).toLowerCase() === amy.toLowerCase();
+  const user = path.resolve(local, 'LocalKnowledgeWorkbench');
+  return path.resolve(dataDir).toLowerCase() === user.toLowerCase();
 }
 
 /** 已安装的工作台。命令行或镜像路径对上就跳过，避免误伤正在运行的正式程序。 */
@@ -39,7 +39,7 @@ export function isProtectedInstall(row: ProcRow): boolean {
  * 活着的实例、没有锁、以及已安装数据目录都不走这条路径。
  */
 export function restartSkipsDiskCache(dataDir: string, selfPid = process.pid): boolean {
-  if (isAmyLiveDataDir(dataDir)) return false;
+  if (isOwnerLiveDataDir(dataDir)) return false;
   let holder = 0;
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(dataDir, 'instance.lock'), 'utf8')) as { pid?: number };
@@ -272,7 +272,7 @@ async function describe(holder: number, recorded: number[]): Promise<{ rows: Pro
 }
 
 export async function reapRecordedChildren(dataDir: string, holder = 0): Promise<number[]> {
-  if (isAmyLiveDataDir(dataDir)) return [];
+  if (isOwnerLiveDataDir(dataDir)) return [];
   const recorded = readRecorded(dataDir);
   const recordedSet = new Set(recorded);
   const described = await describe(holder, recorded);
@@ -367,7 +367,7 @@ export function releaseInstance(dataDir: string) {
 export async function finishInstance(dataDir: string): Promise<void> {
   if (!dataDir) return;
   // 真库目录不 reap 子进程，但仍必须释放 instance.lock，否则 markInstanceExiting 留下 exiting:true 死锁
-  if (isAmyLiveDataDir(dataDir)) {
+  if (isOwnerLiveDataDir(dataDir)) {
     releaseInstance(dataDir);
     return;
   }

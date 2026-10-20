@@ -508,7 +508,7 @@ export class UpdateService {
     // 遗留 pending 自检失败时仍走旧回滚路径（若 journal 里还有 pending）；新检查不会再写入 pending。
     if (this.leaving && kind === 'manual') return;
     if (this.hooks.installDir && isUnderStudyDev(this.hooks.installDir)) {
-      throw new Error('拒绝在 study_dev 下回滚');
+      throw new Error('拒绝在 example_dev 下回滚');
     }
     if (this.hooks.applyMode === 'dirpack') {
       await this.rollbackDirpack(kind, reason);
@@ -699,7 +699,7 @@ export class UpdateService {
         throw new PackageRejectedError('SHA512 不一致，安装包已丢弃');
       }
       if (!this.hooks.installDir) throw new Error('没有安装目录，不能准备目录包');
-      if (isUnderStudyDev(this.hooks.installDir)) throw new Error('拒绝在 study_dev 下准备目录包');
+      if (isUnderStudyDev(this.hooks.installDir)) throw new Error('拒绝在 example_dev 下准备目录包');
       await prepareDirpack({
         zipPath: dest,
         installRoot: this.hooks.installDir,
@@ -778,7 +778,7 @@ export class UpdateService {
     const installDir = this.hooks.installDir;
     if (!available) throw new Error('还没有校验通过的安装包');
     if (!installDir) throw new Error('没有安装目录，不能交接更新器');
-    if (isUnderStudyDev(installDir)) throw new Error('拒绝在 study_dev 下交接更新');
+    if (isUnderStudyDev(installDir)) throw new Error('拒绝在 example_dev 下交接更新');
     const createdAt = new Date().toISOString();
     const handoff = {
       schema: 1 as const,

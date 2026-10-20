@@ -1,25 +1,25 @@
 // G1: silent install of 0.2.3 into an isolated directory while WMI stays hung.
-// Does not install to D:\study_dev. Restores registry and shortcuts afterwards.
+// Does not install to D:\example_dev. Restores registry and shortcuts afterwards.
 import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const INST = path.resolve(process.env.KB_G1_INSTDIR || 'D:\\kb-r13-work\\install-0024\\app');
-const SETUP = path.resolve(process.env.KB_G1_SETUP || 'D:\\kb-r13-work\\feed-0.2.3\\LocalKnowledgeWorkbench-0.2.3-win-x64-setup.exe');
-const LOG_DIR = path.resolve('D:\\kb-r13-work\\install-0024\\g1');
+const INST = path.resolve(process.env.KB_G1_INSTDIR || 'D:\\workspace\\kb-work\\install-0024\\app');
+const SETUP = path.resolve(process.env.KB_G1_SETUP || 'D:\\workspace\\kb-work\\feed-0.2.3\\LocalKnowledgeWorkbench-0.2.3-win-x64-setup.exe');
+const LOG_DIR = path.resolve('D:\\workspace\\kb-work\\install-0024\\g1');
 const STAMP = path.join(LOG_DIR, 'proc-stamp.txt');
 const INSTALL_LOG = path.join(LOG_DIR, 'g1-install.log');
 const RUN_LOG = path.join(LOG_DIR, 'g1-run.log');
 const RESULT = path.join(LOG_DIR, 'g1-result.json');
-const AMY_EXE = 'D:\\study_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe';
-const AMY_DB = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
+const OWNER_EXE = 'D:\\example_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe';
+const OWNER_DB = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
 const REG_KEYS = [
   'HKCU\\Software\\173de95e-f638-560d-b657-f1331a82173e',
   'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\173de95e-f638-560d-b657-f1331a82173e',
 ];
-const EXPECTED_INST = path.resolve('D:\\kb-r13-work\\install-0024\\app');
+const EXPECTED_INST = path.resolve('D:\\workspace\\kb-work\\install-0024\\app');
 
 const startedAt = Date.now();
 const logLines = [];
@@ -35,7 +35,7 @@ function flushLog() {
 
 function assertSafeInst() {
   if (path.resolve(INST) !== EXPECTED_INST) throw new Error('install dir is not the isolated app path');
-  if (/study_dev/i.test(INST)) throw new Error('install dir contains study_dev');
+  if (/example_dev/i.test(INST)) throw new Error('install dir contains example_dev');
 }
 
 function psEncoded(script, timeoutMs) {
@@ -89,10 +89,10 @@ function psQuote(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
 }
 
-function amySnapshot(withHash) {
-  const exe = versionOf(AMY_EXE);
-  if (withHash && exe.exists) exe.sha256 = sha256(AMY_EXE);
-  return { exe, db: fileStat(AMY_DB) };
+function ownerSnapshot(withHash) {
+  const exe = versionOf(OWNER_EXE);
+  if (withHash && exe.exists) exe.sha256 = sha256(OWNER_EXE);
+  return { exe, db: fileStat(OWNER_DB) };
 }
 
 function desktopDir() {
@@ -128,7 +128,7 @@ function queryInstallLocation() {
 }
 
 // uninstallOldVersion reads UninstallString, then InstallLocation. KB_NSIS_INSTDIR
-// only overrides $INSTDIR, so a live UninstallString still uninstalls Amy's tree.
+// only overrides $INSTDIR, so a live UninstallString still uninstalls the user's tree.
 function hideRegisteredUninstall() {
   const key = REG_KEYS[1];
   const removed = [];
@@ -141,7 +141,7 @@ function hideRegisteredUninstall() {
   if (check.status === 0 && /UninstallString/i.test(text)) {
     throw new Error('refusing to run installer while UninstallString is still registered');
   }
-  if (/study_dev/i.test(text)) throw new Error('refusing to run installer while UninstallString mentions study_dev');
+  if (/example_dev/i.test(text)) throw new Error('refusing to run installer while UninstallString mentions example_dev');
   return removed;
 }
 
@@ -226,14 +226,14 @@ const result = {
 };
 let regSaved = [];
 let shortcuts = [];
-let amyBefore = null;
+let ownerBefore = null;
 
 try {
   assertSafeInst();
   fs.mkdirSync(LOG_DIR, { recursive: true });
-  amyBefore = amySnapshot(true);
-  result.amyBefore = amyBefore;
-  fs.writeFileSync(path.join(LOG_DIR, 'amy-before.json'), JSON.stringify(amyBefore, null, 2));
+  ownerBefore = ownerSnapshot(true);
+  result.ownerBefore = ownerBefore;
+  fs.writeFileSync(path.join(LOG_DIR, 'user-before.json'), JSON.stringify(ownerBefore, null, 2));
   regSaved = exportReg(path.join(LOG_DIR, 'reg-before'));
   result.regBefore = regSaved;
   result.installLocationBefore = queryInstallLocation();
@@ -328,18 +328,18 @@ try {
       result.ok = false;
       result.reason = (result.reason ? result.reason + ',' : '') + 'registry-not-restored';
     }
-    const amyAfter = amySnapshot(true);
-    result.amyAfter = amyAfter;
+    const ownerAfter = ownerSnapshot(true);
+    result.ownerAfter = ownerAfter;
     const exeSame = JSON.stringify({
-      size: amyBefore?.exe?.size, mtime: amyBefore?.exe?.mtimeUtc, file: amyBefore?.exe?.fileVersion, sha: amyBefore?.exe?.sha256,
+      size: ownerBefore?.exe?.size, mtime: ownerBefore?.exe?.mtimeUtc, file: ownerBefore?.exe?.fileVersion, sha: ownerBefore?.exe?.sha256,
     }) === JSON.stringify({
-      size: amyAfter.exe?.size, mtime: amyAfter.exe?.mtimeUtc, file: amyAfter.exe?.fileVersion, sha: amyAfter.exe?.sha256,
+      size: ownerAfter.exe?.size, mtime: ownerAfter.exe?.mtimeUtc, file: ownerAfter.exe?.fileVersion, sha: ownerAfter.exe?.sha256,
     });
-    result.amyExeUnchanged = exeSame;
-    result.amyDb = { before: amyBefore?.db, after: amyAfter.db };
+    result.ownerExeUnchanged = exeSame;
+    result.ownerDb = { before: ownerBefore?.db, after: ownerAfter.db };
     if (!exeSame) {
       result.ok = false;
-      result.reason = (result.reason ? result.reason + ',' : '') + 'amy-exe-changed';
+      result.reason = (result.reason ? result.reason + ',' : '') + 'user-exe-changed';
     }
   } catch (err) {
     result.ok = false;

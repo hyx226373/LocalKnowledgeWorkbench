@@ -3,7 +3,7 @@
 //
 //   npm run theme:shots -- <主题包文件夹 | 内置主题 id> [--out <输出文件夹>] [--chrome <id>] [--reading <id>]
 //
-// 例（Windows）：npm run theme:shots -- "D:\STUDY MATERIAL\项目\知识库\themes\a" --out "D:\STUDY MATERIAL\项目\知识库\themes\a\shots"
+// 例（Windows）：npm run theme:shots -- "D:\workspace\kb\themes\a" --out "D:\workspace\kb\themes\a\shots"
 // 例（内置）：  npm run theme:shots -- study --out verify/theme-shots/study
 //
 // 不依赖 xvfb（只有在 Linux 且没有图形显示时才自动用 xvfb-run 包一层）；路径可含空格与中文；

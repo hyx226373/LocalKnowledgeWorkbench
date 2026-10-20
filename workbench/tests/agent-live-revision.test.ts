@@ -18,7 +18,7 @@ import {
   type LiveRevisionOptions,
 } from '../src/main/agentLive/revision';
 
-const ROOT = 'D:\\kb-r13-work\\al-4\\unit';
+const ROOT = 'D:\\workspace\\kb-work\\al-4\\unit';
 
 interface Env {
   dir: string;

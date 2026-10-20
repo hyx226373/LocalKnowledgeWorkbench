@@ -1,7 +1,7 @@
 /**
  * Interaction mode state machine for native-app-host.
  * Rules (01 §4): no hover-enter; first-click consume; Escape exits interacting.
- * Amy 03: exit content-only → exit hosted interaction (plugin responds, does not emit).
+ * the user 03: exit content-only → exit hosted interaction (plugin responds, does not emit).
  */
 
 export type InteractionMode = 'idle' | 'attached' | 'interacting';
@@ -50,7 +50,7 @@ export function applyHover(mode: InteractionMode): InteractionMode {
 }
 
 /**
- * Amy 03 §1: when exiting content-only (true→false), exit hosted interaction.
+ * the user 03 §1: when exiting content-only (true→false), exit hosted interaction.
  * Plugin only responds to layout.chromeVisibilityChanged — does not emit exit events.
  * Entering content-only (false→true) does not force interaction change.
  */

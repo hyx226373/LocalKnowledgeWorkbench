@@ -15,7 +15,7 @@
 
 ## 怎么验证的
 
-在 `D:\STUDY MATERIAL\项目\知识库\modules\fileops` 执行：
+在 `D:\workspace\kb\modules\fileops` 执行：
 
 ```text
 npm run build
@@ -86,7 +86,7 @@ EPERM: operation not permitted, symlink '...\outside' -> '...\root\sym-out'
 
 ## 根目录复跑（组长，2026-10-03）
 
-在 `D:\STUDY MATERIAL\项目\知识库` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 2 个文件、15 项通过。其中包含「覆盖、删除、移动后 op_log.resource_id 等于 W2 的资料 ID，移动后 ID 不变」。
+在 `D:\workspace\kb` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 2 个文件、15 项通过。其中包含「覆盖、删除、移动后 op_log.resource_id 等于 W2 的资料 ID，移动后 ID 不变」。
 
 ## 第 9 轮
 
@@ -98,7 +98,7 @@ subst：这次挂的是 `X:`，指向临时目录。一个根在原路径，一�
 
 EXDEV：Node 直接启动 `diskpart.exe` 是 `EACCES`。改由 powershell 调 diskpart，建了 64MB VHD 并分到 `Y:`。探测用的 `fs.renameSync` 从临时目录到 `Y:` 抛 `EXDEV`。随后 fileops 跨根 move：字节一致、源消失、ID 不变，目标 inode 与源不同，说明走了复制再删除。`finally` 卸掉 `Y:` 并删除 VHD。控制台是 `EXDEV_RAN vhd Y:`。跑完后盘符只剩 C、D、E，`subst` 列表是空的。
 
-在 `D:\STUDY MATERIAL\项目\知识库\modules\fileops`：
+在 `D:\workspace\kb\modules\fileops`：
 
 ```text
 npm run build

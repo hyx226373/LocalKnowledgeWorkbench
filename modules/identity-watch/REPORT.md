@@ -46,7 +46,7 @@ v1.1 另外测了：`createRoot` 传入 id 时用该 id，且不写 `root_mounts
 
 符号链接创建失败原文（未把 symlink 写成已测）：
 
-`Error: EPERM: operation not permitted, symlink 'C:\Users\sana2\AppData\Local\Temp\kb-id-B50u7L\outside-secret' -> 'C:\Users\sana2\AppData\Local\Temp\kb-id-B50u7L\root\sym-out'`
+`Error: EPERM: operation not permitted, symlink 'C:\Users\example\AppData\Local\Temp\kb-id-B50u7L\outside-secret' -> 'C:\Users\example\AppData\Local\Temp\kb-id-B50u7L\root\sym-out'`
 
 根外链接这一项是用 junction 做完的。
 
@@ -68,4 +68,4 @@ v1.1 另外测了：`createRoot` 传入 id 时用该 id，且不写 `root_mounts
 
 ## 根目录复跑（组长，2026-10-03）
 
-在 `D:\STUDY MATERIAL\项目\知识库` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 1 个文件、17 项通过，耗时 14.79s。监视后端仍是 parcel。符号链接创建仍是 `EPERM`。非 NTFS 真实卷仍未测。
+在 `D:\workspace\kb` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 1 个文件、17 项通过，耗时 14.79s。监视后端仍是 parcel。符号链接创建仍是 `EPERM`。非 NTFS 真实卷仍未测。

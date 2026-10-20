@@ -46,7 +46,7 @@ describe('删除工作区确认', () => {
   it('确认后删除当前工作区，并先切到另一个', async () => {
     const bundle = ports(
       [
-        { id: 'a', name: '考研 数学' },
+        { id: 'a', name: '示例分类 数学' },
         { id: 'b', name: '英语' },
       ],
       'a',
@@ -54,7 +54,7 @@ describe('删除工作区确认', () => {
     const result = await requestDeleteWorkspace('a', bundle.api);
     expect(result).toBe('deleted');
     expect(bundle.confirm).toHaveBeenCalledWith({
-      title: '删除工作区「考研 数学」？',
+      title: '删除工作区「示例分类 数学」？',
       body: DELETE_WORKSPACE_CONFIRM_BODY,
       ok: '删除',
       danger: true,
@@ -66,7 +66,7 @@ describe('删除工作区确认', () => {
   it('删的不是当前工作区时不切换', async () => {
     const bundle = ports(
       [
-        { id: 'a', name: '考研 数学' },
+        { id: 'a', name: '示例分类 数学' },
         { id: 'b', name: '英语' },
       ],
       'b',
@@ -79,7 +79,7 @@ describe('删除工作区确认', () => {
   it('取消确认不删除、不切换', async () => {
     const bundle = ports(
       [
-        { id: 'a', name: '考研 数学' },
+        { id: 'a', name: '示例分类 数学' },
         { id: 'b', name: '英语' },
       ],
       'a',
@@ -92,7 +92,7 @@ describe('删除工作区确认', () => {
   });
 
   it('只剩最后一个工作区时不弹确认、不删除', async () => {
-    const bundle = ports([{ id: 'a', name: '考研 数学' }], 'a');
+    const bundle = ports([{ id: 'a', name: '示例分类 数学' }], 'a');
     const result = await requestDeleteWorkspace('a', bundle.api);
     expect(result).toBe('blocked');
     expect(bundle.confirm).not.toHaveBeenCalled();
@@ -116,7 +116,7 @@ describe('deleteWorkspace 只删库内记录', () => {
     write(note, '# 标题\n留给磁盘');
     const root = svc.addRoot(dir);
     await svc.scanRoot(root.id);
-    const doomed = svc.createWorkspace('考研 数学', '考研');
+    const doomed = svc.createWorkspace('示例分类 数学', '示例分类');
     svc.setCurrentWorkspace(doomed.id);
     const now = Date.now();
     svc.db.prepare('INSERT OR IGNORE INTO workspace_roots(workspace_id, root_id) VALUES (?, ?)').run(doomed.id, root.id);
@@ -125,7 +125,7 @@ describe('deleteWorkspace 只删库内记录', () => {
         `INSERT INTO workspace_root_instances (
            id, workspace_id, source_id, name, sort_order, filter_json,
            generation, hidden, publishable, created_at, updated_at
-         ) VALUES (?, ?, ?, '考研数学', 1, '{"extensions":[]}', 0, 0, 1, ?, ?)`,
+         ) VALUES (?, ?, ?, '示例分类数学', 1, '{"extensions":[]}', 0, 0, 1, ?, ?)`,
       )
       .run('inst-doomed', doomed.id, root.id, now, now);
     svc.db

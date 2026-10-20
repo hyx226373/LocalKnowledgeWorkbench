@@ -1,6 +1,6 @@
 /**
- * 外贴 25 隔离验收。空库落在 D:\kb-r13-work\agent-live-0025\userdata。
- * 不打开窗口，不写 Amy 的用户目录。双 agent 只用组 5 的模拟监听。
+ * 外贴 25 隔离验收。空库落在 D:\workspace\kb-work\agent-live-0025\userdata。
+ * 不打开窗口，不写 用户的用户目录。双 agent 只用组 5 的模拟监听。
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -18,7 +18,7 @@ import { duplicateMessage, MSG_CLEAR_BODY, MSG_CLEAR_TITLE, MSG_COPIED } from '.
 import type { AgentLiveClient } from '../src/renderer/agent-live/client';
 import type { AgentLiveHost } from '../src/renderer/agent-live/host';
 
-const LOG = process.platform === 'win32' ? 'D:\\kb-r13-work\\agent-live-0025' : fs.mkdtempSync(path.join(os.tmpdir(), 'agent-live-wire-'));
+const LOG = process.platform === 'win32' ? 'D:\\workspace\\kb-work\\agent-live-0025' : fs.mkdtempSync(path.join(os.tmpdir(), 'agent-live-wire-'));
 const USER_ROOT = path.join(LOG, 'userdata');
 const REPO = path.resolve(process.cwd());
 const BLOCKS = ['## 1. 工作区', '## 2. 已打开的资料', '## 3. 工作资料', '## 4. 导航', '## 5. 版本', '## 6. 接入约定'];
@@ -35,7 +35,7 @@ function assertIsolated(dir: string): void {
   if (local && (norm === local || norm.startsWith(local + path.sep))) {
     throw new Error('拒绝写入真实用户目录');
   }
-  if (norm.startsWith('d:\\study_dev')) throw new Error('拒绝写入 D:\\study_dev');
+  if (norm.startsWith('d:\\example_dev')) throw new Error('拒绝写入 D:\\example_dev');
   if (!norm.startsWith(path.resolve(USER_ROOT).toLowerCase() + path.sep) && norm !== path.resolve(USER_ROOT).toLowerCase()) {
     throw new Error('用户数据必须留在隔离目录');
   }

@@ -1,6 +1,6 @@
 /**
  * View-level persist helpers — reuses shared toPersistPayload / sanitizePersist (no hwnd).
- * Restore strategy: reselect-on-restore + activation pending (Amy 03 §3).
+ * Restore strategy: reselect-on-restore + activation pending (the user 03 §3).
  * Never auto-attach; never auto-activate outbound on restore/mount.
  */
 import {

@@ -209,8 +209,8 @@ describe('布局持久化与备份/迁移', () => {
     const { svc, dataDir } = await setup();
     const layout = { grid: { root: { type: 'branch', data: [] } }, panels: { 'res:1': { params: { resourceId: '1' } } } };
     svc.setLayout('dock', layout);
-    expect(() => svc.setLayout('bad', { path: 'C:\\Users\\amy\\a.md' })).toThrow(/绝对路径/);
-    expect(() => svc.setLayout('bad', { path: '/home/amy/a.md' })).toThrow(/绝对路径/);
+    expect(() => svc.setLayout('bad', { path: 'C:\\Users\\用户\\a.md' })).toThrow(/绝对路径/);
+    expect(() => svc.setLayout('bad', { path: '/home/user/a.md' })).toThrow(/绝对路径/);
     await svc.close();
     cleanups.pop();
     const svc2 = new WorkbenchService({ dataDir });

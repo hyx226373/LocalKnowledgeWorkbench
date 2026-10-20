@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const TMP = 'D:\\kb-r13-work\\updater-0027\\tmp';
-const FIXTURE = 'D:\\kb-r13-work\\updater-0027\\g8\\fixture';
-const RESULT = 'D:\\kb-r13-work\\updater-0027\\g8\\g8-result.json';
+const TMP = 'D:\\workspace\\kb-work\\updater-0027\\tmp';
+const FIXTURE = 'D:\\workspace\\kb-work\\updater-0027\\g8\\fixture';
+const RESULT = 'D:\\workspace\\kb-work\\updater-0027\\g8\\g8-result.json';
 
 const yml = [
   'version: 0.2.4',

@@ -334,7 +334,7 @@ describe('工作区选择首批验证夹具', () => {
       expect(QUICK_SWITCH.keybinding).toBe(mod.QUICK_SWITCH_DEFAULT_KEY);
     }
 
-    // 样例 settings 仍是草案旧键。登记候选按 Amy 用 Ctrl+Shift+F，不从样例读默认键，也不写快捷键存储。
+    // 样例 settings 仍是草案旧键。登记候选按 用户用 Ctrl+Shift+F，不从样例读默认键，也不写快捷键存储。
     expect(samples.settings.quickSwitchKey).toBe('Ctrl+Shift+E');
     expect(QUICK_SWITCH.keybinding).toBe('Ctrl+Shift+F');
     expect(QUICK_SWITCH.keybinding).not.toBe(samples.settings.quickSwitchKey);

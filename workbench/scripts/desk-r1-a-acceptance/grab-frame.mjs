@@ -317,7 +317,7 @@ function buildPrepareExpression({ maxFrameRate = 30, preferImageCapture = false,
       return { reused: true, started: prev.started, contentProtection: prev.contentProtection, info: prev.info(), titleMarker, hookHwnd };
     }
     let contentProtection = null;
-    // GrabFrame: raise:false — content protection ON, but do NOT setAlwaysOnTop/moveTop/focus (would steal E/Amy foreground until A exits).
+    // GrabFrame: raise:false — content protection ON, but do NOT setAlwaysOnTop/moveTop/focus (would steal E/the user foreground until A exits).
     if (typeof c._testSetContentProtection === 'function') contentProtection = await c._testSetContentProtection(true, { raise: false });
     let started = await c.captureGetStatus();
     if (!(started && started.status === 'live' && started.captureId)) {

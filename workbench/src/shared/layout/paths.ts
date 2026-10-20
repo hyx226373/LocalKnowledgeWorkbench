@@ -33,10 +33,10 @@ export function installPath(installRoot: string, ...parts: string[]): string {
   return full;
 }
 
-/** 安装根、版本目录、用户数据都不许落在 Amy 的 D:\\study_dev 下。 */
+/** 安装根、版本目录、用户数据都不许落在 用户的 D:\\example_dev 下。 */
 export function isUnderStudyDev(target: string): boolean {
   const resolved = path.win32.resolve(target).toLowerCase();
-  const root = 'd:\\study_dev';
+  const root = 'd:\\example_dev';
   return resolved === root || resolved.startsWith(`${root}\\`);
 }
 

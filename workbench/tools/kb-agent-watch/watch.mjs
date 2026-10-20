@@ -40,7 +40,7 @@ function usage() {
   return [
     '用法: node tools/kb-agent-watch/watch.mjs (--bridge <agent-bridge> | --user-data-dir <dir>) --agent <id> [--scope current|ws/<id>] [--once] [--poll-only]',
     '必须显式传入 --bridge 或 --user-data-dir。没有默认桥目录。',
-    '拒绝 %LOCALAPPDATA%\\LocalKnowledgeWorkbench 和 D:\\study_dev。',
+    '拒绝 %LOCALAPPDATA%\\LocalKnowledgeWorkbench 和 D:\\example_dev。',
     '默认监视 live/current/，防抖 300ms，轮询 7000ms（允许 5000–10000）。',
     '游标早于 changes/index.json 的 oldestRevision 时，改读 snapshot.json，不要沿增量补齐。',
   ].join('\n');
@@ -833,7 +833,7 @@ function realUserDataRoots() {
       label: '%LOCALAPPDATA%\\LocalKnowledgeWorkbench',
     });
   }
-  roots.push({ dir: path.resolve('D:\\study_dev'), label: 'D:\\study_dev' });
+  roots.push({ dir: path.resolve('D:\\example_dev'), label: 'D:\\example_dev' });
   return roots;
 }
 
@@ -871,7 +871,7 @@ async function main() {
     args.bridge = path.join(path.resolve(args.userDataDir), 'agent-bridge');
   }
   if (!args.bridge) {
-    warn('必须显式传入 --bridge 或 --user-data-dir。不会默认写入 %LOCALAPPDATA%\\LocalKnowledgeWorkbench 或 D:\\study_dev。');
+    warn('必须显式传入 --bridge 或 --user-data-dir。不会默认写入 %LOCALAPPDATA%\\LocalKnowledgeWorkbench 或 D:\\example_dev。');
     warn(usage());
     process.exitCode = 2;
     return;

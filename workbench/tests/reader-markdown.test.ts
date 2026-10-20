@@ -146,7 +146,7 @@ describe('Markdown 阅读', () => {
     const splitMs = performance.now() - splitAt;
     const sliced = renderMarkdownSlices(source, deps({ katex: null, relDir: '', fileUrl: (p) => p }), SLICE_BUDGET_MS);
     const maxSlice = Math.max(...sliced.sliceMs);
-    const outDir = 'D:\\kb-r13-work';
+    const outDir = 'D:\\workspace\\kb-work';
     mkdirSync(outDir, { recursive: true });
     writeFileSync(
       path.join(outDir, 'reader-perf.json'),

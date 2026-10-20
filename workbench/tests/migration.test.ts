@@ -273,7 +273,7 @@ describe('在另一台电脑（另一套路径）导入并重映射', () => {
   it('Windows 风格原路径 → 本机另一套路径：工作区、阅读状态、收藏、外观、插件状态、主题包都能对上', async () => {
     const src = await sourceMachine();
     const pkg = asWindowsPackage((await exportPackage(src.svc, path.join(tmpDir('kbexp-'), 'a.kbmigrate.zip'))).file, {
-      [src.ra.id]: 'D:\\Users\\amy\\Documents\\我的资料库',
+      [src.ra.id]: 'D:\\Users\\用户\\Documents\\我的资料库',
       [src.rb.id]: 'E:\\写作 2026',
     });
     const dst = copyRoots(src);

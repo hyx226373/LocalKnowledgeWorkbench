@@ -6,7 +6,7 @@
 export const EXT_BROWSE_PARTITION = 'kb-ext-browse';
 
 export interface ExternalBrowsePrefs {
-  /** 允许在主窗口内容区用标签打开外链。缺省开（Amy 确认的预览图）。 */
+  /** 允许在主窗口内容区用标签打开外链。缺省开（用户确认的预览图）。 */
   allowOpenExternal: boolean;
   /** 放行 file: 等非 http(s)。缺省关。javascript: 仍然拒绝。 */
   trustInsecureLinks: boolean;

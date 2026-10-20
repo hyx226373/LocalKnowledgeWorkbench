@@ -183,7 +183,7 @@ export async function runSwitch(io: SwitchIo, handoffInput: UpdateHandoff): Prom
 /** 手点恢复上一版。不走 decideRecovery，不删 versions，不读不写 userData。 */
 export async function rollbackToPrevious(io: SwitchIo): Promise<UpdaterState> {
   if (isUnderStudyDev(io.installRoot)) {
-    throw new Error('禁止在 D:\\study_dev 下恢复上一版');
+    throw new Error('禁止在 D:\\example_dev 下恢复上一版');
   }
   const pointer = await loadPointer(io, io.installRoot);
   if (!pointer.previous) throw new Error('没有上一版可恢复');
@@ -295,7 +295,7 @@ function studyRefusal(handoff: UpdateHandoff): UpdaterState {
     fromVersion: handoff.fromVersion,
     toVersion: handoff.toVersion,
     candidateRel: handoff.candidateRel,
-    error: '禁止在 D:\\study_dev 下切换或启动',
+    error: '禁止在 D:\\example_dev 下切换或启动',
     logFile: null,
     attempt: 0,
     startedAt: null,
@@ -340,7 +340,7 @@ async function switchPointer(io: SwitchIo, handoff: UpdateHandoff, start: number
 
 async function startApp(io: SwitchIo, handoff: UpdateHandoff, start: number, hold: { pid: number | null }): Promise<void> {
   const exe = appExe(handoff.installRoot, handoff.toVersion);
-  if (isUnderStudyDev(exe)) throw new Error('禁止启动 D:\\study_dev 下的程序');
+  if (isUnderStudyDev(exe)) throw new Error('禁止启动 D:\\example_dev 下的程序');
   const child = await io.spawnApp(exe, launchEnv(handoff));
   hold.pid = child.pid;
   if (io.now() - start >= PHASE_TIMEOUT_MS.starting) throw new Error('启动新版超时');

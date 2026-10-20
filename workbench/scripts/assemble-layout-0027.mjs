@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TMP = 'D:\\kb-r13-work\\updater-0027\\tmp';
+const TMP = 'D:\\workspace\\kb-work\\updater-0027\\tmp';
 
 function arg(flag) {
   const index = process.argv.indexOf(flag);
@@ -17,7 +17,7 @@ function arg(flag) {
 
 function underStudyDev(target) {
   const resolved = path.win32.resolve(target).toLowerCase();
-  const banned = 'd:\\study_dev';
+  const banned = 'd:\\example_dev';
   return resolved === banned || resolved.startsWith(`${banned}\\`);
 }
 
@@ -41,7 +41,7 @@ if (!unpacked || !versionArg || !out || !launcher || !updater) {
   process.exit(2);
 }
 if (underStudyDev(out)) {
-  console.error('拒绝写入 D:\\study_dev');
+  console.error('拒绝写入 D:\\example_dev');
   process.exit(2);
 }
 
@@ -69,7 +69,7 @@ await build({
 });
 const layout = require(outfile);
 if (layout.isUnderStudyDev(out)) {
-  console.error('拒绝写入 D:\\study_dev');
+  console.error('拒绝写入 D:\\example_dev');
   process.exit(2);
 }
 

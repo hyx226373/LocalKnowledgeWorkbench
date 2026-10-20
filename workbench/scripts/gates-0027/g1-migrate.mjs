@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const TMP = 'D:\\kb-r13-work\\updater-0027\\tmp';
-const FIXTURE = 'D:\\kb-r13-work\\updater-0027\\g1\\fixture';
-const RESULT = 'D:\\kb-r13-work\\updater-0027\\g1\\g1-result.json';
+const TMP = 'D:\\workspace\\kb-work\\updater-0027\\tmp';
+const FIXTURE = 'D:\\workspace\\kb-work\\updater-0027\\g1\\fixture';
+const RESULT = 'D:\\workspace\\kb-work\\updater-0027\\g1\\g1-result.json';
 const NOW = '2026-10-10T12:00:00.000Z';
 
 async function bundle(build, fs, entry, name) {

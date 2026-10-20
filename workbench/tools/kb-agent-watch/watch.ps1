@@ -90,10 +90,10 @@ function Get-RealUserDataReason([string]$target) {
       return "refuse: $resolved is under %LOCALAPPDATA%\LocalKnowledgeWorkbench ($root). Simulated agent will not write real user data. Pass an isolated -Bridge or -UserDataDir."
     }
   }
-  $study = 'D:\study_dev'
+  $study = 'D:\example_dev'
   if (Test-SameOrInside $study $target) {
     $resolved = Get-ResolvedPath $target
-    return "refuse: $resolved is under D:\study_dev. Simulated agent will not write that directory. Pass an isolated -Bridge or -UserDataDir."
+    return "refuse: $resolved is under D:\example_dev. Simulated agent will not write that directory. Pass an isolated -Bridge or -UserDataDir."
   }
   return ''
 }

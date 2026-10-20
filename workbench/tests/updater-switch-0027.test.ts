@@ -16,8 +16,8 @@ import {
 import { rollbackToPrevious, runRecover, runSwitch, type SwitchIo } from '../src/updater/machine';
 
 const sha = 'A'.repeat(88);
-const root = 'D:\\kb-r13-work\\updater-0027\\app';
-const userData = 'D:\\kb-r13-work\\updater-0027\\userdata';
+const root = 'D:\\workspace\\kb-work\\updater-0027\\app';
+const userData = 'D:\\workspace\\kb-work\\updater-0027\\userdata';
 
 function pointer(current = '0.2.4', previous: string | null = null, updatedAt = '2026-10-10T12:00:00.000Z'): CurrentPointer {
   return { schema: 1, current, previous, updatedAt };
@@ -333,19 +333,19 @@ describe('更新器切换', () => {
     expect(box.currentWrites).toBe(0);
   });
 
-  it('手点回退拒绝 study_dev', async () => {
-    const box = harness({ handoff: handoff({ installRoot: 'D:\\study_dev\\LocalKnowledgeWorkbench' }) });
-    await expect(rollbackToPrevious(box.io)).rejects.toThrow(/study_dev/);
+  it('手点回退拒绝 example_dev', async () => {
+    const box = harness({ handoff: handoff({ installRoot: 'D:\\example_dev\\LocalKnowledgeWorkbench' }) });
+    await expect(rollbackToPrevious(box.io)).rejects.toThrow(/example_dev/);
     expect(box.currentWrites).toBe(0);
     expect(box.stateWrites).toBe(0);
     expect(box.listed).toBe(0);
   });
 
-  it('study_dev 被拒绝', async () => {
-    const devApp = harness({ handoff: handoff({ installRoot: 'D:\\study_dev\\LocalKnowledgeWorkbench' }) });
-    const devData = harness({ handoff: handoff({ userDataDir: 'D:\\study_dev\\Amy' }) });
-    const byRoot = await runSwitch(devApp.io, handoff({ installRoot: 'D:\\study_dev\\LocalKnowledgeWorkbench' }));
-    const byData = await runSwitch(devData.io, handoff({ userDataDir: 'D:\\study_dev\\Amy' }));
+  it('example_dev 被拒绝', async () => {
+    const devApp = harness({ handoff: handoff({ installRoot: 'D:\\example_dev\\LocalKnowledgeWorkbench' }) });
+    const devData = harness({ handoff: handoff({ userDataDir: 'D:\\example_dev\\the user' }) });
+    const byRoot = await runSwitch(devApp.io, handoff({ installRoot: 'D:\\example_dev\\LocalKnowledgeWorkbench' }));
+    const byData = await runSwitch(devData.io, handoff({ userDataDir: 'D:\\example_dev\\the user' }));
     expect(byRoot.phase).toBe('failed');
     expect(byRoot.error).toContain('禁止');
     expect(byData.phase).toBe('failed');

@@ -59,7 +59,7 @@ CANCEL_METRICS {"stopMs":3,"processedBeforeStop":2,"total":404,"resumed":402}
 
 ## 根目录复跑（组长，2026-10-03）
 
-在 `D:\STUDY MATERIAL\项目\知识库` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 2 个文件、13 项通过。全量索引 stdout：`files` 2004，`elapsedMs` 14700，`maxLagMs` 42.04。取消 stdout：`stopMs` 2。上面「没有跑仓库根目录的 npm test」已被这次复跑补上。
+在 `D:\workspace\kb` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 2 个文件、13 项通过。全量索引 stdout：`files` 2004，`elapsedMs` 14700，`maxLagMs` 42.04。取消 stdout：`stopMs` 2。上面「没有跑仓库根目录的 npm test」已被这次复跑补上。
 
 ## v1.2
 

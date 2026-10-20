@@ -64,5 +64,5 @@ describe('拖出、文件导出 §9 和三种新链接',()=>{
    const r=repo(),{id}=r.import(md);r.setSelection(id,[1],[3]);const dest=path.join(r.dataDir,'saved.md'),startDrag=vi.fn();const api=bindRebirthMethods(r,{pickJson:async()=>null,saveFile:async()=>dest,copy:vi.fn(),startDrag});
    expect(await api.rebirthExportFile({id})).toEqual({canceled:false,path:dest});expect(fs.readFileSync(dest,'utf8')).toBe(r.generate(id).text);api.rebirthDragOut({id});const file=startDrag.mock.calls[0][0];expect(path.dirname(file)).toBe(r.out);expect(fs.readFileSync(file,'utf8')).toBe(r.generate(id).text);expect(await api.rebirthImportJson({pickFile:true})).toBeNull();
  });
- it.each(['file','markdown','json'])('新链接 %s 包含格式块清单与必选文件头',mode=>{const text=newLink('D:\\study_dev\\LocalKnowledgeWorkbench\\agent-data','codex',mode!=='markdown',mode);expect(text).toContain('概述');expect(text).toContain('overview');expect(text).toContain('来源对话');if(mode==='json')expect(text).toContain('fenced json object');});
+ it.each(['file','markdown','json'])('新链接 %s 包含格式块清单与必选文件头',mode=>{const text=newLink('D:\\example_dev\\LocalKnowledgeWorkbench\\agent-data','codex',mode!=='markdown',mode);expect(text).toContain('概述');expect(text).toContain('overview');expect(text).toContain('来源对话');if(mode==='json')expect(text).toContain('fenced json object');});
 });

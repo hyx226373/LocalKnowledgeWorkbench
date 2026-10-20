@@ -68,6 +68,6 @@ app.whenReady().then(async () => {
   console.log(JSON.stringify(result));
   app.exit(0);
 }).catch((err) => {
-  fs.writeFileSync('D:/kb-r13-work/r40-probe-error.txt', String(err && err.stack ? err.stack : err));
+  fs.writeFileSync('D:/workspace/kb-work/r40-probe-error.txt', String(err && err.stack ? err.stack : err));
   app.exit(1);
 });

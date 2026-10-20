@@ -5,7 +5,7 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 
 const EXE = process.env.KB_PACK_EXE;
-const WORK = 'D:/kb-r13-work/pack-0015';
+const WORK = 'D:/workspace/kb-work/pack-0015';
 const FIXTURE = path.join(WORK, 'reader-fixture');
 const USERDATA = path.join(WORK, 'reader-userdata');
 const OUT = path.join(WORK, 'shots');

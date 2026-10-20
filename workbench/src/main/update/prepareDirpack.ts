@@ -101,7 +101,7 @@ function throwIfCancelled(signal?: AbortSignal): void {
  * 失败或取消时删掉 partial，不覆盖已有候选，也不动 current.json。
  */
 export async function prepareDirpack(req: PrepareDirpackRequest): Promise<{ candidateRel: string; version: string }> {
-  if (isUnderStudyDev(req.installRoot)) throw new Error('拒绝在 study_dev 下准备目录包');
+  if (isUnderStudyDev(req.installRoot)) throw new Error('拒绝在 example_dev 下准备目录包');
   const version = assertVersionDirName(req.version);
   const partial = partialDir(req.installRoot, version);
   const finalDir = versionDir(req.installRoot, version);
@@ -174,7 +174,7 @@ export async function prepareDirpack(req: PrepareDirpackRequest): Promise<{ cand
 
 /** 只删除 versions/<版本>.partial。current / previous 指向的目录不动。 */
 export async function removePartial(installRoot: string, version: string): Promise<void> {
-  if (isUnderStudyDev(installRoot)) throw new Error('拒绝删除 study_dev 下的目录');
+  if (isUnderStudyDev(installRoot)) throw new Error('拒绝删除 example_dev 下的目录');
   const versionName = assertVersionDirName(version);
   const partial = partialDir(installRoot, versionName);
   const keep = new Set<string>();

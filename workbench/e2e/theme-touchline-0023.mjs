@@ -1,4 +1,4 @@
-// 隔离 CDP：球场指挥室外框/阅读区出现在外观菜单，深色令牌生效；第二次启动撞上 amy.touchline。
+// 隔离 CDP：球场指挥室外框/阅读区出现在外观菜单，深色令牌生效；第二次启动撞上 example.touchline。
 // 不使用 SendInput，也不用 Playwright 的鼠标/键盘。窗口放到屏幕外，不 focus、不 setAlwaysOnTop。
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -8,11 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { _electron as electron } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const EVIDENCE = 'D:\\kb-r13-work\\theme-0023';
+const EVIDENCE = 'D:\\workspace\\kb-work\\theme-0023';
 const USERDATA = path.join(EVIDENCE, 'userdata');
 const SHOTS = path.join(EVIDENCE, 'shots');
-const AMY_SRC = 'C:\\Users\\sana2\\AppData\\Local\\LocalKnowledgeWorkbench\\themes\\amy.touchline';
-const AMY_DST = path.join(USERDATA, 'themes', 'amy.touchline');
+const OWNER_SRC = 'C:\\Users\\example\\AppData\\Local\\LocalKnowledgeWorkbench\\themes\\example.touchline';
+const OWNER_DST = path.join(USERDATA, 'themes', 'example.touchline');
 const PROTECTED_PIDS = new Set([6444, 18580, 23756, 26696, 32008, 35504, 39640]);
 const STYLE_SELECTORS = {
   chromeToken: "document.documentElement; getComputedStyle(el).getPropertyValue('--kb-color-bg')",
@@ -59,7 +59,7 @@ function isProtectedRow(row) {
   if (!row) return false;
   if (PROTECTED_PIDS.has(row.pid)) return true;
   const blob = `${row.name}\n${row.image}`;
-  return /LocalKnowledgeWorkbench\.exe/i.test(blob) || /study_dev[\\/]+LocalKnowledgeWorkbench/i.test(blob);
+  return /LocalKnowledgeWorkbench\.exe/i.test(blob) || /example_dev[\\/]+LocalKnowledgeWorkbench/i.test(blob);
 }
 
 function descendants(root, rows) {
@@ -258,19 +258,19 @@ function snapshotDir(dir) {
   return out;
 }
 
-async function ready(win, expectAmy) {
+async function ready(win, expectOwner) {
   await win.waitForSelector('[data-testid="top-more"]', { timeout: 90000 });
   await win.waitForFunction(() => {
     const kb = window.__kb;
     return !!kb && typeof kb.pluginStatus === 'function' && typeof kb.themeReport === 'function';
   }, null, { timeout: 30000 });
-  await win.waitForFunction((wantAmy) => {
+  await win.waitForFunction((wantOwner) => {
     const rows = window.__kb.pluginStatus();
     const ids = rows.map((row) => row.id);
     if (!ids.includes('kb.theme.touchline')) return false;
-    if (wantAmy && !ids.includes('amy.touchline')) return false;
+    if (wantOwner && !ids.includes('example.touchline')) return false;
     return true;
-  }, expectAmy, { timeout: 20000 }).catch(() => undefined);
+  }, expectOwner, { timeout: 20000 }).catch(() => undefined);
 }
 
 async function park(app) {
@@ -366,15 +366,15 @@ async function runClean() {
   return { exited: !!report.electron?.exited, report };
 }
 
-function copyAmy() {
-  const before = snapshotDir(AMY_SRC);
-  if (!before) throw new Error(`找不到只读源主题: ${AMY_SRC}`);
-  fs.mkdirSync(path.dirname(AMY_DST), { recursive: true });
-  fs.cpSync(AMY_SRC, AMY_DST, { recursive: true });
-  const after = snapshotDir(AMY_SRC);
+function copyOwner() {
+  const before = snapshotDir(OWNER_SRC);
+  if (!before) throw new Error(`找不到只读源主题: ${OWNER_SRC}`);
+  fs.mkdirSync(path.dirname(OWNER_DST), { recursive: true });
+  fs.cpSync(OWNER_SRC, OWNER_DST, { recursive: true });
+  const after = snapshotDir(OWNER_SRC);
   const same = JSON.stringify(before) === JSON.stringify(after);
   if (!same) throw new Error('拷贝后源主题哈希变化，已中止');
-  return { before, after, destination: AMY_DST, sourceUnchanged: same };
+  return { before, after, destination: OWNER_DST, sourceUnchanged: same };
 }
 
 async function runConflict() {
@@ -384,7 +384,7 @@ async function runConflict() {
     pluginStatus: null,
     themeReport: null,
     options: null,
-    amy: null,
+    user: null,
     builtin: null,
     copy: null,
     checks: [],
@@ -392,7 +392,7 @@ async function runConflict() {
     electron: null,
   };
   try {
-    report.copy = copyAmy();
+    report.copy = copyOwner();
   } catch (err) {
     report.error = String(err && err.stack ? err.stack : err);
     writeJson('cdp-conflict.json', report);
@@ -418,12 +418,12 @@ async function runConflict() {
     report.checks.push({ name: '冲突启动仍能打开外观菜单', ok: opened });
     if (opened) report.options = await readOptions(win);
     report.builtin = (report.pluginStatus ?? []).find((row) => row.id === 'kb.theme.touchline') ?? null;
-    report.amy = (report.pluginStatus ?? []).find((row) => row.id === 'amy.touchline') ?? null;
+    report.user = (report.pluginStatus ?? []).find((row) => row.id === 'example.touchline') ?? null;
     const builtinOk = report.builtin?.status === 'active';
-    const amyOk = report.amy?.status === 'error' && typeof report.amy?.message === 'string' && report.amy.message.includes('重复注册');
+    const ownerOk = report.用户?.status === 'error' && typeof report.用户?.message === 'string' && report.用户.message.includes('重复注册');
     const optionOk = hasTouchline(report.options?.chrome) && hasTouchline(report.options?.reading);
     report.checks.push({ name: 'kb.theme.touchline 为 active', ok: builtinOk, detail: report.builtin });
-    report.checks.push({ name: 'amy.touchline 为 error 且 message 含重复注册', ok: amyOk, detail: report.amy });
+    report.checks.push({ name: 'example.touchline 为 error 且 message 含重复注册', ok: ownerOk, detail: report.用户});
     report.checks.push({ name: '下拉仍可选球场指挥室/touchline', ok: optionOk, detail: report.options });
     report.pass = report.checks.every((item) => item.ok);
   } catch (err) {
@@ -433,13 +433,13 @@ async function runConflict() {
     report.electron = await shutdown(app);
   }
   writeJson('cdp-conflict.json', report);
-  console.log(`conflict pass=${report.pass} amy=${report.amy?.status} ${report.amy?.message ?? ''} electronExited=${report.electron?.exited}`);
+  console.log(`conflict pass=${report.pass} user=${report.user?.status} ${report.user?.message ?? ''} electronExited=${report.electron?.exited}`);
   return report;
 }
 
 let cleanExited = true;
 if (mode === 'clean' || mode === 'all') {
-  fs.rmSync(AMY_DST, { recursive: true, force: true });
+  fs.rmSync(OWNER_DST, { recursive: true, force: true });
   const clean = await runClean();
   cleanExited = clean.exited;
 }
@@ -451,7 +451,7 @@ if (mode === 'conflict' || mode === 'all') {
       error: '干净启动的 Electron 未退出，未进行第二次启动',
       pluginStatus: null,
       themeReport: null,
-      amy: null,
+      user: null,
     });
     process.exit(1);
   }

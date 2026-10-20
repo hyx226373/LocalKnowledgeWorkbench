@@ -627,7 +627,7 @@ describe('设置、启动与摘要', () => {
     const row = summaryFromRow({
       id: 'w',
       name: '名',
-      project: '考研',
+      project: '示例分类',
       purpose: '测'.repeat(81),
       tags_json: JSON.stringify(['论文', '', '  ', '一二三四五六七八九零一二三四五六七八', 1]),
       favorite: 1,

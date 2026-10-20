@@ -43,7 +43,7 @@ export function planMigration(input: {
   allowStudyDev: boolean;
 }): MigrationPlan {
   if (input.underStudyDev && !input.allowStudyDev) {
-    return { action: 'refuse', reason: '禁止迁移 D:\\study_dev，除非 Amy 另批' };
+    return { action: 'refuse', reason: '禁止迁移 D:\\example_dev，除非 用户另批' };
   }
   if (input.hasCurrentJson) return { action: 'refuse', reason: '已经是版本目录布局' };
   if (!input.hasAppExe) return { action: 'refuse', reason: '找不到旧版主程序' };

@@ -44,19 +44,19 @@ describe('监听过滤', () => {
   });
 
   it('把 \\\\?\\ 和 ?/ 收成相对路径后，自写过滤认得出库文件，根外的路径丢掉', () => {
-    const root = 'D:\\kb-r13-work';
-    const wal = normalizeWatchRel('\\\\?\\D:\\kb-r13-work\\integ-0018\\userdata\\workbench.db-wal', root);
+    const root = 'D:\\workspace\\kb-work';
+    const wal = normalizeWatchRel('\\\\?\\D:\\workspace\\kb-work\\integ-0018\\userdata\\workbench.db-wal', root);
     expect(wal).toEqual({ rel: 'integ-0018/userdata/workbench.db-wal', outside: false });
     expect(wal && isOwnWatchRel(wal.rel)).toBe(true);
-    const folded = normalizeWatchRel('?/D:/kb-r13-work/integ-0018/userdata/Cache/data_0', root);
+    const folded = normalizeWatchRel('?/D:/workspace/kb-work/integ-0018/userdata/Cache/data_0', root);
     expect(folded && isOwnWatchRel(folded.rel)).toBe(true);
-    const outside = normalizeWatchRel('\\\\?\\D:\\kb-r13-work', 'D:\\kb-r13-work\\integ-0018\\pdf-fixture');
+    const outside = normalizeWatchRel('\\\\?\\D:\\workspace\\kb-work', 'D:\\workspace\\kb-work\\integ-0018\\pdf-fixture');
     expect(outside).toEqual({ rel: '', outside: true });
-    const sibling = normalizeWatchRel('?/D:/kb-r13-work/integ-0018/stall.log', 'D:\\kb-r13-work\\integ-0018\\pdf-fixture');
+    const sibling = normalizeWatchRel('?/D:/workspace/kb-work/integ-0018/stall.log', 'D:\\workspace\\kb-work\\integ-0018\\pdf-fixture');
     expect(sibling?.outside).toBe(true);
     expect(normalizeWatchRel('笔记/待办.md', root)).toEqual({ rel: '笔记/待办.md', outside: false });
     expect(normalizeWatchRel('', root)).toBeNull();
-    const nested = normalizeWatchRel('\\\\?\\D:\\kb-r13-work\\integ-0018\\pdf-fixture\\a.md', 'D:\\kb-r13-work\\integ-0018\\pdf-fixture');
+    const nested = normalizeWatchRel('\\\\?\\D:\\workspace\\kb-work\\integ-0018\\pdf-fixture\\a.md', 'D:\\workspace\\kb-work\\integ-0018\\pdf-fixture');
     expect(nested).toEqual({ rel: 'a.md', outside: false });
     expect(nested && skipRel(nested.rel)).toBe(false);
   });

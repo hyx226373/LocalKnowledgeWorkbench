@@ -7,7 +7,7 @@
 
     fbff09c1cb02924b025c98f3bd961d52862a32b9  (fbff09c on 7631af3: yield+chunk + fork)
 
-- 来源：用户机 `D:\STUDY MATERIAL\项目\知识库\modules` 的 master，经 `git bundle --all` 导入 box。
+- 来源：用户机 `D:\workspace\kb\modules` 的 master，经 `git bundle --all` 导入 box。
 - 各模块 `dist/` 除 indexer 外都随 modules 仓库提交；`indexer/dist` 被 indexer/.gitignore 忽略，
   需要时在 modules/indexer 下 `npm run build` 重建。
 - 换 modules 版本时：在 ../modules checkout 新提交，重建受影响的 dist，再改本文件中的哈希并提交。

@@ -106,7 +106,7 @@ app.whenReady().then(() => {
     busy = true;
     try {
       if (isUnderStudyDev(root)) {
-        await showError('禁止在 D:\\study_dev 下运行更新器');
+        await showError('禁止在 D:\\example_dev 下运行更新器');
         return;
       }
       await acquireUpdateLock(root);

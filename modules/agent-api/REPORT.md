@@ -31,7 +31,7 @@ demo ok
 ```
 
 19. 目录符号链接：通过（按「仍是 EPERM 就用 junction，并保留失败原文」）。本机建不了目录符号链接，测试改用 `mklink /J`，根外 junction 被拒绝。单独探测的原文：
-    - Node `fs.symlinkSync(outside, link, 'dir')`：`Error: EPERM: operation not permitted, symlink 'C:\Users\sana2\AppData\Local\Temp\kb-sym-wYIFgz\out' -> 'C:\Users\sana2\AppData\Local\Temp\kb-sym-wYIFgz\root\symdir'`
+    - Node `fs.symlinkSync(outside, link, 'dir')`：`Error: EPERM: operation not permitted, symlink 'C:\Users\example\AppData\Local\Temp\kb-sym-wYIFgz\out' -> 'C:\Users\example\AppData\Local\Temp\kb-sym-wYIFgz\root\symdir'`
     - PowerShell `New-Item -ItemType SymbolicLink`：`System.UnauthorizedAccessException: 此操作需要管理员权限。 ---> System.ComponentModel.Win32Exception: 客户端没有所需的特权。`
     - 同一探测里 `mklink /J` 退出码 0。
     - 未测：符号链接创建成功之后再被拒绝。当前权限下建不出来。
@@ -51,7 +51,7 @@ demo ok
 
 ## 根目录复跑（组长，2026-10-03）
 
-在 `D:\STUDY MATERIAL\项目\知识库` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 4 个文件、9 项通过。随后在 `modules\agent-api` 执行 `node scripts/demo.mjs`，退出码 0，约 61s。输出：
+在 `D:\workspace\kb` 执行 `npm install`、`npm run build`、`npm test`，退出码 0。本包这次是 4 个文件、9 项通过。随后在 `modules\agent-api` 执行 `node scripts/demo.mjs`，退出码 0，约 61s。输出：
 
 ```text
 resourceId 2931e368-92af-4b73-949f-dc464c50a7a6

@@ -92,7 +92,7 @@ function temporaryEntry(): OverviewEntryInput {
     name: '论文临时现场',
     purpose: '还没保存',
     tags: ['论文'],
-    project: '考研',
+    project: '示例分类',
     favorite: true,
     lastUsedAt: 1990000000000,
   };
@@ -437,7 +437,7 @@ describe('workspace overview markup', () => {
 
   it('左侧单选来自真实分区，图片和标题带工作区 id，没有快照时显示布局预览', () => {
     expect(OVERVIEW_FILTERS.map((item) => item.label)).toEqual(['全部', '最近', '收藏', '项目', '标签']);
-    expect(OVERVIEW_FILTERS.map((item) => item.label).join('')).not.toContain('考研');
+    expect(OVERVIEW_FILTERS.map((item) => item.label).join('')).not.toContain('示例分类');
     const model = modelOf();
     expect(overviewSectionsForFilter(model.sections, 'recent').map((section) => section.id)).toEqual(['recent']);
     expect(overviewSectionsForFilter(model.sections, 'favorites').map((section) => section.id)).toEqual(['favorites']);
@@ -459,7 +459,7 @@ describe('workspace overview markup', () => {
     expect(html).toContain('布局预览');
     expect(html).toContain('aspect-ratio');
     expect(html).not.toContain('mini-tab');
-    expect(html).not.toContain('考研学习');
+    expect(html).not.toContain('示例分类学习');
     const openTitle = buttonTag(html, 'data-action', 'open-title');
     expect(openTitle).toContain('data-workspace-id="');
     const favorite = buttonTag(html, 'data-action', 'favorite');
@@ -547,7 +547,7 @@ describe('分类页', () => {
     expect(html).toContain('data-action="new-category"');
     expect(html).not.toContain('data-action="add-group"');
     expect(html).not.toContain('data-project=');
-    expect(html).not.toContain('>考研<');
+    expect(html).not.toContain('>示例分类<');
     // r21 §7：分类页卡片可拖到左侧分类（只加引用），因此卡片允许 draggable
   });
 

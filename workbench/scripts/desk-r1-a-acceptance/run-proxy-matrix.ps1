@@ -5,7 +5,7 @@
 $ErrorActionPreference = "Continue"
 if (-not $Worktree) { $Worktree = Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
 if (-not (Test-Path (Join-Path $Worktree "package.json"))) {
-  $Worktree = "D:\STUDY MATERIAL\项目\知识库\kb-wt-desk-r1-A"
+  $Worktree = "D:\workspace\kb\kb-wt-desk-r1-A"
 }
 Set-Location $Worktree
 $electron = Join-Path $Worktree "node_modules\electron\dist\electron.exe"

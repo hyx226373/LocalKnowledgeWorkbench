@@ -18,7 +18,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/kb-agent-watch/watch.p
 
 环境变量只接受 `KB_AGENT_SCOPE`（默认 `current`）和 `KB_AGENT_ID`。桥目录不读环境变量。
 
-必须显式传入 `--bridge` 或 `--user-data-dir`（PowerShell 为 `-Bridge` 或 `-UserDataDir`）。没有默认桥目录。`--user-data-dir` 表示桥在 `<目录>/agent-bridge`。传入路径若落在 `%LOCALAPPDATA%\LocalKnowledgeWorkbench` 或 `D:\study_dev`，脚本直接退出并打印拒绝原因，不创建、不写入。`--scope current` 监视 `live/current/` 目录（不是 `marker.json` 这一个文件），再顺着 marker 的 `wsDir` 读当前工作区。`--scope ws/<id>` 只监视该工作区目录。
+必须显式传入 `--bridge` 或 `--user-data-dir`（PowerShell 为 `-Bridge` 或 `-UserDataDir`）。没有默认桥目录。`--user-data-dir` 表示桥在 `<目录>/agent-bridge`。传入路径若落在 `%LOCALAPPDATA%\LocalKnowledgeWorkbench` 或 `D:\example_dev`，脚本直接退出并打印拒绝原因，不创建、不写入。`--scope current` 监视 `live/current/` 目录（不是 `marker.json` 这一个文件），再顺着 marker 的 `wsDir` 读当前工作区。`--scope ws/<id>` 只监视该工作区目录。
 
 `--once` 读一轮后退出，退出码 0。marker 暂时读不到时退避重试，仍然退出 0。参数不合法退出 2。`--help` 打一行 `kind: help` 的 JSON。
 

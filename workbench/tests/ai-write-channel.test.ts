@@ -199,14 +199,14 @@ it('中档审查：大段删除和 md 格式损坏要拦，小改动放行', () 
 });
 
 it('拒绝把通道数据写进 LocalAppData 正式目录', () => {
-  const banned = 'C:\\Users\\amy\\AppData\\Local\\LocalKnowledgeWorkbench\\ai-write';
+  const banned = 'C:\\Users\\user\\AppData\\Local\\LocalKnowledgeWorkbench\\ai-write';
   expect(() => new AiWriteChannel(banned)).toThrow(/LocalKnowledgeWorkbench/);
   expect(fs.existsSync(banned)).toBe(false);
   const store = temp('ai-write-store-');
   const channel = new AiWriteChannel(store, { watch: false });
   const saved = channel.setSettings({
     ...channel.getSettings(),
-    folders: [{ id: 'bad', path: 'C:\\Users\\amy\\AppData\\Local\\LocalKnowledgeWorkbench\\docs', tier: 'low' }],
+    folders: [{ id: 'bad', path: 'C:\\Users\\user\\AppData\\Local\\LocalKnowledgeWorkbench\\docs', tier: 'low' }],
   });
   expect(saved.folders).toEqual([]);
   const src = fs.readFileSync(path.join(process.cwd(), 'src/main/aiWrite/service.ts'), 'utf8');
@@ -495,7 +495,7 @@ it('收件箱根不预填，并拒绝资料目录、agent-data 和正式用户�
   const kept = normalizeSettings({ ...defaultSettings(), inboxRoot: 'D:\\kb-inbox' });
   expect(kept.version).toBe(1);
   expect(kept.inboxRoot).toBe('D:\\kb-inbox');
-  expect(normalizeSettings({ ...defaultSettings(), inboxRoot: 'C:\\Users\\amy\\AppData\\Local\\LocalKnowledgeWorkbench\\inbox' }).inboxRoot).toBeUndefined();
+  expect(normalizeSettings({ ...defaultSettings(), inboxRoot: 'C:\\Users\\user\\AppData\\Local\\LocalKnowledgeWorkbench\\inbox' }).inboxRoot).toBeUndefined();
   const store = temp('ai-write-inbox-ban-');
   const root = path.join(store, 'notes');
   fs.mkdirSync(root);
@@ -503,7 +503,7 @@ it('收件箱根不预填，并拒绝资料目录、agent-data 和正式用户�
   channel.syncRoots([{ path: root, name: '笔记' }]);
   expect(() => channel.setSettings({ ...channel.getSettings(), inboxRoot: root })).toThrow(/资料/);
   expect(() => channel.setSettings({ ...channel.getSettings(), inboxRoot: store })).toThrow(/agent-data/);
-  expect(() => channel.setSettings({ ...channel.getSettings(), inboxRoot: 'C:\\Users\\amy\\AppData\\Local\\LocalKnowledgeWorkbench\\in' })).toThrow(/LocalKnowledgeWorkbench/);
+  expect(() => channel.setSettings({ ...channel.getSettings(), inboxRoot: 'C:\\Users\\user\\AppData\\Local\\LocalKnowledgeWorkbench\\in' })).toThrow(/LocalKnowledgeWorkbench/);
   channel.setSettings({ ...channel.getSettings(), defaultTier: 'high' });
   channel.addLinkItems([{ path: root, kind: 'dir' }]);
   expect(() => channel.composeLink({ roots: [{ path: root }], entry: path.join(store, 'ENTRY.md') })).toThrow(/收件箱/);

@@ -151,12 +151,12 @@ describe('回滚不覆盖用户数据', () => {
     expect(Buffer.compare(await fs.readFile(path.join(install, 'current.json')), beforePointer)).toBe(0);
   });
 
-  it('安装根在 study_dev 下手动回滚只提示覆盖安装，且不改用户标记', async () => {
+  it('安装根在 example_dev 下手动回滚只提示覆盖安装，且不改用户标记', async () => {
     const dir = tmp();
     const { marker, bytes } = await seedMarker(dir);
     const reasons: string[] = [];
     const box = boxOf(dir, {
-      installDir: 'D:\\study_dev\\kb-g36-not-real',
+      installDir: 'D:\\example_dev\\kb-g36-not-real',
       showReason: async (_title, detail) => {
         reasons.push(detail);
       },

@@ -112,7 +112,7 @@ MCP 进程不自己开工作台，它用环境变量去调已经启动的 HTTP A
   "mcpServers": {
     "kb-agent": {
       "command": "node",
-      "args": ["D:\\STUDY MATERIAL\\项目\\知识库\\modules\\agent-api\\src\\mcp.ts"],
+      "args": ["D:\\workspace\\kb\\modules\\agent-api\\src\\mcp.ts"],
       "env": {
         "KB_AGENT_URL": "http://127.0.0.1:PORT/rpc",
         "KB_AGENT_TOKEN": "启动时打印的令牌"

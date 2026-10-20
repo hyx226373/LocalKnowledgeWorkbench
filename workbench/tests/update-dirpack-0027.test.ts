@@ -246,13 +246,13 @@ describe('目录包准备', () => {
     await expect(fs.stat(path.join(root, 'versions', '0.2.5'))).rejects.toThrow();
   });
 
-  it('安装根在 study_dev 下被拒绝', async () => {
+  it('安装根在 example_dev 下被拒绝', async () => {
     const root = tmp();
     await fs.mkdir(root, { recursive: true });
     await expect(
       prepareDirpack({
         zipPath: path.join(root, 'missing.zip'),
-        installRoot: 'D:\\study_dev\\kb-r14-027-b-not-amy',
+        installRoot: 'D:\\example_dev\\kb-r14-027-b-not-user',
         version: '0.2.5',
         expectedSize: 4,
         expectedSha512: 'B'.repeat(88),
@@ -260,7 +260,7 @@ describe('目录包准备', () => {
           throw new Error('不应解压');
         },
       }),
-    ).rejects.toThrow(/study_dev/);
+    ).rejects.toThrow(/example_dev/);
   });
 
   it('已取消时删掉 partial', async () => {

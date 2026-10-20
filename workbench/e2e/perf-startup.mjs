@@ -1,6 +1,6 @@
 // A1 发版门禁。用隔离的数据目录冷启动，正文索引结束后读 startup-trace.json。
 // 超阈值时退出码 1，并打印最慢的主进程 / 渲染进程调用。
-// 不碰 Amy 的已安装进程，不把日志写进资料根目录。
+// 不碰 用户的已安装进程，不把日志写进资料根目录。
 import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const WORK = 'D:/kb-r13-work';
+const WORK = 'D:/workspace/kb-work';
 const SRC = 'D:/kb-backup-0011/local';
 const USERDATA = path.join(WORK, 'userdata-accept');
 const ELECTRON = path.join(ROOT, 'node_modules/electron/dist/electron.exe');
@@ -256,7 +256,7 @@ async function interactiveRun() {
       await fn();
       samples.push({ side: 'renderer', name, ms: Math.round(performance.now() - t) });
     };
-    const pdfDir = 'D:/kb-r13-work/pdf-fixture';
+    const pdfDir = 'D:/workspace/kb-work/pdf-fixture';
     const havePdf = (await window.kb.listRoots()).some((r) => String(r.path || '').replace(/\\/g, '/').toLowerCase().includes('pdf-fixture'));
     if (!havePdf) await window.kb.addRoot(pdfDir, 'perf-pdf');
     const roots = await window.kb.listRoots();

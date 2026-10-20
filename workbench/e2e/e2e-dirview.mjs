@@ -11,7 +11,7 @@ const TMP = path.join(ROOT, 'e2e/.tmp/dirview');
 const USERDATA = path.join(TMP, 'userdata');
 const RA = path.join(TMP, '甲根');
 const RB = path.join(TMP, '乙根');
-const SHOTS = path.join('D:', 'STUDY MATERIAL', '项目', '知识库', '汇报', 'shots', '双镜组');
+const SHOTS = path.join('D:', 'Example Docs', '项目', '知识库', '汇报', 'shots', '双镜组');
 fs.rmSync(TMP, { recursive: true, force: true });
 fs.mkdirSync(path.join(RA, '子目录'), { recursive: true });
 fs.mkdirSync(RB, { recursive: true });

@@ -13,7 +13,7 @@ const req = createRequire(import.meta.url);
 const koffiMod = req('../native/native-app-helper/src/win32KoffiHelper.js');
 const { Win32KoffiHelper, normalizeExePath, pathLooksKnown, toHwndValue } = koffiMod;
 
-const NPP = 'C:\\Users\\sana2\\Apps\\Notepad++\\notepad++.exe';
+const NPP = 'C:\\Users\\example\\Apps\\Notepad++\\notepad++.exe';
 
 /** Koffi-free helper instance with stubbed Win32 calls. */
 function stubHelper(windows: Record<string, { title: string; pid: number; path: string; createTime: number; visible?: boolean; owner?: boolean; ex?: number; throwOn?: string }>) {
@@ -40,8 +40,8 @@ function stubHelper(windows: Record<string, { title: string; pid: number; path: 
 
 describe('host-r1 L2 fix 1: host.list enumeration', () => {
   it('normalizeExePath strips \\\\?\\ prefix, slashes and case', () => {
-    expect(normalizeExePath('\\\\?\\C:/Users/sana2/Apps/Notepad++/NOTEPAD++.EXE')).toBe(NPP.toLowerCase());
-    expect(pathLooksKnown('\\\\?\\C:\\USERS\\SANA2\\APPS\\NOTEPAD++\\Notepad++.exe')).toBe(true);
+    expect(normalizeExePath('\\\\?\\C:/Users/example/Apps/Notepad++/NOTEPAD++.EXE')).toBe(NPP.toLowerCase());
+    expect(pathLooksKnown('\\\\?\\C:\\USERS\\EXAMPLE\\APPS\\NOTEPAD++\\Notepad++.exe')).toBe(true);
     expect(pathLooksKnown('C:\\x\\notepad++.exe.bak')).toBe(false);
   });
 

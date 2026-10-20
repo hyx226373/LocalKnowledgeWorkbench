@@ -1,8 +1,8 @@
 /**
  * 本组脚本是「模拟 agent」（独立进程读文件），不是已安装的真实 agent CLI 自动唤醒。
  * 组 5 验收：监听示例对着冻结的 live 目录跑。
- * 不启动 Amy 的工作台，不写资料根，不装依赖，不调用本机 agent CLI。
- * 日志在 D:\kb-r13-work\al-5\。真实用户数据目录直接拒绝。
+ * 不启动 用户的工作台，不写资料根，不装依赖，不调用本机 agent CLI。
+ * 日志在 D:\workspace\kb-work\al-5\。真实用户数据目录直接拒绝。
  */
 import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -14,7 +14,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(here, '..');
 const watchJs = path.join(ROOT, 'tools', 'kb-agent-watch', 'watch.mjs');
 const watchPs = path.join(ROOT, 'tools', 'kb-agent-watch', 'watch.ps1');
-const WORK = path.join('D:\\kb-r13-work', 'al-5');
+const WORK = path.join('D:\\workspace\\kb-work', 'al-5');
 const CASE_ROOT = path.join(WORK, 'e2e');
 
 const PACT = '先了解现场。有 agent 工作资料时，直接读取这些资料；清单为空时，仅了解基本现场和导航。随后简短说明已了解的内容，以及可以提供的帮助。开始新任务或继续修改前，检查现场版本。';
@@ -517,7 +517,7 @@ function realUserDataRoots() {
       label: '%LOCALAPPDATA%\\LocalKnowledgeWorkbench',
     });
   }
-  roots.push({ dir: path.resolve('D:\\study_dev'), label: 'D:\\study_dev' });
+  roots.push({ dir: path.resolve('D:\\example_dev'), label: 'D:\\example_dev' });
   return roots;
 }
 

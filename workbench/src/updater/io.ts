@@ -1,4 +1,4 @@
-/** 生产环境 IO。进程范围只限本次安装根 versions 下的工作台，不碰 D:\\study_dev。 */
+/** 生产环境 IO。进程范围只限本次安装根 versions 下的工作台，不碰 D:\\example_dev。 */
 import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -60,7 +60,7 @@ export function createSwitchIo(installRoot: string): SwitchIo {
 }
 
 export async function acquireUpdateLock(installRoot: string): Promise<void> {
-  if (isUnderStudyDev(installRoot)) throw new Error('禁止在 D:\\study_dev 下创建更新锁');
+  if (isUnderStudyDev(installRoot)) throw new Error('禁止在 D:\\example_dev 下创建更新锁');
   const file = updateLockFile(installRoot);
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }), 'utf8');
@@ -95,7 +95,7 @@ async function waitForReady(io: SwitchIo, userData: string, version: string, tim
 }
 
 function spawnWorkbench(exe: string, env: NodeJS.ProcessEnv): Promise<{ pid: number }> {
-  if (isUnderStudyDev(exe)) return Promise.reject(new Error('禁止启动 D:\\study_dev 下的程序'));
+  if (isUnderStudyDev(exe)) return Promise.reject(new Error('禁止启动 D:\\example_dev 下的程序'));
   const safe: NodeJS.ProcessEnv = { ...env };
   delete safe.ELECTRON_RUN_AS_NODE;
   const child = spawn(exe, [], { env: safe, detached: true, stdio: 'ignore', windowsHide: false });
@@ -114,7 +114,7 @@ async function killOne(pid: number): Promise<void> {
 }
 
 function listWorkbenchPids(installRoot: string): Promise<number[]> {
-  if (isUnderStudyDev(installRoot)) return Promise.reject(new Error('禁止检查 D:\\study_dev 下的进程'));
+  if (isUnderStudyDev(installRoot)) return Promise.reject(new Error('禁止检查 D:\\example_dev 下的进程'));
   const versionsRoot = path.win32.resolve(installRoot, 'versions');
   const script = [
     "$ErrorActionPreference = 'SilentlyContinue'",
@@ -174,7 +174,7 @@ function filterVersionPids(stdout: string, versionsRoot: string): number[] {
     const pid = Number(line.slice(0, tab).trim());
     const procPath = line.slice(tab + 1).trim();
     if (!Number.isInteger(pid) || pid <= 0 || !procPath) continue;
-    // Amy 本机进程只跳过，不纳入等待列表，也不抛错挡住隔离更新。
+    // 用户本机进程只跳过，不纳入等待列表，也不抛错挡住隔离更新。
     if (isUnderStudyDev(procPath)) continue;
     if (procPath.toLowerCase().startsWith(prefix)) ids.push(pid);
   }

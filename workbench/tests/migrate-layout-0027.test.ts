@@ -60,11 +60,11 @@ describe('migrateLayout', () => {
     expect((await fs.stat(path.join(root, `${APP_EXE}.pre-layout`))).isFile()).toBe(true);
   });
 
-  it('D:\\study_dev 即使像旧安装也拒绝，且不写 current.json', async () => {
-    const installRoot = 'D:\\study_dev\\kb-r14-027-D-do-not-create';
+  it('D:\\example_dev 即使像旧安装也拒绝，且不写 current.json', async () => {
+    const installRoot = 'D:\\example_dev\\kb-r14-027-D-do-not-create';
     expect(isUnderStudyDev(installRoot)).toBe(true);
     const result = await migrateLayout({ installRoot, fileVersion: '0.2.4', now: NOW });
-    expect(result).toEqual({ ok: false, reason: '禁止迁移 D:\\study_dev，除非 Amy 另批' });
+    expect(result).toEqual({ ok: false, reason: '禁止迁移 D:\\example_dev，除非 用户另批' });
     await expect(fs.stat(installRoot)).rejects.toMatchObject({ code: 'ENOENT' });
     await expect(fs.stat(path.join(installRoot, 'current.json'))).rejects.toMatchObject({ code: 'ENOENT' });
     await expect(fs.stat(path.join(installRoot, 'versions'))).rejects.toMatchObject({ code: 'ENOENT' });

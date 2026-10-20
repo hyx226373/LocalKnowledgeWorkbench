@@ -67,7 +67,7 @@ export function NativeAppHostView(props: AdapterProps<NativeAppHostViewState>) {
   viewRef.current = view;
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // Amy 03: respond to layout.chromeVisibilityChanged (contentOnly true→false → exit interacting).
+  // the user 03: respond to layout.chromeVisibilityChanged (contentOnly true→false → exit interacting).
   // Do NOT emit exit CustomEvent / requestActivate on this path.
   useEffect(() => {
     return subscribeLayoutEvents((ev) => {

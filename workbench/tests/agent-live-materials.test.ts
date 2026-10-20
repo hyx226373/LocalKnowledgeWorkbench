@@ -15,7 +15,7 @@ import {
   type StatResult,
 } from '../src/main/agentLive/materials';
 
-const ROOT = 'D:\\kb-r13-work\\al-1\\unit';
+const ROOT = 'D:\\workspace\\kb-work\\al-1\\unit';
 const WS = 'ws1';
 const WS2 = 'ws2';
 
@@ -566,8 +566,8 @@ describe('agent live 资料清单', () => {
     const clearTotalMs = Number(process.hrtime.bigint() - clearStart) / 1e6;
 
     const perf = { singleP95, batchSyncMs, batchTotalMs, lagMs, clearSyncMs, clearTotalMs, clearLagMs };
-    fs.mkdirSync('D:\\kb-r13-work\\al-1', { recursive: true });
-    fs.writeFileSync('D:\\kb-r13-work\\al-1\\perf.json', JSON.stringify(perf, null, 2));
+    fs.mkdirSync('D:\\workspace\\kb-work\\al-1', { recursive: true });
+    fs.writeFileSync('D:\\workspace\\kb-work\\al-1\\perf.json', JSON.stringify(perf, null, 2));
     console.log(JSON.stringify(perf));
     expect(singleP95).toBeLessThan(100);
     expect(batchTotalMs).toBeLessThan(300);

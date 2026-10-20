@@ -12,7 +12,7 @@ if (!fs.existsSync(runtime) || !fs.existsSync(exe)) {
   process.exit(2);
 }
 
-const out = path.resolve(process.env.KB_LAYOUT_OUT || 'D:/kb-r13-work/updater-0027/build/updater');
+const out = path.resolve(process.env.KB_LAYOUT_OUT || 'D:/workspace/kb-work/updater-0027/build/updater');
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 fs.cpSync(runtime, out, { recursive: true, dereference: true });

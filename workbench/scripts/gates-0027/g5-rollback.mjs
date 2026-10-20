@@ -13,7 +13,7 @@ async function main() {
   const { spawn } = await import('node:child_process');
   const require = createRequire(import.meta.url);
   const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-  const tmp = 'D:\\kb-r13-work\\updater-0027\\tmp';
+  const tmp = 'D:\\workspace\\kb-work\\updater-0027\\tmp';
 
   function arg(flag) {
     const index = process.argv.indexOf(flag);
@@ -42,7 +42,7 @@ async function main() {
   });
   const layout = require(outfile);
   if (layout.isUnderStudyDev(installRoot)) {
-    console.error('拒绝写入 D:\\study_dev');
+    console.error('拒绝写入 D:\\example_dev');
     process.exit(2);
   }
 

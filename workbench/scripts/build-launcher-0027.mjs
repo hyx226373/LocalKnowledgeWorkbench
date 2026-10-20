@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runtime = process.env.KB_LAYOUT_RUNTIME || path.join(repo, 'node_modules', 'electron', 'dist');
-const out = process.env.KB_LAYOUT_OUT || 'D:\\kb-r13-work\\updater-0027\\build\\launcher';
+const out = process.env.KB_LAYOUT_OUT || 'D:\\workspace\\kb-work\\updater-0027\\build\\launcher';
 
 if (!fs.existsSync(runtime) || !fs.statSync(runtime).isDirectory()) {
   console.error(`运行时目录不存在：${runtime}`);

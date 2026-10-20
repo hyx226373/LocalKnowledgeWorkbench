@@ -1,7 +1,7 @@
 /**
  * 「只看内容」默认键冲突判断。只读 findConflict，不写快捷键存储，也不替换已有绑定。
  * 冻结：03-界面三裁决 — 默认 Ctrl+Shift+F11；冲突明确报告并保留已有用户绑定。
- * Amy/第四波：Ctrl+Shift+F 给快速切换；Ctrl+Shift+P 命令面板；F11 保留。
+ * 用户/第四波：Ctrl+Shift+F 给快速切换；Ctrl+Shift+P 命令面板；F11 保留。
  * 命令 id：view.contentOnly（稳定；设置页可改绑）。
  */
 import { emptyStore, findConflict } from '../keybindings/store';

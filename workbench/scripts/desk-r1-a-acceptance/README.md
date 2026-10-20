@@ -167,7 +167,7 @@ Chromium 152 (Electron 44.5.1) desktop capture delivers **no new frame when the 
 
 ### E-04 v8 (raise:false — no foreground steal, 2026-10-13)
 
-GrabFrame prepare used to call `_testSetContentProtection(true)` with no `raise` option. Preload forwarded only `{ on }`, and `captureIpc.ts` treats `payload.raise !== false` as **true** by default → `setAlwaysOnTop(true, 'screen-saver')` + `moveTop()` + `focus()` + 300 ms settle, then **stays on top until A exits**. That steals foreground from E's Win-key / Snap cases and from Amy's windows whenever `DESK_R1_A_TEST_HOOK=1` and prepare cannot reuse a live frame.
+GrabFrame prepare used to call `_testSetContentProtection(true)` with no `raise` option. Preload forwarded only `{ on }`, and `captureIpc.ts` treats `payload.raise !== false` as **true** by default → `setAlwaysOnTop(true, 'screen-saver')` + `moveTop()` + `focus()` + 300 ms settle, then **stays on top until A exits**. That steals foreground from E's Win-key / Snap cases and from the user's windows whenever `DESK_R1_A_TEST_HOOK=1` and prepare cannot reuse a live frame.
 
 - **GrabFrame path:** `c._testSetContentProtection(true, { raise: false })`.
 - **Preload:** optional second arg `{ raise?: boolean }` is forwarded only when present; one-arg callers (A-03 via `cdp-client.mjs`) still omit `raise` → default raise stays **true** (A-03 v2.1 unchanged).

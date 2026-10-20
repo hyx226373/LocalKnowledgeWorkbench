@@ -1,7 +1,7 @@
 // Isolated in-app upgrade 0.2.3 -> 0.2.4. One Electron at a time.
 // Do not run this file from the agent. The 0.2.3 tree is copied, not installed.
 // UninstallString stays registered. Before apply, reg query must still succeed
-// and its stdout must contain study_dev. Saved registry is imported in finally
+// and its stdout must contain example_dev. Saved registry is imported in finally
 // only after InstallLocation is compared. Never taskkill by image name.
 import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -12,12 +12,12 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = path.resolve('D:\\kb-r13-work\\install-0024\\app');
-const INST = path.resolve('D:\\kb-r13-work\\upgrade-0026\\app-023');
-const USERDATA = path.resolve('D:\\kb-r13-work\\upgrade-0026\\userdata');
-const FEED = path.resolve(process.env.KB_G2_FEED || 'D:\\kb-r13-work\\feed-0.2.4');
+const SRC = path.resolve('D:\\workspace\\kb-work\\install-0024\\app');
+const INST = path.resolve('D:\\workspace\\kb-work\\upgrade-0026\\app-023');
+const USERDATA = path.resolve('D:\\workspace\\kb-work\\upgrade-0026\\userdata');
+const FEED = path.resolve(process.env.KB_G2_FEED || 'D:\\workspace\\kb-work\\feed-0.2.4');
 const SETUP_NAME = 'LocalKnowledgeWorkbench-0.2.4-win-x64-setup.exe';
-const LOG_DIR = path.resolve('D:\\kb-r13-work\\upgrade-0026\\g2');
+const LOG_DIR = path.resolve('D:\\workspace\\kb-work\\upgrade-0026\\g2');
 const INSTALL_LOG = path.join(LOG_DIR, 'install.log');
 const STAMP = path.join(LOG_DIR, 'proc-stamp.txt');
 const RESULT = path.join(LOG_DIR, 'g2-result.json');
@@ -25,9 +25,9 @@ const RUN_LOG = path.join(LOG_DIR, 'g2-run.log');
 const PORT = 9546;
 const FROM_VERSION = '0.2.3';
 const TO_VERSION = '0.2.4';
-const AMY_ROOT = 'D:\\study_dev\\LocalKnowledgeWorkbench';
-const AMY_EXE = path.join(AMY_ROOT, 'LocalKnowledgeWorkbench.exe');
-const AMY_DB = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
+const OWNER_ROOT = 'D:\\example_dev\\LocalKnowledgeWorkbench';
+const OWNER_EXE = path.join(OWNER_ROOT, 'LocalKnowledgeWorkbench.exe');
+const OWNER_DB = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
 const REG_KEYS = [
   'HKCU\\Software\\173de95e-f638-560d-b657-f1331a82173e',
   'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\173de95e-f638-560d-b657-f1331a82173e',
@@ -97,17 +97,17 @@ function versionIs(value, want) {
   const next = text.charAt(want.length);
   return next === '' || next === '.' || next === ' ' || next === '+' || next === '-';
 }
-async function amySnapshot() {
-  const exe = versionOf(AMY_EXE);
+async function ownerSnapshot() {
+  const exe = versionOf(OWNER_EXE);
   if (exe.exists) {
     try {
-      exe.sha256 = await sha256(AMY_EXE);
+      exe.sha256 = await sha256(OWNER_EXE);
     } catch (err) {
       exe.sha256Error = err instanceof Error ? err.message : String(err);
     }
   }
   // stat only; do not open the database
-  return { exe, db: fileStat(AMY_DB) };
+  return { exe, db: fileStat(OWNER_DB) };
 }
 function exeHashSame(before, after) {
   if (!before || !after) return false;
@@ -160,7 +160,7 @@ function queryUninstallString() {
     status: r.status,
     text: text.trim(),
     stderr: String(r.stderr || '').trim(),
-    ok: r.status === 0 && /study_dev/i.test(text),
+    ok: r.status === 0 && /example_dev/i.test(text),
   };
 }
 function restoreReg(saved) {
@@ -198,7 +198,7 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function loadChromium() {
-  const candidates = [path.join(ROOT, 'package.json'), 'D:\\STUDY MATERIAL\\项目\\知识库\\kb-wt-r13-021\\package.json'];
+  const candidates = [path.join(ROOT, 'package.json'), 'D:\\workspace\\kb\\kb-wt-r13-021\\package.json'];
   for (const pkg of candidates) {
     const mod = path.join(path.dirname(pkg), 'node_modules', 'playwright');
     if (fs.existsSync(mod)) return createRequire(pkg)('playwright').chromium;
@@ -241,7 +241,7 @@ function listWatchProcs() {
 $ErrorActionPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-$amy = 'D:\\study_dev\\LocalKnowledgeWorkbench'
+$user = 'D:\\example_dev\\LocalKnowledgeWorkbench'
 Get-Process | ForEach-Object {
   $name = [string]$_.ProcessName
   $take = $false
@@ -252,7 +252,7 @@ Get-Process | ForEach-Object {
   $procPath = ''
   if (-not $take) {
     try { $procPath = [string]$_.Path } catch {}
-    if ($procPath -and ($procPath -eq $amy -or $procPath.StartsWith($amy + '\\', [StringComparison]::OrdinalIgnoreCase))) { $take = $true }
+    if ($procPath -and ($procPath -eq $user -or $procPath.StartsWith($user + '\\', [StringComparison]::OrdinalIgnoreCase))) { $take = $true }
   } else {
     try { $procPath = [string]$_.Path } catch {}
   }
@@ -266,7 +266,7 @@ function isOldUninstaller(row) {
   return path.basename(String(row.exe || '')).toLowerCase() === 'old-uninstaller.exe';
 }
 function isSetupRow(row) {
-  if (row.exe && underDir(row.exe, AMY_ROOT)) return false;
+  if (row.exe && underDir(row.exe, OWNER_ROOT)) return false;
   const exe = String(row.exe || '').toLowerCase();
   const name = String(row.name || '').toLowerCase();
   if (exe.endsWith(SETUP_NAME.toLowerCase())) return true;
@@ -416,7 +416,7 @@ async function watchInstall(since) {
   const deadline = Date.now() + 10 * 60 * 1000;
   const note = (row) => {
     const oldUn = isOldUninstaller(row);
-    const underAmy = !!(row.exe && underDir(row.exe, AMY_ROOT));
+    const underOwner = !!(row.exe && underDir(row.exe, OWNER_ROOT));
     const fresh = !baselinePids.has(row.pid);
     // A stuck old-uninstaller that is already running before this install is not
     // evidence that this installer launched uninstallOldVersion. taskkill on that
@@ -430,11 +430,11 @@ async function watchInstall(since) {
       }
       return;
     }
-    if ((oldUn && fresh) || (baselineOk && underAmy && fresh)) {
+    if ((oldUn && fresh) || (baselineOk && underOwner && fresh)) {
       const key = row.pid + '|' + row.name + '|' + row.exe;
       if (!seen.has(key)) {
         seen.add(key);
-        violations.push({ pid: row.pid, name: row.name, exe: row.exe, oldUninstaller: oldUn, underAmy, fresh });
+        violations.push({ pid: row.pid, name: row.name, exe: row.exe, oldUninstaller: oldUn, underOwner, fresh });
         log(`foreign process pid ${row.pid} ${row.name} ${row.exe}`);
       }
       if (oldUn && !killedOld.some((item) => item.pid === row.pid)) {
@@ -505,16 +505,16 @@ async function watchInstall(since) {
   };
 }
 
-if (!INST.startsWith('D:\\kb-r13-work\\upgrade-0026\\') || /study_dev/i.test(INST) || underDir(INST, AMY_ROOT)) {
+if (!INST.startsWith('D:\\workspace\\kb-work\\upgrade-0026\\') || /example_dev/i.test(INST) || underDir(INST, OWNER_ROOT)) {
   console.error('G2 FAIL unsafe install dir');
   process.exit(1);
 }
-if (!USERDATA.startsWith('D:\\kb-r13-work\\upgrade-0026\\') || /study_dev/i.test(USERDATA)) {
+if (!USERDATA.startsWith('D:\\workspace\\kb-work\\upgrade-0026\\') || /example_dev/i.test(USERDATA)) {
   console.error('G2 FAIL unsafe user data dir');
   process.exit(1);
 }
-if (/study_dev/i.test(FEED) || underDir(FEED, AMY_ROOT) || /study_dev/i.test(SRC) || underDir(SRC, AMY_ROOT)) {
-  console.error('G2 FAIL refusing study_dev feed or source');
+if (/example_dev/i.test(FEED) || underDir(FEED, OWNER_ROOT) || /example_dev/i.test(SRC) || underDir(SRC, OWNER_ROOT)) {
+  console.error('G2 FAIL refusing example_dev feed or source');
   process.exit(1);
 }
 
@@ -530,14 +530,14 @@ const result = {
 };
 let regSaved = [];
 let shortcuts = [];
-let amyBefore = null;
+let ownerBefore = null;
 let child = null;
 let browser = null;
 
 try {
   fs.mkdirSync(LOG_DIR, { recursive: true });
-  amyBefore = await amySnapshot();
-  result.amyBefore = amyBefore;
+  ownerBefore = await ownerSnapshot();
+  result.ownerBefore = ownerBefore;
   regSaved = exportReg(path.join(LOG_DIR, 'reg-before'));
   result.installLocationBefore = queryInstallLocation();
   if (!regSaved.every((item) => item.exists && item.status === 0)) {
@@ -576,7 +576,7 @@ try {
   result.steps.boot = { ms: Date.now() - bootStarted };
   log('about ' + JSON.stringify(about));
   if (!versionIs(about?.version, FROM_VERSION)) throw new Error('running version is not 0.2.3');
-  if (/study_dev/i.test(String(about?.installDir || ''))) throw new Error('installDir is study_dev');
+  if (/example_dev/i.test(String(about?.installDir || ''))) throw new Error('installDir is example_dev');
   if (path.resolve(about.installDir).toLowerCase() !== INST.toLowerCase()) throw new Error('installDir is ' + about.installDir);
 
   const checkStarted = Date.now();
@@ -601,9 +601,9 @@ try {
   const uninstall = queryUninstallString();
   result.uninstallBeforeApply = uninstall;
   if (!uninstall.ok) {
-    throw new Error('UninstallString missing or does not mention study_dev; refusing to apply');
+    throw new Error('UninstallString missing or does not mention example_dev; refusing to apply');
   }
-  log('UninstallString still present and mentions study_dev');
+  log('UninstallString still present and mentions example_dev');
   const installStarted = Date.now();
   const setupWait = watchInstall(installStarted);
   let applyError = null;
@@ -672,7 +672,7 @@ try {
     && versionIs(afterVer.productVersion, TO_VERSION)
     && versionIs(aboutAfter?.version, TO_VERSION);
   const instOk = path.resolve(aboutAfter?.installDir || '').toLowerCase() === INST.toLowerCase()
-    && !/study_dev/i.test(String(aboutAfter?.installDir || ''));
+    && !/example_dev/i.test(String(aboutAfter?.installDir || ''));
   const setupText = String(result.setup?.waiterStdout || '');
   const setupExplicitFail = /TIMEOUT/.test(setupText) || /EXIT\s+(?!0\b)\d+/.test(setupText);
   result.setupExitText = setupText;
@@ -715,19 +715,19 @@ try {
     }
     result.shortcutRestore = shortcuts.map(restoreShortcut);
     result.installLocationAfter = queryInstallLocation();
-    const amyAfter = await amySnapshot();
-    result.amyAfter = amyAfter;
-    const exeSame = exeHashSame(amyBefore && amyBefore.exe, amyAfter.exe);
-    const dbSame = dbStatSame(amyBefore && amyBefore.db, amyAfter.db);
-    result.amyExeUnchanged = !!exeSame;
-    result.amyDbUnchanged = !!dbSame;
-    if (amyBefore && !exeSame) {
+    const ownerAfter = await ownerSnapshot();
+    result.ownerAfter = ownerAfter;
+    const exeSame = exeHashSame(ownerBefore && ownerBefore.exe, ownerAfter.exe);
+    const dbSame = dbStatSame(ownerBefore && ownerBefore.db, ownerAfter.db);
+    result.ownerExeUnchanged = !!exeSame;
+    result.ownerDbUnchanged = !!dbSame;
+    if (ownerBefore && !exeSame) {
       result.ok = false;
-      result.reason = addReason(result.reason, 'amy-exe-changed');
+      result.reason = addReason(result.reason, 'user-exe-changed');
     }
-    if (amyBefore && !dbSame) {
+    if (ownerBefore && !dbSame) {
       result.ok = false;
-      result.reason = addReason(result.reason, 'amy-db-changed');
+      result.reason = addReason(result.reason, 'user-db-changed');
     }
   } catch (err) {
     result.ok = false;

@@ -1,13 +1,13 @@
 # FREEZE-0027（主线冻结，各组只许按此实现）
 
-外贴：`D:\STUDY MATERIAL\项目\知识库\汇报\一次并行-2026-10-06\安装包修复-外贴\27-版本目录升级.md`。
-基线：`D:\STUDY MATERIAL\项目\知识库\kb-wt-r13-021`，分支 `r14-022`，tip `3277b9cc616acb66498f970cbe44f7ba27bfa960`。
+外贴：`D:\workspace\kb\汇报\一次并行-2026-10-06\安装包修复-外贴\27-版本目录升级.md`。
+基线：`D:\workspace\kb\kb-wt-r13-021`，分支 `r14-022`，tip `3277b9cc616acb66498f970cbe44f7ba27bfa960`。
 冻结分支：`r14-027-freeze`。冻结代码在 `src/shared/layout/**` 与 `tests/layout-contract-0027.test.ts`。
-各组从冻结提交切工作树，**禁止修改** `src/shared/layout/**`。要改契约就停，写 `D:\kb-r13-work\updater-0027\requests\<组>.md`。
+各组从冻结提交切工作树，**禁止修改** `src/shared/layout/**`。要改契约就停，写 `D:\workspace\kb-work\updater-0027\requests\<组>.md`。
 
 版本号仍是 `0.2.4`，直到主线合入后再改为 `0.2.5`。不要改 `package.json` / `package-lock.json`。
 不要提交 `e2e/perf-startup-0017.mjs`。不要 push。不要 `npm install` / `npm ci` / 新依赖。不要升级 Electron、katex、mermaid。
-不要写 `D:\study_dev`。不要杀 Amy 的 `LocalKnowledgeWorkbench`。不要打开她的库。
+不要写 `D:\example_dev`。不要杀 用户的 `LocalKnowledgeWorkbench`。不要打开她的库。
 不要启动工作台或更新器窗口，不要运行安装包。同一时间最多一个真正的 Electron；`ELECTRON_RUN_AS_NODE` 单测可以跑。
 进程检查只用 `Get-Process` 和 `build/kb-proc-check.ps1`。禁止 `Get-CimInstance`、`Get-WmiObject`、`wmic`、`Win32_Process`。
 不要改 `build/installer.nsh`。本外贴的常规路径不再是静默 NSIS。
@@ -35,7 +35,7 @@ Electron 会加载 exe 旁边的 `resources\app.asar`。旧安装根上的 `reso
 ```
 
 用户数据仍是 `%LOCALAPPDATA%\LocalKnowledgeWorkbench`，或 `KB_USER_DATA`。不许放进 `versions/`。
-隔离安装根必须在 `D:\kb-r13-work\updater-0027\` 下。`isUnderStudyDev` 为真则拒绝。
+隔离安装根必须在 `D:\workspace\kb-work\updater-0027\` 下。`isUnderStudyDev` 为真则拒绝。
 
 版本目录只保留 `current` 与 `previous`。其余目录只在更新器阶段 `done` 之后删除。失败、切换中、回退中都不删。
 候选包先解到 `versions/<版本>.partial`，完整性通过后再改名为 `versions/<版本>`。失败删掉 `.partial`，不动 `current.json`。
@@ -69,7 +69,7 @@ Electron 会加载 exe 旁边的 `resources\app.asar`。旧安装根上的 `reso
 ```
 
 更新器超时见 `PHASE_TIMEOUT_MS`：等待退出 60 秒，切换 30 秒，启动 45 秒，验证 60 秒。超时写阶段日志，不切换或按 `decideRecovery` 回退。错误要带日志路径。
-进程范围只包括本次安装根 `versions\` 下的 `LocalKnowledgeWorkbench.exe` 及其子进程。看到路径在 `D:\study_dev\LocalKnowledgeWorkbench` 下的进程即失败，不许结束它。禁止 Cim / Wmi / wmic。
+进程范围只包括本次安装根 `versions\` 下的 `LocalKnowledgeWorkbench.exe` 及其子进程。看到路径在 `D:\example_dev\LocalKnowledgeWorkbench` 下的进程即失败，不许结束它。禁止 Cim / Wmi / wmic。
 
 阶段日志每行一个 JSON：`formatPhaseLog`。每阶段有 `start` 和 `end` 或 `fail`，`end` 带 `ms`。
 
@@ -96,10 +96,10 @@ zip 内部是 win-unpacked 的内容，不是整棵安装根。解压目标是 `
 2. 用 `verifyVersionTree` 检查副本。失败则删副本，不写 `current.json`，不改旧 exe。
 3. 写 `current.json`：`current` 为该版本，`previous` 为 null。
 4. 把根上的 `LocalKnowledgeWorkbench.exe` 改名为 `LocalKnowledgeWorkbench.exe.pre-layout`。这一步失败时 `current.json` 已指向副本，旧文件还在，报告里写明，不要删副本。
-5. 快捷方式改到 `launcher\kb-launch.exe`，显示名 `SHORTCUT_NAME`。门禁使用临时目录，不改 Amy 的桌面，除非主线另给路径。
+5. 快捷方式改到 `launcher\kb-launch.exe`，显示名 `SHORTCUT_NAME`。门禁使用临时目录，不改 用户的桌面，除非主线另给路径。
 6. 用户数据目录原样继续用。不复制、不打开 `workbench.db`。
 
-低于 `0.2.2`、没有 exe、没有 `resources\app.asar`、已经有 `current.json`、或落在 `D:\study_dev`（且没有 Amy 另批）都拒绝。FileVersion `0.2.4.0` 归一成目录名 `0.2.4`。
+低于 `0.2.2`、没有 exe、没有 `resources\app.asar`、已经有 `current.json`、或落在 `D:\example_dev`（且没有 用户另批）都拒绝。FileVersion `0.2.4.0` 归一成目录名 `0.2.4`。
 
 ## 文件所有权
 
@@ -118,5 +118,5 @@ zip 内部是 win-unpacked 的内容，不是整棵安装根。解压目标是 `
 每个短分支提交前 `git status`：没有 `node_modules`，没有 `e2e/perf-startup-0017.mjs`。不要 push。
 门禁脚本没有环境变量 `KB_GATE_ALLOW_ELECTRON=1` 时必须退出码 2，不许启动 Electron。该变量只由主线在独占时设置。
 
-G1–G10 的定义以外贴 27 为准。日志根：`D:\kb-r13-work\updater-0027\`。候选 feed：`D:\kb-r13-work\feed-0.2.5\`。
-真正升级源只有 G1–G9 全 PASS 且 Amy 授权后才追加 `dirpack.json` 和 zip。即便授权，也不改 `latest.yml` 的 0.2.4。
+G1–G10 的定义以外贴 27 为准。日志根：`D:\workspace\kb-work\updater-0027\`。候选 feed：`D:\workspace\kb-work\feed-0.2.5\`。
+真正升级源只有 G1–G9 全 PASS 且 用户授权后才追加 `dirpack.json` 和 zip。即便授权，也不改 `latest.yml` 的 0.2.4。

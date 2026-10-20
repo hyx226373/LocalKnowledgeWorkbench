@@ -22,10 +22,10 @@ import type { ThemePackDto } from '../src/shared/types';
 function touchline(): ThemePackDto {
   return {
     source: 'installed',
-    location: 'amy.touchline',
+    location: 'example.touchline',
     files: {},
     manifest: {
-      id: 'amy.touchline',
+      id: 'example.touchline',
       name: '球场指挥室',
       version: '1.0.0',
       engines: { workbench: '^0.2.0', themeContract: '^2.0.0' },
@@ -39,8 +39,8 @@ function touchline(): ThemePackDto {
 
 describe('用户主题包加载', () => {
   beforeEach(() => {
-    chromeThemes.unregisterOwner('amy.touchline');
-    readingThemes.unregisterOwner('amy.touchline');
+    chromeThemes.unregisterOwner('example.touchline');
+    readingThemes.unregisterOwner('example.touchline');
   });
 
   it('安装后是 active，外框和阅读区都能拿到，重复安装仍是 active', async () => {
@@ -49,7 +49,7 @@ describe('用户主题包加载', () => {
     expect(first.entry.kind).toBe('theme');
     expect(first.validated.errors).toEqual([]);
     await pluginHost.load([first.entry]);
-    expect(pluginHost.get('amy.touchline')?.status).toBe('active');
+    expect(pluginHost.get('example.touchline')?.status).toBe('active');
     expect(chromeThemes.get('touchline')?.label).toBe('球场指挥室');
     expect(readingThemes.get('touchline')?.label).toBe('球场指挥室阅读');
 
@@ -65,8 +65,8 @@ describe('用户主题包加载', () => {
       },
     });
     await pluginHost.load([again.entry]);
-    expect(pluginHost.get('amy.touchline')?.status).toBe('active');
-    expect(pluginHost.get('amy.touchline#dup')).toBeUndefined();
+    expect(pluginHost.get('example.touchline')?.status).toBe('active');
+    expect(pluginHost.get('example.touchline#dup')).toBeUndefined();
     expect(pluginHost.list().some((r) => r.message?.includes('插件 id 重复'))).toBe(false);
     expect(chromeThemes.get('touchline')?.label).toBe('球场指挥室二');
     expect(readingThemes.get('touchline')?.label).toBe('球场指挥室阅读二');
@@ -93,7 +93,7 @@ describe('用户主题包加载', () => {
     const broken = themePackEntry({ ...touchline(), error: 'theme.json 读不了' });
     expect(broken.entry.preflightError).toBeTruthy();
     await pluginHost.load([broken.entry]);
-    const rec = pluginHost.get('amy.touchline');
+    const rec = pluginHost.get('example.touchline');
     expect(rec?.status).toBe('incompatible');
     const notice = themeInstallFeedback('球场指挥室', rec?.status, rec?.message ?? broken.entry.preflightError);
     expect(notice.title + notice.body).not.toContain('已安装');

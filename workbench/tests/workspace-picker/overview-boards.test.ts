@@ -36,7 +36,7 @@ describe('overview boards', () => {
         { id: 'bad\\id', name: '坏', workspaceIds: ['ws-3'] },
       ],
       tags: [{ id: 't-1', name: 'C:\\盘', workspaceIds: ['ws-9'] }],
-      allOrder: ['/home/amy', 'ws-2', 'ws-2'],
+      allOrder: ['/home/user', 'ws-2', 'ws-2'],
       favoriteOrder: ['ws-1'],
       extra: true,
     };
@@ -60,7 +60,7 @@ describe('overview boards', () => {
       tags: [],
       allOrder: ['ws-a', 'ws-b'],
       favoriteOrder: [],
-      categories: [{ id: 'c-1', name: '考研', workspaceIds: ['ws-b'] }],
+      categories: [{ id: 'c-1', name: '示例分类', workspaceIds: ['ws-b'] }],
     });
     const kept = retainOverviewWorkspaces(base, new Set(['ws-a']));
     expect(kept.projects[0]?.workspaceIds).toEqual(['ws-a']);
@@ -91,7 +91,7 @@ describe('overview boards', () => {
       tags: [{ id: 't-1', name: '标签', workspaceIds: ['a', 'c'] }],
       allOrder: [] as string[],
       favoriteOrder: [] as string[],
-      categories: [{ id: 'c-1', name: '考研', workspaceIds: ['a', 'b'] }],
+      categories: [{ id: 'c-1', name: '示例分类', workspaceIds: ['a', 'b'] }],
     };
     const added = addWorkspacesToCategory(boards, 'p-1', ['b', 'c', 'b', 'C:\\secret']);
     expect(added.projects[0]?.workspaceIds).toEqual(['a', 'b', 'c']);
@@ -119,7 +119,7 @@ describe('overview boards', () => {
         allOrder: ['a'],
         favoriteOrder: [],
       },
-      '考研',
+      '示例分类',
     );
     expect(deleteOverviewCategory(boards, 'all')).toBe(boards);
     expect(deleteOverviewCategory(boards, 'recent')).toBe(boards);
@@ -135,7 +135,7 @@ describe('overview boards', () => {
 
     const renamed = renameOverviewCategory(boards, 'c-1', '  课程 ');
     expect(renamed.categories?.[0]?.name).toBe('课程');
-    expect(boards.categories?.[0]?.name).toBe('考研');
+    expect(boards.categories?.[0]?.name).toBe('示例分类');
     expect(renameOverviewCategory(boards, 'c-1', '   ')).toBe(boards);
   });
 
@@ -164,8 +164,8 @@ describe('overview boards', () => {
     expect(created.tags).toEqual(parsed.tags);
     expect(created.categories).toEqual([{ id: 'c-1', name: '分类1', workspaceIds: [] }]);
     expect(addOverviewCategory(created).categories?.map((item) => item.name)).toEqual(['分类1', '分类2']);
-    const named = addOverviewCategory(parsed, '  考研资料 ');
-    expect(named.categories?.[0]).toEqual({ id: 'c-1', name: '考研资料', workspaceIds: [] });
+    const named = addOverviewCategory(parsed, '  示例分类资料 ');
+    expect(named.categories?.[0]).toEqual({ id: 'c-1', name: '示例分类资料', workspaceIds: [] });
     expect(serializeOverviewBoards(named).categories).toEqual(named.categories);
     expect(listOverviewCategories(named).map((item) => item.origin)).toEqual(['projects', 'tags', 'custom']);
   });

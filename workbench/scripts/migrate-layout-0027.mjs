@@ -1,11 +1,11 @@
-// 把 runMigrate 打成临时 cjs 再迁移。不启动 Electron，不写 D:\study_dev。
+// 把 runMigrate 打成临时 cjs 再迁移。不启动 Electron，不写 D:\example_dev。
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TMP = 'D:\\kb-r13-work\\updater-0027\\tmp';
+const TMP = 'D:\\workspace\\kb-work\\updater-0027\\tmp';
 
 function arg(flag) {
   const index = process.argv.indexOf(flag);
@@ -17,7 +17,7 @@ function arg(flag) {
 
 function underStudyDev(target) {
   const resolved = path.win32.resolve(target).toLowerCase();
-  const banned = 'd:\\study_dev';
+  const banned = 'd:\\example_dev';
   return resolved === banned || resolved.startsWith(`${banned}\\`);
 }
 
@@ -28,7 +28,7 @@ if (!installRoot || !fileVersion) {
   process.exit(2);
 }
 if (underStudyDev(installRoot)) {
-  console.error('拒绝迁移 D:\\study_dev');
+  console.error('拒绝迁移 D:\\example_dev');
   process.exit(2);
 }
 

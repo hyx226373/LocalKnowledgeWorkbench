@@ -1,5 +1,5 @@
 /**
- * 分类改名：隐藏规则只盖住 radio。点「编辑」后输入框可见、值为原名，改成「考研」后保存。
+ * 分类改名：隐藏规则只盖住 radio。点「编辑」后输入框可见、值为原名，改成「示例分类」后保存。
  * 左侧「分类」小标题仍是固定文字。
  *
  * 不用 vitest 的 jsdom 环境（本机 vitest 包不在本仓库 node_modules 里，解析不到 jsdom）。
@@ -54,7 +54,7 @@ const HAS_JSDOM = (() => {
 const JSDOM = HAS_JSDOM ? (require('jsdom') as { JSDOM: JsDomCtor }).JSDOM : null;
 
 const ORIGINAL = '课程';
-const RENAMED = '考研';
+const RENAMED = '示例分类';
 
 const previous = new Map<string, PropertyDescriptor | null>();
 const dom = JSDOM
@@ -198,7 +198,7 @@ describe('分类改名输入框', () => {
     expect(overview).toContain('.kb-ws-overview .ov-cat-input');
   });
 
-  it.skipIf(!HAS_JSDOM)('点编辑后输入框可见且值为原名，改成考研后保存成功', async () => {
+  it.skipIf(!HAS_JSDOM)('点编辑后输入框可见且值为原名，改成示例分类后保存成功', async () => {
     installOverviewCss();
     const onBoardsChange = vi.fn<(next: OverviewBoards) => void>();
     const select = vi.spyOn(win.HTMLInputElement.prototype, 'select');

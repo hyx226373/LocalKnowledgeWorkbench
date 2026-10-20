@@ -22,13 +22,13 @@ function row(partial: Partial<ProcRow> & { pid: number }): ProcRow {
 
 describe('残留进程筛选', () => {
   it('父进程已退出时清掉它的 electron 子进程，跳过已安装的工作台', () => {
-    expect(shouldReapProcess(row({ pid: 10, ppid: 4, name: 'electron.exe', command: '--type=gpu-process --user-data-dir=D:\\kb-r13-work\\userdata' }), {
+    expect(shouldReapProcess(row({ pid: 10, ppid: 4, name: 'electron.exe', command: '--type=gpu-process --user-data-dir=D:\\workspace\\kb-work\\userdata' }), {
       selfPid: 99, recorded: false, childOfDead: true, ownExeName: 'electron.exe',
     })).toBe(true);
-    expect(shouldReapProcess(row({ pid: 11, name: 'LocalKnowledgeWorkbench.exe', image: 'D:\\study_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe' }), {
+    expect(shouldReapProcess(row({ pid: 11, name: 'LocalKnowledgeWorkbench.exe', image: 'D:\\example_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe' }), {
       selfPid: 99, recorded: true, childOfDead: false, ownExeName: 'electron.exe',
     })).toBe(false);
-    expect(shouldReapProcess(row({ pid: 12, name: 'powershell.exe', command: 'Start-Sleep; study_dev\\LocalKnowledgeWorkbench' }), {
+    expect(shouldReapProcess(row({ pid: 12, name: 'powershell.exe', command: 'Start-Sleep; example_dev\\LocalKnowledgeWorkbench' }), {
       selfPid: 99, recorded: true, childOfDead: false, ownExeName: 'electron.exe',
     })).toBe(false);
     expect(shouldReapProcess(row({ pid: 13, name: 'powershell.exe', command: 'Start-Sleep -Seconds 30' }), {
@@ -49,13 +49,13 @@ describe('死锁后的磁盘缓存', () => {
     fs.writeFileSync(path.join(dir, 'instance.lock'), JSON.stringify({ pid: process.pid }));
     expect(restartSkipsDiskCache(dir)).toBe(false);
     const prev = process.env.LOCALAPPDATA;
-    const root = tmpDir('kblock-amy-');
+    const root = tmpDir('kblock-user-');
     process.env.LOCALAPPDATA = root;
     try {
-      const amy = path.join(root, 'LocalKnowledgeWorkbench');
-      fs.mkdirSync(amy);
-      fs.writeFileSync(path.join(amy, 'instance.lock'), JSON.stringify({ pid: deadPid() }));
-      expect(restartSkipsDiskCache(amy)).toBe(false);
+      const user = path.join(root, 'LocalKnowledgeWorkbench');
+      fs.mkdirSync(user);
+      fs.writeFileSync(path.join(user, 'instance.lock'), JSON.stringify({ pid: deadPid() }));
+      expect(restartSkipsDiskCache(user)).toBe(false);
     } finally {
       if (prev === undefined) delete process.env.LOCALAPPDATA;
       else process.env.LOCALAPPDATA = prev;
@@ -88,7 +88,7 @@ describe('数据目录实例锁', () => {
     });
     const installed = spawn(
       'powershell.exe',
-      ['-NoProfile', '-Command', 'Start-Sleep -Seconds 30; "study_dev\\LocalKnowledgeWorkbench"'],
+      ['-NoProfile', '-Command', 'Start-Sleep -Seconds 30; "example_dev\\LocalKnowledgeWorkbench"'],
       { windowsHide: true, stdio: 'ignore' },
     );
     try {
@@ -115,7 +115,7 @@ describe('数据目录实例锁', () => {
     const dir = tmpDir('kbreap2-');
     const installed = spawn(
       'powershell.exe',
-      ['-NoProfile', '-Command', 'Start-Sleep -Seconds 20; "D:\\study_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe"'],
+      ['-NoProfile', '-Command', 'Start-Sleep -Seconds 20; "D:\\example_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe"'],
       { windowsHide: true, stdio: 'ignore' },
     );
     try {
@@ -176,15 +176,15 @@ describe('数据目录实例锁', () => {
   }, 15000);
 
   it('真库目录 finishInstance 仍释放 lock', async () => {
-    const root = tmpDir('kblock-amy-finish-');
+    const root = tmpDir('kblock-user-finish-');
     const prev = process.env.LOCALAPPDATA;
     process.env.LOCALAPPDATA = root;
     try {
-      const amy = path.join(root, 'LocalKnowledgeWorkbench');
-      fs.mkdirSync(amy);
-      fs.writeFileSync(path.join(amy, 'instance.lock'), JSON.stringify({ pid: process.pid, exiting: true, at: 't0' }));
-      await finishInstance(amy);
-      expect(fs.existsSync(path.join(amy, 'instance.lock'))).toBe(false);
+      const user = path.join(root, 'LocalKnowledgeWorkbench');
+      fs.mkdirSync(user);
+      fs.writeFileSync(path.join(user, 'instance.lock'), JSON.stringify({ pid: process.pid, exiting: true, at: 't0' }));
+      await finishInstance(user);
+      expect(fs.existsSync(path.join(user, 'instance.lock'))).toBe(false);
     } finally {
       if (prev === undefined) delete process.env.LOCALAPPDATA;
       else process.env.LOCALAPPDATA = prev;

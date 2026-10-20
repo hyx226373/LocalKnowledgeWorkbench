@@ -18,10 +18,10 @@
 
 本机不靠静默安装器，靠一次性迁移进入新布局：
 
-1. `planMigration` 先判定。低于 `0.2.2`、没有主程序、没有 `resources\app.asar`、已经有 `current.json`，或落在 `D:\study_dev`（且 Amy 未另批），都拒绝，不复制。
+1. `planMigration` 先判定。低于 `0.2.2`、没有主程序、没有 `resources\app.asar`、已经有 `current.json`，或落在 `D:\example_dev`（且 用户未另批），都拒绝，不复制。
 2. 旧根复制到 `versions/<版本>/`。排除 `versions\`、`launcher\`、`updater\`、`current.json`。
 3. `verifyVersionTree` 失败则删掉这份副本，不写 `current.json`，不改根上的 exe。
 4. 通过后写 `current.json`：`current` 为该版本，`previous` 为 null。
 5. 根上的 `LocalKnowledgeWorkbench.exe` 改名为 `LocalKnowledgeWorkbench.exe.pre-layout`。这一步失败时指针已经写下，旧 exe 还在，不删副本。
 
-用户数据目录原样继续用，不复制、不打开 `workbench.db`。默认不写 `D:\study_dev`。
+用户数据目录原样继续用，不复制、不打开 `workbench.db`。默认不写 `D:\example_dev`。

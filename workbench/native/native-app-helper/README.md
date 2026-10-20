@@ -5,7 +5,7 @@ Win32 product helper for Electron `native-app-host`, loaded via `createWin32Help
 ## Install (Windows PC)
 
 ```bat
-cd /d "D:\STUDY MATERIAL\项目\知识库\kb-wt-host-r1-native"
+cd /d "D:\workspace\kb\kb-wt-host-r1-native"
 npm install koffi
 REM or:
 cd native\native-app-helper

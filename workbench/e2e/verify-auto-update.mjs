@@ -1,4 +1,4 @@
-// Isolated auto-update checks. Temp data only. No SendInput. No Amy install.
+// Isolated auto-update checks. Temp data only. No SendInput. No the user install.
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { _electron as electron } from 'playwright';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const RUNTIME = 'C:\\Users\\sana2\\kb-r12-update-e2e';
+const RUNTIME = 'C:\\Users\\example\\kb-r12-update-e2e';
 const EVIDENCE = path.resolve(ROOT, '..', '汇报', '一次并行-2026-10-06', '安装包修复-回交', 'UPDATE-0009');
 const SEGMENT_MS = 8 * 60 * 1000;
 
@@ -27,9 +27,9 @@ function stamp(file) {
   }
 }
 
-const amyDb = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
-const amyExe = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'LocalKnowledgeWorkbench', 'LocalKnowledgeWorkbench.exe');
-const amyBefore = [stamp(amyDb), stamp(amyExe)];
+const ownerDb = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
+const ownerExe = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'LocalKnowledgeWorkbench', 'LocalKnowledgeWorkbench.exe');
+const ownerBefore = [stamp(ownerDb), stamp(ownerExe)];
 
 fs.rmSync(RUNTIME, { recursive: true, force: true });
 fs.mkdirSync(RUNTIME, { recursive: true });
@@ -474,15 +474,15 @@ for (const run of [caseUpgrade, caseTamper, caseRollback, caseFrozenTray]) {
     check(run.name + ' 没有抛出', false, err && err.stack ? err.stack : String(err));
   }
 }
-const amyAfter = [stamp(amyDb), stamp(amyExe)];
-const amySame = amyBefore.every((before, index) => {
-  const after = amyAfter[index];
+const ownerAfter = [stamp(ownerDb), stamp(ownerExe)];
+const ownerSame = ownerBefore.every((before, index) => {
+  const after = ownerAfter[index];
   if (!before.exists && !after.exists) return true;
   return before.exists === after.exists && before.mtimeMs === after.mtimeMs && before.size === after.size;
 });
-check('Amy 的数据库和安装版没有被改', amySame, JSON.stringify({ amyBefore, amyAfter }));
+check('用户的数据库和安装版没有被改', ownerSame, JSON.stringify({ ownerBefore, ownerAfter }));
 check('每段开窗短于 20 分钟', Date.now() - startedAll < 20 * 60 * 1000, String(Date.now() - startedAll));
-writeEvidence('summary.json', { results, amyBefore, amyAfter, elapsedMs: Date.now() - startedAll, segmentBudgetMs: SEGMENT_MS });
+writeEvidence('summary.json', { results, ownerBefore, ownerAfter, elapsedMs: Date.now() - startedAll, segmentBudgetMs: SEGMENT_MS });
 const failed = results.filter((row) => !row.ok);
 console.log(JSON.stringify({ passed: results.length - failed.length, failed: failed.length, elapsedMs: Date.now() - startedAll }, null, 2));
 if (failed.length) process.exit(1);

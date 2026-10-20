@@ -11,18 +11,18 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = path.resolve('D:\\kb-r13-work\\pack-0022-staging-b\\release\\win-unpacked');
-const INST = path.resolve(process.env.KB_G2_INSTDIR || 'D:\\kb-r13-work\\install-0024\\app-022');
-const USERDATA = path.resolve('D:\\kb-r13-work\\install-0024\\upgrade-userdata');
-const FEED = path.resolve(process.env.KB_G2_FEED || 'D:\\kb-r13-work\\feed-0.2.3');
+const SRC = path.resolve('D:\\workspace\\kb-work\\pack-0022-staging-b\\release\\win-unpacked');
+const INST = path.resolve(process.env.KB_G2_INSTDIR || 'D:\\workspace\\kb-work\\install-0024\\app-022');
+const USERDATA = path.resolve('D:\\workspace\\kb-work\\install-0024\\upgrade-userdata');
+const FEED = path.resolve(process.env.KB_G2_FEED || 'D:\\workspace\\kb-work\\feed-0.2.3');
 const SETUP_NAME = 'LocalKnowledgeWorkbench-0.2.3-win-x64-setup.exe';
-const LOG_DIR = path.resolve('D:\\kb-r13-work\\install-0024\\g2');
+const LOG_DIR = path.resolve('D:\\workspace\\kb-work\\install-0024\\g2');
 const STAMP = path.join(LOG_DIR, 'proc-stamp.txt');
 const RESULT = path.join(LOG_DIR, 'g2-result.json');
 const RUN_LOG = path.join(LOG_DIR, 'g2-run.log');
 const PORT = Number(process.env.KB_G2_PORT || 9534);
-const AMY_EXE = 'D:\\study_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe';
-const AMY_DB = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
+const OWNER_EXE = 'D:\\example_dev\\LocalKnowledgeWorkbench\\LocalKnowledgeWorkbench.exe';
+const OWNER_DB = path.join(process.env.LOCALAPPDATA || '', 'LocalKnowledgeWorkbench', 'workbench.db');
 const REG_KEYS = [
   'HKCU\\Software\\173de95e-f638-560d-b657-f1331a82173e',
   'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\173de95e-f638-560d-b657-f1331a82173e',
@@ -79,9 +79,9 @@ Write-Output ([string]$v.ProductVersion)
   const rows = String(r.stdout || '').split(/\r?\n/).map((line) => line.trim());
   return { exists: true, path: file, size: Number(rows[0]), mtimeUtc: rows[1] || '', fileVersion: rows[2] || '', productVersion: rows[3] || '', stderr: String(r.stderr || '').trim() };
 }
-function amySnapshot() {
-  const exe = versionOf(AMY_EXE);
-  return { exe, db: fileStat(AMY_DB) };
+function ownerSnapshot() {
+  const exe = versionOf(OWNER_EXE);
+  return { exe, db: fileStat(OWNER_DB) };
 }
 function desktopDir() {
   const r = psEncoded("[Environment]::GetFolderPath('Desktop')", 15000);
@@ -118,7 +118,7 @@ function hideRegisteredUninstall() {
   if (check.status === 0 && /UninstallString/i.test(text)) {
     throw new Error('refusing to run installer while UninstallString is still registered');
   }
-  if (/study_dev/i.test(text)) throw new Error('refusing to run installer while UninstallString mentions study_dev');
+  if (/example_dev/i.test(text)) throw new Error('refusing to run installer while UninstallString mentions example_dev');
   return removed;
 }
 function restoreReg(saved) {
@@ -151,7 +151,7 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function loadChromium() {
-  const candidates = [path.join(ROOT, 'package.json'), 'D:\\STUDY MATERIAL\\项目\\知识库\\kb-wt-r13-021\\package.json'];
+  const candidates = [path.join(ROOT, 'package.json'), 'D:\\workspace\\kb\\kb-wt-r13-021\\package.json'];
   for (const pkg of candidates) {
     const mod = path.join(path.dirname(pkg), 'node_modules', 'playwright');
     if (fs.existsSync(mod)) return createRequire(pkg)('playwright').chromium;
@@ -269,7 +269,7 @@ async function waitSetupExit(since) {
   const deadline = Date.now() + 10 * 60 * 1000;
   let seen = null;
   while (Date.now() < deadline) {
-    const rows = listProcs().filter((row) => row.exe.toLowerCase().endsWith(SETUP_NAME.toLowerCase()) && !/study_dev/i.test(row.exe));
+    const rows = listProcs().filter((row) => row.exe.toLowerCase().endsWith(SETUP_NAME.toLowerCase()) && !/example_dev/i.test(row.exe));
     if (!seen && rows[0]) {
       seen = rows[0];
       log(`setup pid ${seen.pid} ${seen.exe}`);
@@ -287,7 +287,7 @@ Write-Output ('EXIT ' + [string]$p.ExitCode)
   return seen ? { ...seen, missedWait: true, ms: Date.now() - since } : { missing: true, ms: Date.now() - since };
 }
 
-if (!INST.startsWith('D:\\kb-r13-work\\install-0024\\') || /study_dev/i.test(INST)) {
+if (!INST.startsWith('D:\\workspace\\kb-work\\install-0024\\') || /example_dev/i.test(INST)) {
   console.error('G2 FAIL unsafe install dir');
   process.exit(1);
 }
@@ -295,14 +295,14 @@ if (!INST.startsWith('D:\\kb-r13-work\\install-0024\\') || /study_dev/i.test(INS
 const result = { startedAt: new Date(startedAt).toISOString(), inst: INST, feed: FEED, ok: false, steps: {} };
 let regSaved = [];
 let shortcuts = [];
-let amyBefore = null;
+let ownerBefore = null;
 let child = null;
 let browser = null;
 
 try {
   fs.mkdirSync(LOG_DIR, { recursive: true });
-  amyBefore = amySnapshot();
-  result.amyBefore = amyBefore;
+  ownerBefore = ownerSnapshot();
+  result.ownerBefore = ownerBefore;
   regSaved = exportReg(path.join(LOG_DIR, 'reg-before'));
   result.installLocationBefore = queryInstallLocation();
   if (!regSaved.every((item) => item.exists && item.status === 0)) {
@@ -340,7 +340,7 @@ try {
   result.steps.boot = { ms: Date.now() - bootStarted };
   log('about ' + JSON.stringify(about));
   if (!String(about?.version).startsWith('0.2.2')) throw new Error('running version is not 0.2.2');
-  if (/study_dev/i.test(String(about?.installDir || ''))) throw new Error('installDir is study_dev');
+  if (/example_dev/i.test(String(about?.installDir || ''))) throw new Error('installDir is example_dev');
   if (path.resolve(about.installDir).toLowerCase() !== INST.toLowerCase()) throw new Error('installDir is ' + about.installDir);
 
   const checkStarted = Date.now();
@@ -363,8 +363,8 @@ try {
   log('downloaded ' + JSON.stringify(result.downloads));
 
   const beforeApply = spawnSync('reg.exe', ['query', REG_KEYS[1], '/v', 'UninstallString'], { encoding: 'utf8', windowsHide: true });
-  if (beforeApply.status === 0 && /study_dev/i.test(String(beforeApply.stdout || ''))) {
-    throw new Error('UninstallString points at study_dev; refusing apply');
+  if (beforeApply.status === 0 && /example_dev/i.test(String(beforeApply.stdout || ''))) {
+    throw new Error('UninstallString points at example_dev; refusing apply');
   }
   const installStarted = Date.now();
   const setupWait = waitSetupExit(installStarted);
@@ -417,7 +417,7 @@ try {
   killTree(child.pid);
 
   const versionOk = String(afterVer.fileVersion || afterVer.productVersion).includes('0.2.3') && String(aboutAfter?.version).startsWith('0.2.3');
-  const instOk = path.resolve(aboutAfter?.installDir || '').toLowerCase() === INST.toLowerCase() && !/study_dev/i.test(String(aboutAfter?.installDir || ''));
+  const instOk = path.resolve(aboutAfter?.installDir || '').toLowerCase() === INST.toLowerCase() && !/example_dev/i.test(String(aboutAfter?.installDir || ''));
   const setupText = String(result.setup?.waiterStdout || '');
   const setupExplicitFail = /TIMEOUT/.test(setupText) || /EXIT\s+(?!0\b)\d+/.test(setupText);
   result.setupExitText = setupText;
@@ -449,15 +449,15 @@ try {
       result.ok = false;
       result.reason = (result.reason ? result.reason + ',' : '') + 'registry-not-restored';
     }
-    const amyAfter = amySnapshot();
-    result.amyAfter = amyAfter;
-    const exeSame = amyBefore && amyBefore.exe.size === amyAfter.exe.size
-      && amyBefore.exe.mtimeUtc === amyAfter.exe.mtimeUtc
-      && amyBefore.exe.fileVersion === amyAfter.exe.fileVersion;
-    result.amyExeUnchanged = !!exeSame;
-    if (amyBefore && !exeSame) {
+    const ownerAfter = ownerSnapshot();
+    result.ownerAfter = ownerAfter;
+    const exeSame = ownerBefore && ownerBefore.exe.size === ownerAfter.exe.size
+      && ownerBefore.exe.mtimeUtc === ownerAfter.exe.mtimeUtc
+      && ownerBefore.exe.fileVersion === ownerAfter.exe.fileVersion;
+    result.ownerExeUnchanged = !!exeSame;
+    if (ownerBefore && !exeSame) {
       result.ok = false;
-      result.reason = (result.reason ? result.reason + ',' : '') + 'amy-exe-changed';
+      result.reason = (result.reason ? result.reason + ',' : '') + 'user-exe-changed';
     }
   } catch (err) {
     result.ok = false;

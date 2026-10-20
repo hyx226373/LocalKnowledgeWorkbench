@@ -17,8 +17,8 @@ const VERIFY = path.join(ROOT, 'verify');
 const TMP = path.join(ROOT, 'e2e/.tmp/migration');
 fs.rmSync(TMP, { recursive: true, force: true });
 const UD = { a: path.join(TMP, 'userdata-旧电脑'), b: path.join(TMP, 'userdata-新电脑'), c: path.join(TMP, 'userdata-新电脑-缺文件') };
-const SRC1 = path.join(TMP, '旧电脑/C/Users/amy/资料库');
-const SRC2 = path.join(TMP, '旧电脑/C/Users/amy/写作');
+const SRC1 = path.join(TMP, '旧电脑/C/Users/user/资料库');
+const SRC2 = path.join(TMP, '旧电脑/C/Users/user/写作');
 const PKG = path.join(TMP, '导出/本地知识工作台-迁移.kbmigrate.zip');
 const put = (p, c) => (fs.mkdirSync(path.dirname(p), { recursive: true }), fs.writeFileSync(p, c));
 fs.cpSync(SAMPLE, SRC1, { recursive: true });
@@ -230,8 +230,8 @@ const pkgHasRaw = fs.readFileSync(PKG).includes(Buffer.from('迁移后插件面�
 // 旧电脑“下线”：原资料路径在新电脑上不存在（模拟另一台电脑；否则自动建议会直接用原路径）
 const OLD_GONE = path.join(TMP, '旧电脑-已下线');
 fs.renameSync(path.join(TMP, '旧电脑'), OLD_GONE);
-const OLD1 = path.join(OLD_GONE, 'C/Users/amy/资料库');
-const OLD2 = path.join(OLD_GONE, 'C/Users/amy/写作');
+const OLD1 = path.join(OLD_GONE, 'C/Users/user/资料库');
+const OLD2 = path.join(OLD_GONE, 'C/Users/user/写作');
 
 // ============================================================ 启动 #2：新电脑（另一套用户数据目录 + 另一组资料路径）
 const NEW = path.join(TMP, '新电脑');

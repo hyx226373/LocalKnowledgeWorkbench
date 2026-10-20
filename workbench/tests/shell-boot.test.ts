@@ -26,7 +26,7 @@ describe('布局快照与可交互', () => {
   it('快照能来回读写，画界面不需要数据库', () => {
     const store = memory();
     writeLayoutSnapshot(
-      { id: 'ws-1', name: '专业课', project: '考研', layoutSchema: 4, layout: { schema: 4, dock: { grid: {} }, shell: { sidebarWidth: 280 } }, items: [item], rootIds: ['root-a'] },
+      { id: 'ws-1', name: '专业课', project: '示例分类', layoutSchema: 4, layout: { schema: 4, dock: { grid: {} }, shell: { sidebarWidth: 280 } }, items: [item], rootIds: ['root-a'] },
       store,
     );
     const snap = readLayoutSnapshot(store);

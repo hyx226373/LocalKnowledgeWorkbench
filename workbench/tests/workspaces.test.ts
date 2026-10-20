@@ -85,7 +85,7 @@ describe('命名工作区（全局、可按项目分组、可跨根）', () => {
     const many = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`i${i}`, fileItem(`i${i}`, `r${i}`, 'auto', { v: 1, data: { t: 'x'.repeat(12 * 1024) } })]));
     const big = layout4(many);
     expect(() => svc.saveWorkspaceLayout(id, big.layout, big.items)).toThrow(/过大/);
-    expect(() => svc.saveWorkspaceLayout(id, layoutWith({ x: fileItem('x', 'D:\\STUDY MATERIAL\\a.pdf') }))).toThrow(/绝对路径|不合法/);
+    expect(() => svc.saveWorkspaceLayout(id, layoutWith({ x: fileItem('x', 'D:\\Example Docs\\a.pdf') }))).toThrow(/绝对路径|不合法/);
     const dangling = layout4({ x: fileItem('x', 'r') });
     expect(() => svc.saveWorkspaceLayout(id, dangling.layout, [])).toThrow(/引用的条目不存在/);
     expect(() => svc.saveWorkspaceLayout(id, { ...dangling.layout, items: {} }, dangling.items)).toThrow(/不应内联/);

@@ -54,7 +54,7 @@ if (!packageDirs.length) {
   process.exit(1);
 }
 
-const dir = path.join(process.env.TEMP || 'C:\\Users\\sana2\\AppData\\Local\\Temp', 'kb-abi-gate');
+const dir = path.join(process.env.TEMP || 'C:\\Users\\example\\AppData\\Local\\Temp', 'kb-abi-gate');
 fs.mkdirSync(dir, { recursive: true });
 const out = path.join(dir, 'out.json');
 const util = path.join(dir, 'util.json');

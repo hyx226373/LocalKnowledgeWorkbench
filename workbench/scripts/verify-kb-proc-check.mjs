@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const nsh = path.join(root, 'build', 'installer.nsh');
 const ps1 = path.join(root, 'build', 'kb-proc-check.ps1');
-const outDir = 'D:\\kb-r13-work\\install-0024';
+const outDir = 'D:\\workspace\\kb-work\\install-0024';
 const logPath = path.join(outDir, 'verify-proc-check.txt');
 const forbidden = ['Get-CimInstance', 'Get-WmiObject', 'wmic', 'Win32_Process'];
 const lines = [];

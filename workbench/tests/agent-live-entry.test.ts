@@ -15,7 +15,7 @@ import {
   type LiveEntryController,
 } from '../src/main/agentLive/entry';
 
-const ROOT = 'D:\\kb-r13-work\\al-3\\unit';
+const ROOT = 'D:\\workspace\\kb-work\\al-3\\unit';
 const HEX = 'ab'.repeat(32);
 const NOW = () => new Date('2026-10-08T07:00:00.000Z');
 
@@ -511,8 +511,8 @@ describe('入口体积', () => {
       n10,
       n50,
     };
-    fs.mkdirSync('D:\\kb-r13-work\\al-3', { recursive: true });
-    fs.writeFileSync('D:\\kb-r13-work\\al-3\\entry-measure.json', `${JSON.stringify(out, null, 2)}\n`);
+    fs.mkdirSync('D:\\workspace\\kb-work\\al-3', { recursive: true });
+    fs.writeFileSync('D:\\workspace\\kb-work\\al-3\\entry-measure.json', `${JSON.stringify(out, null, 2)}\n`);
     expect(formatTotal([{ bytes: Math.round(3.4 * 1024 * 1024), estTokens: 41_000 }, ...Array.from({ length: 11 }, () => ({ bytes: 0, estTokens: 0 }))])).toBe(
       '12 项 · 3.4MB · 约 41k tokens',
     );

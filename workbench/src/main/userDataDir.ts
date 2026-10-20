@@ -4,7 +4,7 @@
  *   在改到之前用过 Electron 默认的 %APPDATA%\LocalKnowledgeWorkbench（Roaming）；首次启动时一次性迁移过去。
  * - 其他平台：沿用 Electron 默认（~/.config/LocalKnowledgeWorkbench 等）。
  * - KB_USER_DATA=<目录> 优先（测试、便携使用）；不做迁移。
- * - 非正式装机路径（非 D:\study_dev\LocalKnowledgeWorkbench）：默认强制独立 userData，
+ * - 非正式装机路径（非 D:\example_dev\LocalKnowledgeWorkbench）：默认强制独立 userData，
  *   避免 staging/candidate/wt dist 与正式装机互抢 live userData / instance.lock。
  * 必须在 app ready 之前调用（app.setPath('userData')）。
  */
@@ -16,7 +16,7 @@ export const APP_DIR_NAME = 'LocalKnowledgeWorkbench';
 /** 非正式装机隔离目录父名（仍在 LOCALAPPDATA 下，不碰真库） */
 export const ISOLATED_UD_PARENT = 'LocalKnowledgeWorkbench-isolated';
 /** 唯一允许继续使用默认真库 UD 的正式装机根 */
-export const FORMAL_INSTALL_ROOT = 'D:\\study_dev\\LocalKnowledgeWorkbench';
+export const FORMAL_INSTALL_ROOT = 'D:\\example_dev\\LocalKnowledgeWorkbench';
 /** 识别是否是工作台数据目录（元数据库） */
 export const DATA_MARKER = 'workbench.db';
 export const MIGRATION_NOTE = '已迁移到当前应用数据目录.txt';
@@ -33,7 +33,7 @@ function winNorm(p: string): string {
 }
 
 /**
- * 是否正式装机路径：exe 必须落在 D:\study_dev\LocalKnowledgeWorkbench 之下。
+ * 是否正式装机路径：exe 必须落在 D:\example_dev\LocalKnowledgeWorkbench 之下。
  * staging / candidate / wt dist / 其他目录一律否。
  */
 export function isFormalInstallPath(execPath: string): boolean {

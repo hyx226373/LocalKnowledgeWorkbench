@@ -66,7 +66,7 @@ it('单文件只取前 N 字节，默认 1 MiB，超限仍索引', () => {
 
 it('文件夹按根内相对路径前缀包含和排除，排除优先', () => {
   expect(normalizeFolderPrefix('C:\\notes')).toBeNull();
-  expect(normalizeFolderPrefix('/home/amy/notes')).toBeNull();
+  expect(normalizeFolderPrefix('/home/user/notes')).toBeNull();
   expect(normalizeFolderPrefix('../secret')).toBeNull();
   expect(normalizeFolderPrefix('docs/2024/')).toBe('docs/2024');
   const scope = parseContentIndexScope({

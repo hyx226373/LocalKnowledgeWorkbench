@@ -232,7 +232,7 @@ export function usePreviewContextMenu(args: {
     const copyValue = range?.text || (input.hasSelection ? raw : '');
     const openTarget = args.markdownFile ? openTargetForClick(args.source, root, event, range?.start ?? null) : {};
     const showMenu = (fileInRound: boolean) => {
-      // 点不了的项照旧置灰显示，不隐藏（Amy 定）。
+      // 点不了的项照旧置灰显示，不隐藏（用户定）。
       const items = previewContextMenu({
         ...input,
         fileInRound,

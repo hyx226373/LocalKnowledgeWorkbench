@@ -52,14 +52,14 @@
 
 前提：
 - 已安装 **Node.js 20 LTS 或更新版本（x64）**（https://nodejs.org/ ，安装时勾选“Add to PATH”）。在 PowerShell 中运行 `node -v` 应显示 `v20.x` 或更高版本。
-- 工作台源码已经放在本机，下文假设在 `D:\STUDY MATERIAL\项目\知识库\kb-workbench`（实际位置以 Amy 提供的为准）。
-- 主题文件夹：`D:\STUDY MATERIAL\项目\知识库\themes\a`（B、C 分别用 `b`、`c`）。
+- 工作台源码已经放在本机，下文假设在 `D:\workspace\kb\kb-workbench`（实际位置以 用户提供的为准）。
+- 主题文件夹：`D:\workspace\kb\themes\a`（B、C 分别用 `b`、`c`）。
 
 在 PowerShell 中执行（路径含空格与中文，**必须加引号**）：
 
 ```powershell
 # 1) 安装依赖（只需一次）
-cd "D:\STUDY MATERIAL\项目\知识库\kb-workbench"
+cd "D:\workspace\kb\kb-workbench"
 npm ci
 #    如果 better-sqlite3 报 node-gyp / Python / Visual Studio 相关错误，改用下面两步：
 #    npm ci --ignore-scripts
@@ -70,11 +70,11 @@ npm ci
 npm run build
 
 # 3) 从模板创建自己的主题包（只需一次）
-Copy-Item -Recurse ".\theme-kit\template" "D:\STUDY MATERIAL\项目\知识库\themes\a"
+Copy-Item -Recurse ".\theme-kit\template" "D:\workspace\kb\themes\a"
 #    然后编辑 themes\a\theme.json：把 id 改为 contractor.a，name/label 改为自己的名字
 
 # 4) 截图（每次修改后运行）
-node scripts/theme-shots.mjs "D:\STUDY MATERIAL\项目\知识库\themes\a" --out "D:\STUDY MATERIAL\项目\知识库\themes\a\shots"
+node scripts/theme-shots.mjs "D:\workspace\kb\themes\a" --out "D:\workspace\kb\themes\a\shots"
 ```
 
 第 4 步也可以写成 `npm run theme:shots -- "D:\...\themes\a" --out "D:\...\themes\a\shots"`。旧版 Windows PowerShell 有时会吞掉 `--`，所以优先直接用 `node scripts/theme-shots.mjs`。
@@ -99,7 +99,7 @@ node scripts/theme-shots.mjs "D:\STUDY MATERIAL\项目\知识库\themes\a" --out
 - 安装：应用顶栏“外观”→“安装主题包（文件夹）…”→ 选择主题文件夹。安装 = 复制到应用数据目录，以后修改需要重新安装。
 - 开发时免安装：设置环境变量 `KB_THEME_DIRS` 指向主题文件夹（多个用 `;` 分隔），然后 `npm start`：
   ```powershell
-  $env:KB_THEME_DIRS="D:\STUDY MATERIAL\项目\知识库\themes\a"; npm start
+  $env:KB_THEME_DIRS="D:\workspace\kb\themes\a"; npm start
   ```
 - 在“外观”菜单中分别选择外框样式、阅读区样式与浅色/深色/跟随系统。布局预设在“工作区”菜单与命令面板（Ctrl+Shift+P）中。
 

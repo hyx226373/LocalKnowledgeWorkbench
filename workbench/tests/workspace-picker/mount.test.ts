@@ -35,10 +35,10 @@ describe('工作区总览挂载', () => {
   });
 
   it('已保存行只映射列表里已有的字段', () => {
-    const [entry] = overviewEntries([{ id: 'a', name: '论文', project: '考研', lastOpenedAt: 5, panelCount: 2 }], false);
+    const [entry] = overviewEntries([{ id: 'a', name: '论文', project: '示例分类', lastOpenedAt: 5, panelCount: 2 }], false);
     expect(entry?.temporary).toBeUndefined();
     expect(entry?.summary.lastUsedAt).toBe(5);
-    expect(entry?.summary.project).toBe('考研');
+    expect(entry?.summary.project).toBe('示例分类');
     expect(entry?.summary.favorite).toBe(false);
     expect(entry?.summary.counts).toEqual({ files: 0, webs: 0, apps: 0, panels: 2 });
   });

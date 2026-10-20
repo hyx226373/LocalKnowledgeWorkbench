@@ -1,4 +1,4 @@
-// 外贴 26 的 G4。无窗口，日志在 D:\kb-r13-work\upgrade-0026\g4\makebackup.log。
+// 外贴 26 的 G4。无窗口，日志在 D:\workspace\kb-work\upgrade-0026\g4\makebackup.log。
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const logFile = 'D:\\kb-r13-work\\upgrade-0026\\g4\\makebackup.log';
+const logFile = 'D:\\workspace\\kb-work\\upgrade-0026\\g4\\makebackup.log';
 
 fs.mkdirSync(path.dirname(logFile), { recursive: true });
 

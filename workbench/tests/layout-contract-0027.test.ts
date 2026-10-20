@@ -147,12 +147,12 @@ describe('current.json', () => {
 });
 
 describe('路径与清单', () => {
-  it('启动器不跟版本目录抢 resources，且拒绝 study_dev', () => {
+  it('启动器不跟版本目录抢 resources，且拒绝 example_dev', () => {
     expect(launcherExe('D:\\app')).toBe('D:\\app\\launcher\\kb-launch.exe');
     expect(appExe('D:\\app', '0.2.4')).toBe('D:\\app\\versions\\0.2.4\\LocalKnowledgeWorkbench.exe');
     expect(candidateRel('0.2.5')).toBe('versions/0.2.5');
-    expect(isUnderStudyDev('D:\\study_dev\\LocalKnowledgeWorkbench')).toBe(true);
-    expect(isUnderStudyDev('D:\\kb-r13-work\\updater-0027\\app')).toBe(false);
+    expect(isUnderStudyDev('D:\\example_dev\\LocalKnowledgeWorkbench')).toBe(true);
+    expect(isUnderStudyDev('D:\\workspace\\kb-work\\updater-0027\\app')).toBe(false);
     expect(() => appExe('D:\\app', '..\\..\\Windows')).toThrow(/目录名/);
   });
 
@@ -268,7 +268,7 @@ describe('启动、恢复、迁移', () => {
     })).toEqual({ action: 'already-done' });
   });
 
-  it('迁移拒绝 study_dev、过旧版本和已迁移布局', () => {
+  it('迁移拒绝 example_dev、过旧版本和已迁移布局', () => {
     expect(planMigration({
       hasCurrentJson: false,
       hasAppExe: true,
@@ -276,7 +276,7 @@ describe('启动、恢复、迁移', () => {
       fileVersion: '0.2.4.0',
       underStudyDev: true,
       allowStudyDev: false,
-    })).toEqual({ action: 'refuse', reason: '禁止迁移 D:\\study_dev，除非 Amy 另批' });
+    })).toEqual({ action: 'refuse', reason: '禁止迁移 D:\\example_dev，除非 用户另批' });
     expect(versionDirName('0.2.4.0')).toBe('0.2.4');
     expect(planMigration({
       hasCurrentJson: false,
